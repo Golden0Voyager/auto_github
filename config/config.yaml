@@ -1,0 +1,69 @@
+# auto_github Configuration File
+
+# GitHub API & Crawling Settings
+github:
+  # The core LLM giants' GitHub organizations/users to monitor
+  monitored_orgs:
+    - deepseek-ai
+    - openai
+    - anthropic
+    - google-deepmind
+    - google-research
+    - meta-llama
+    - mistralai
+    - microsoft
+    - huggingface
+    - zhipuai
+    - THUDM
+    - moonshotai
+    - MiniMax-AI
+    - xai-org
+    - NousResearch
+    - Tencent-Hunyuan
+    - XiaomiMiMo
+    - QwenLM
+    - vllm-project
+    - modelcontextprotocol
+    - dspy-ai
+    - unslothai
+    - sgl-project
+  # Key individuals in the space to track
+  monitored_users:
+    - karpathy
+    - lucidrains
+    - ggerganov
+    - comfyanonymous
+    - jxnl
+    - danielmiessler
+    - tiangolo
+    - tonyzzhao
+    - danijar
+    - jonbarron
+    - keijiro
+    - patriciogonzalezvivo
+    - mattdesl
+  # Max trending items to parse (default top 15)
+  max_trending_repos: 15
+  # Max giant repos to fetch (default top 5 per org)
+  max_org_repos: 5
+
+# AI Settings & Default Model Options
+ai:
+  default_provider: sensenova  # Options: sensenova, openai, gemini
+  model_v3: DeepSeek-V3-1      # For Crawl, Analyze, Summarize, Translate, Layout
+  model_r1: DeepSeek-R1        # For Reflect (reasoning stage)
+  temperature: 0.3
+  max_tokens: 4096
+  # Rate limit backup delay (seconds between API calls to prevent 429 RPM/QPS limits)
+  rate_limit_delay: 10.0
+
+# Notification Settings
+notifications:
+  # Webhook configurations (will read from env variables if available)
+  feishu_webhook_url: ""
+  slack_webhook_url: ""
+  discord_webhook_url: ""
+  # Local report storage directory
+  local_report_dir: "./reports"
+  # Save raw crawled data for transparency/debugging
+  save_raw_data: true

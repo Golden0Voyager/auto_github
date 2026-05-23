@@ -1,0 +1,48 @@
+{
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "🌌 GitHub Trend & Activity ({{ persona.name }}) - {{ timeframe | capitalize }}",
+        "emoji": true
+      }
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*🎯 Target Persona*: {{ persona.name }} | *Time*: {{ timestamp }}\nSelected *{{ repos | length }}* high-value updates out of {{ total_input }} repositories."
+      }
+    },
+    {
+      "type": "divider"
+    },
+    {% for r in repos %}
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*{% if r.rating == 'S' %}👑 [S] {% elif r.rating == 'A' %}🔥 [A] {% else %}🔹 [{{ r.rating }}] {% endif %} <{{ r.url }}|{{ r.full_name }}>*\n*Tags*: {% for t in r.tags %}`{{ t }}` {% endfor %} | *Lang*: `{{ r.language }}` | *Stars*: {% if r.period_stars %}{{ r.period_stars }}{% else %}⭐️ {{ r.stars }}{% endif %}\n\n_Reason: {{ r.selection_reason }}_\n\n{{ r.chinese_summary | replace('\"', '\\\"') | replace('\n', '\\n') }}"
+      }
+    }
+    {% if not loop.last %}
+    ,{
+      "type": "divider"
+    },
+    {% endif %}
+    {% endfor %},
+    {
+      "type": "divider"
+    },
+    {
+      "type": "context",
+      "elements": [
+        {
+          "type": "mrkdwn",
+          "text": "⚡ Powered by SenseNova ({{ model_v3 }} & {{ model_r1 }}) pipeline."
+        }
+      ]
+    }
+  ]
+}

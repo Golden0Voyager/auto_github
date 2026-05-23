@@ -1,0 +1,60 @@
+{
+  "msg_type": "interactive",
+  "card": {
+    "config": {
+      "wide_screen_mode": true,
+      "enable_forward": true
+    },
+    "header": {
+      "template": "{% if timeframe == 'monthly' %}purple{% elif timeframe == 'weekly' %}orange{% else %}blue{% endif %}",
+      "title": {
+        "tag": "plain_text",
+        "content": "🌌 GitHub Trend & Activity ({{ persona.name }}) - {{ timeframe | capitalize }}"
+      }
+    },
+    "elements": [
+      {
+        "tag": "markdown",
+        "content": "**🎯 目标画像**: {{ persona.name }} | **时间**: {{ timestamp }}\n已从 {{ total_input }} 个热门候选项目中智能甄选 **{{ repos | length }}** 个最值得关注的 LLM & AI 工程更新。"
+      },
+      {
+        "tag": "hr"
+      },
+      {% for r in repos %}
+      {
+        "tag": "div",
+        "text": {
+          "tag": "lark_md",
+          "content": "**{% if r.rating == 'S' %}👑 [S级高热] {% elif r.rating == 'A' %}🔥 [A级精选] {% else %}🔹 [{{ r.rating }}级推荐] {% endif %}{{ r.full_name }}**\n**🏷️ 标签**: {% for t in r.tags %}`{{ t }}` {% endfor %} | **语言**: `{{ r.language }}` | **热度**: {% if r.period_stars %}{{ r.period_stars }}{% else %}⭐️ {{ r.stars }}{% endif %}\n\n*{{ r.selection_reason }}*\n\n{{ r.chinese_summary | replace('\"', '\\\"') | replace('\n', '\\n') }}"
+        },
+        "extra": {
+          "tag": "button",
+          "text": {
+            "tag": "plain_text",
+            "content": "🔗 View Repo"
+          },
+          "type": "primary",
+          "url": "{{ r.url }}"
+        }
+      }
+      {% if not loop.last %}
+      ,{
+        "tag": "hr"
+      },
+      {% endif %}
+      {% endfor %},
+      {
+        "tag": "hr"
+      },
+      {
+        "tag": "note",
+        "elements": [
+          {
+            "tag": "plain_text",
+            "content": "⚡ Powered by SenseNova ({{ model_v3 }} & {{ model_r1 }}) Pipeline. Compressed 85% noise."
+          }
+        ]
+      }
+    ]
+  }
+}

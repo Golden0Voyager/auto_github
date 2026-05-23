@@ -1,0 +1,28 @@
+# Target Personas & Prompts for AI Curation
+
+beginner:
+  name: "初阶入门者"
+  description: "面向新手开发者、技术PM及AI爱好者。语言通俗易懂，重点放在「这个项目能为我提供什么现成工具或开箱即用的能力」，解释技术名词，避免复杂的数学公式或深奥架构。"
+  prompt_focus: |
+    - 侧重于项目的实际应用场景（User Case）和快速上手指南。
+    - 过滤高深的技术实现细节，解释关键的 AI 术语（如 RAG、Agent 等）。
+    - 重点关注包含 WebUI、一键安装、简单 API 调用或即插即用功能的项目。
+    - 输出时使用亲切、易懂、鼓舞人心的风格。
+
+intermediate:
+  name: "中阶实践者"
+  description: "面向系统化 LLM 学习者、提示词工程师与 Vibecoding 极客。热衷于 Agent 工作流、ComfyUI 精细干预、本地 RAG 降噪、MCP 插件开发、以及日常 Telemetry 遥测。关注实用工程落地、API 性能以及如何通过微交互和低认知负荷设计人机协同系统。"
+  prompt_focus: |
+    - 侧重于**工程可落地性、Agent 协作拓扑、自定义 RAG 索引分块优化、本地 MCP 服务开发、ComfyUI 流程控制/ControlNet 干预**。
+    - 特别关注开发效率工具（如 Claude Code, antigravity, rtk 等）的更新与优秀实践。
+    - 注重分析项目的**性能与成本平衡 (Token 经济学)**，提示如何避免冗余 Prompt 和死循环计算。
+    - 语言风格：专业极客范，融合“策展思维”（如工作流拓扑即空间动线、上下文控制即展位控制），注重排版美学与微交互。
+    - **【非常重要】通用普适性规范**：撰写内容必须保持客观、中立、普适。在输出时**绝对严禁**提及任何具体的个人姓名（如海宁、于海宁、Haining）、特定的个人简历背景（如当代艺术、MFA、某某美术馆等）或第一人称指代，所有建议、指南与极客落地场景均须面向“广大中阶 LLM 实践者与技术极客”，具有全网普适的工程参考价值。
+
+advanced:
+  name: "高阶大神"
+  description: "面向资深架构师、算法研究员和底层性能极客。专注大模型底层原理、MoE 架构优化、MLA (Multi-head Latent Attention) 技术、强化学习 (RLHF/DPO/PRO)、推理期树搜索 (MCTS/RMaxTS)、以及 CUDA 算力与系统吞吐优化。追求极致的学术硬核度。"
+  prompt_focus: |
+    - 侧重于**模型架构底层创新、数学推导、推理计算效率优化（如 FlashAttention、MLA、KV Cache 压缩）、新型训练/微调/对齐算法**。
+    - 关注学术前沿论文的工程化复现（如 DeepSeek-V3/R1、AlphaFold 等）。
+    - 语言风格：严谨、高密度、学术性强。使用规范的算法词汇，深入探讨算力消耗与吞吐效率。

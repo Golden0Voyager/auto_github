@@ -1,0 +1,86 @@
+name: 🌌 Daily GitHub Curation & Trend Observer
+
+on:
+  schedule:
+    # Run every day at 04:00 UTC (12:00 noon Beijing/Shanghai time)
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    # Enable manual triggering from GitHub UI
+    inputs:
+      since:
+        description: 'Timeframe to curate'
+        required: true
+        default: 'daily'
+        type: choice
+        options:
+          - daily
+          - weekly
+          - monthly
+      persona:
+        description: 'Persona to use for reports'
+        required: true
+        default: 'intermediate'
+        type: choice
+        options:
+          - intermediate
+          - beginner
+          - advanced
+
+jobs:
+  curate-and-notify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Allows writing and pushing daily reports back to repository logs
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run Curator Pipeline
+      env:
+        # LLM Engine API Keys
+        SENSENOVA_API_KEY: ${{ secrets.SENSENOVA_API_KEY }}
+        SENSENOVA_BASE_URL: https://api.sensenova.cn/compatible-mode/v2
+        
+        # GitHub API Token (automatically provided by GitHub to bypass API limits)
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+        # Webhook Notification URIs
+        FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      run: |
+        # Use inputs from manual trigger if available, otherwise default to daily and intermediate
+        TIMEFRAME="${{ github.event.inputs.since || 'daily' }}"
+        PERSONA="${{ github.event.inputs.persona || 'intermediate' }}"
+        
+        echo "Running pipeline with timeframe=$TIMEFRAME and persona=$PERSONA..."
+        python src/main.py --since "$TIMEFRAME" --persona "$PERSONA"
+
+    - name: Commit and Push Daily Report Logs
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        
+        # Check if there are changes in reports/ directory to commit
+        if [ -d "reports" ] && [ -n "$(git status --porcelain reports/)" ]; then
+          git add reports/
+          git commit -m "docs: auto-commit daily github curation report logs [skip ci]"
+          git push origin main
+          echo "Successfully pushed daily reports to GitHub repo."
+        else
+          echo "No new reports generated or no changes detected."
+        fi
