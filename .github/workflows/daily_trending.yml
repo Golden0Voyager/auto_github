@@ -79,8 +79,19 @@ jobs:
         if [ -d "reports" ] && [ -n "$(git status --porcelain reports/)" ]; then
           git add reports/
           git commit -m "docs: auto-commit daily github curation report logs [skip ci]"
-          git push origin main
-          echo "Successfully pushed daily reports to GitHub repo."
+          
+          # Use rebase and retries to handle push race conditions
+          for attempt in 1 2 3; do
+            git pull --rebase -X theirs origin main
+            if git push origin HEAD:main; then
+              echo "Successfully pushed daily reports to GitHub repo."
+              exit 0
+            fi
+            echo "Push failed due to branch race; retrying in 5 seconds..."
+            sleep 5
+          done
+          echo "Push failed after 3 attempts."
+          exit 1
         else
           echo "No new reports generated or no changes detected."
         fi
