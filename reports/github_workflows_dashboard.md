@@ -2,7 +2,7 @@
 
 本报表由 AI 自动生成，收集了您 GitHub 账户 (`Golden0Voyager`) 下所有活跃的 GitHub Actions 自动运行脚本的运行时间、自动运行配置和平均运行耗时。
 
-> **更新时间**：2026-05-24 11:26:24 (北京时间)
+> **更新时间**：2026-05-24 11:31:45 (北京时间)
 
 ---
 
@@ -19,7 +19,7 @@
 | [Golden0Voyager/daily_stock_analysis](https://github.com/Golden0Voyager/daily_stock_analysis) | `Network Smoke` | `0 2 * * 1-5` (周一至周五 10:00) | **2分56秒** | 10 次 | 🌐 公开 |
 | [Golden0Voyager/daily_stock_analysis](https://github.com/Golden0Voyager/daily_stock_analysis) | `Stale Issues & PRs` | `0 0 * * *` (每天 08:00) | **6秒** | 10 次 | 🌐 公开 |
 | [Golden0Voyager/dailysync-rev](https://github.com/Golden0Voyager/dailysync-rev) | `Sync Garmin Global to Garmin CN` | `*/30 * * * *` (自定义表达式 (UTC */30 * * * *)) | **22秒** | 10 次 | 🌐 公开 |
-| [Golden0Voyager/x-digest](https://github.com/Golden0Voyager/x-digest) | `Fetch Tweets` | `0 */12 * * *` (自定义表达式 (UTC 0 */12 * * *)) | **14分51秒** | 10 次 | 🌐 公开 |
+| [Golden0Voyager/x-digest](https://github.com/Golden0Voyager/x-digest) | `Fetch Tweets` | `30 2 * * *` (每天 10:30) | **14分51秒** | 10 次 | 🌐 公开 |
 | [Golden0Voyager/Horizon](https://github.com/Golden0Voyager/Horizon) | `Deploy Docs` | 手动触发 / 其他事件触发 | **7秒** | 2 次 | 🌐 公开 |
 | [Golden0Voyager/anyrouter-check-in-1](https://github.com/Golden0Voyager/anyrouter-check-in-1) | `PR Quality Checks` | 手动触发 / 其他事件触发 | **N/A** | 0 次 | 🌐 公开 |
 | [Golden0Voyager/daily_stock_analysis](https://github.com/Golden0Voyager/daily_stock_analysis) | `Auto Tag` | 手动触发 / 其他事件触发 | **N/A** | 0 次 | 🌐 公开 |
