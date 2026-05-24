@@ -2,8 +2,8 @@ name: 🌌 Daily GitHub Curation & Trend Observer
 
 on:
   schedule:
-    # Run every day at 04:00 UTC (12:00 noon Beijing/Shanghai time)
-    - cron: '0 4 * * *'
+    # Run every day at 02:00 UTC (10:00 AM Beijing/Shanghai time)
+    - cron: '0 2 * * *'
   workflow_dispatch:
     # Enable manual triggering from GitHub UI
     inputs:
