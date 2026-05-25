@@ -27,7 +27,7 @@ class ReportFormatter:
     def generate_all(self, repos: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Generates all report formats."""
         total_input = self.config.github.max_trending_repos
-        
+
         context = {
             "repos": repos,
             "persona": self.persona,
@@ -37,15 +37,108 @@ class ReportFormatter:
             "model_v3": self.config.ai.model_v3,
             "model_r1": self.config.ai.model_r1
         }
-        
+
         markdown_report = self._render_template("report.md.j2", context, self._fallback_markdown(repos))
-        feishu_payload = self._render_json_template("feishu_card.json.j2", context, self._fallback_feishu(repos))
+        feishu_payload = self._build_feishu_collapsible_payload(repos)
         slack_payload = self._render_json_template("slack_blocks.json.j2", context, self._fallback_slack(repos))
-        
+
         return {
             "markdown": markdown_report,
             "feishu": feishu_payload,
             "slack": slack_payload
+        }
+
+    def _build_feishu_collapsible_payload(self, repos: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Build Feishu Card JSON 2.0 with collapsible panels for each repo."""
+        color = "purple" if self.timeframe == "monthly" else "orange" if self.timeframe == "weekly" else "blue"
+
+        overview = (
+            f"**🎯 目标画像**: {self.persona['name']} | **时间**: {self.timestamp}\n"
+            f"已从 {self.config.github.max_trending_repos} 个热门候选项目中智能甄选 **{len(repos)}** 个最值得关注的项目。\n\n"
+            "👇 点击下方项目面板即可在飞书内展开阅读全文。"
+        )
+        elements: List[Dict[str, Any]] = [{"tag": "markdown", "content": overview}]
+
+        for r in repos:
+            rating = r.get("rating", "B")
+            rating_emoji = "👑" if rating == "S" else "🔥" if rating == "A" else "🔹"
+            panel_title = f"{rating_emoji} [{rating}级] {r['full_name']}"
+
+            if r.get("period_stars"):
+                panel_title += f" | ⭐️ +{r['period_stars']}"
+            elif r.get("stars"):
+                panel_title += f" | ⭐️ {r['stars']}"
+
+            tags = " ".join(f"`{t}`" for t in r.get("tags", [])) or "无"
+            language = r.get("language") or "未知"
+            stars_display = f"+{r['period_stars']} this {self.timeframe}" if r.get("period_stars") else f"{r.get('stars', 0)}"
+
+            content_lines = [
+                f"**🏷️ 标签**: {tags} | **语言**: `{language}` | **总星标**: ⭐️ {stars_display}",
+                "",
+                f"*{r.get('selection_reason', '')}*",
+                "",
+                r.get("chinese_summary", ""),
+            ]
+            content = "\n".join(content_lines)
+
+            panel: Dict[str, Any] = {
+                "tag": "collapsible_panel",
+                "expanded": False,
+                "header": {
+                    "title": {"tag": "plain_text", "content": panel_title},
+                    "icon": {
+                        "tag": "standard_icon",
+                        "token": "down-small-ccm_outlined",
+                        "size": "16px 16px",
+                    },
+                    "icon_position": "right",
+                    "icon_expanded_angle": -180,
+                },
+                "border": {"color": "grey", "corner_radius": "5px"},
+                "elements": [
+                    {"tag": "markdown", "content": content},
+                    {
+                        "tag": "button",
+                        "text": {"tag": "plain_text", "content": "🔗 查看仓库"},
+                        "type": "primary",
+                        "url": r["url"],
+                    },
+                ],
+            }
+            elements.append(panel)
+
+        elements.append({"tag": "hr"})
+        elements.append({
+            "tag": "note",
+            "elements": [
+                {
+                    "tag": "plain_text",
+                    "content": f"⚡ Powered by SenseNova ({self.config.ai.model_v3} & {self.config.ai.model_r1}). Compressed 85% noise.",
+                }
+            ],
+        })
+
+        return {
+            "msg_type": "interactive",
+            "card": {
+                "schema": "2.0",
+                "config": {
+                    "wide_screen_mode": True,
+                    "update_multi": True,
+                    "enable_forward": True,
+                },
+                "header": {
+                    "template": color,
+                    "title": {
+                        "tag": "plain_text",
+                        "content": f"🌌 GitHub Trend & Activity ({self.persona['name']}) - {self.timeframe.capitalize()}",
+                    },
+                },
+                "body": {
+                    "elements": elements,
+                },
+            },
         }
 
     def _render_template(self, template_name: str, context: Dict[str, Any], fallback: str) -> str:
