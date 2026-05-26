@@ -110,13 +110,8 @@ class ReportFormatter:
 
         elements.append({"tag": "hr"})
         elements.append({
-            "tag": "note",
-            "elements": [
-                {
-                    "tag": "plain_text",
-                    "content": f"⚡ Powered by SenseNova ({self.config.ai.model_v3} & {self.config.ai.model_r1}). Compressed 85% noise.",
-                }
-            ],
+            "tag": "markdown",
+            "content": f"⚡ Powered by SenseNova ({self.config.ai.model_v3} & {self.config.ai.model_r1}). Compressed 85% noise.",
         })
 
         return {
