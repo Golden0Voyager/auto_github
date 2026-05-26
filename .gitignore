@@ -116,3 +116,6 @@ reports/raw/
 reports/debug/
 *.db
 *.local
+# Skill-generated analysis artifacts
+.understand-anything/
+.codegraph/
