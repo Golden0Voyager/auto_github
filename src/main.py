@@ -102,6 +102,21 @@ def main():
         print("=" * 60)
         print(f"Timeframe: {args.since} | Persona: {args.persona}")
         print(f"Report size: {len(curated_data['repos'])} repositories matching criteria.")
+
+        # Dedup 状态
+        meta = curated_data.get("meta", {})
+        cooled = meta.get("cooled_repos", []) or []
+        newly_archived = meta.get("newly_archived", []) or []
+        archive_total = meta.get("archive_total", 0)
+        if cooled or newly_archived or archive_total:
+            print("Dedup 状态（高🌟项目存档）:")
+            print(f"  - 今日过滤（冷却中）: {len(cooled)} 个")
+            print(f"  - 本次新晋存档: {len(newly_archived)} 个")
+            print(f"  - 存档总数: {archive_total} 个")
+            if newly_archived:
+                for n in newly_archived:
+                    print(f"      🌟 {n}")
+
         print("Notification Deliveries:")
         for channel, success in notif_results.items():
             status = "✅ Delivered" if success else "❌ Failed"

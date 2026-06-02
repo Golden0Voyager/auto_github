@@ -43,7 +43,9 @@ class LLMClient:
         
         Args:
             messages: List of chat message dicts (role, content)
-            use_reasoning: If True, uses the reasoning model (R1). Else uses V3.
+            use_reasoning: If True, uses model_r1 (reflect stage). Else uses model_v3.
+                注：原 DeepSeek-R1 已被 sensenova-6.7-flash-lite 替代，思考链
+                reasoning_content 不再可用，Stage 4 反思通过普通 content 字段返回。
             temperature: Sampling temperature
             max_tokens: Maximum tokens to generate
             retries: Number of retries on rate limit (429) or temporary server errors
@@ -57,15 +59,13 @@ class LLMClient:
         temp = temperature if temperature is not None else self.config.ai.temperature
         max_t = max_tokens if max_tokens is not None else self.config.ai.max_tokens
         
-        # SenseNova DeepSeek-R1 does not support temperature settings in some cases or custom params
-        # We handle this gracefully: R1 prefers temperature=None or 1.0 (some endpoints error on low temperature)
+        # sensenova-6.7-flash-lite 支持 temperature (0-2)，但保留旧 R1 的温度容错逻辑作为兜底
         kwargs = {
             "model": model,
             "messages": messages,
             "max_tokens": max_t,
         }
         
-        # For non-reasoning models (V3-1), we can set custom temperature
         if not use_reasoning:
             kwargs["temperature"] = temp
             

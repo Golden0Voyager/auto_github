@@ -15,13 +15,23 @@ class GitHubConfig(BaseModel):
 
 class AIConfig(BaseModel):
     default_provider: str = "sensenova"
-    model_v3: str = "DeepSeek-V3-1"
-    model_r1: str = "DeepSeek-R1"
+    # Token Plan 端点 + sensenova-6.7-flash-lite，详见 docs/api/sensenova-token-plan-usage.md
+    model_v3: str = "sensenova-6.7-flash-lite"
+    model_r1: str = "sensenova-6.7-flash-lite"
     temperature: float = 0.3
     max_tokens: int = 4096
-    rate_limit_delay: float = 10.0
+    rate_limit_delay: float = 2.0
     api_key: Optional[str] = None
     base_url: Optional[str] = None
+
+
+class DedupConfig(BaseModel):
+    """高星项目去重配置：节省 LLM 算力 + 给新兴项目留展位。"""
+    high_star_threshold: int = 10000
+    archive_threshold: int = 3
+    archive_cooldown_days: int = 30
+    history_file: str = "reports/repo_history.json"
+    archive_file: str = "reports/high_star_archive.json"
 
 class NotificationConfig(BaseModel):
     feishu_webhook_url: Optional[str] = None
@@ -33,6 +43,7 @@ class NotificationConfig(BaseModel):
 class AppConfig(BaseModel):
     github: GitHubConfig = Field(default_factory=GitHubConfig)
     ai: AIConfig = Field(default_factory=AIConfig)
+    dedup: DedupConfig = Field(default_factory=DedupConfig)
     notifications: NotificationConfig = Field(default_factory=NotificationConfig)
 
 def load_config() -> AppConfig:
@@ -55,7 +66,8 @@ def load_config() -> AppConfig:
     
     if config.ai.default_provider == "sensenova":
         config.ai.api_key = sensenova_key or openai_key
-        config.ai.base_url = os.getenv("SENSENOVA_BASE_URL", "https://api.sensenova.cn/compatible-mode/v2")
+        # Token Plan 端点：https://token.sensenova.cn/v1（注意：不是 api.sensenova.cn）
+        config.ai.base_url = os.getenv("SENSENOVA_BASE_URL", "https://token.sensenova.cn/v1")
     elif config.ai.default_provider == "gemini":
         config.ai.api_key = gemini_key
         config.ai.base_url = os.getenv("GEMINI_BASE_URL")

@@ -48,14 +48,27 @@ github:
   max_org_repos: 5
 
 # AI Settings & Default Model Options
+# Token Plan 免费公测，详见 docs/api/sensenova-token-plan-usage.md
 ai:
   default_provider: sensenova  # Options: sensenova, openai, gemini
-  model_v3: DeepSeek-V3-1      # For Crawl, Analyze, Summarize, Translate, Layout
-  model_r1: DeepSeek-R1        # For Reflect (reasoning stage)
+  model_v3: sensenova-6.7-flash-lite   # For Crawl/Analyze/Summarize/Translate/Layout
+  model_r1: sensenova-6.7-flash-lite   # For Reflect (R1 已下线，统一使用 flash-lite)
   temperature: 0.3
   max_tokens: 4096
   # Rate limit backup delay (seconds between API calls to prevent 429 RPM/QPS limits)
-  rate_limit_delay: 10.0
+  rate_limit_delay: 2.0
+
+# 高星项目去重配置（节省算力 + 给新兴项目留展位）
+dedup:
+  # 视为"高星"项目的最低 star 阈值（低于此值不进入去重逻辑，让新项目自由展示）
+  high_star_threshold: 10000
+  # 累计出现次数达到此值后进入「高🌟项目存档」，30 天内不再推送
+  archive_threshold: 3
+  # 存档冷却天数：进入存档后多少天内不再出现在日报中
+  archive_cooldown_days: 30
+  # 历史记录持久化文件（相对项目根目录）
+  history_file: "reports/repo_history.json"
+  archive_file: "reports/high_star_archive.json"
 
 # Notification Settings
 notifications:
