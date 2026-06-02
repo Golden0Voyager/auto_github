@@ -24,9 +24,16 @@ class ReportFormatter:
             self.env = None
             print("[Formatter Warning] Templates directory not found. Using fallbacks.")
 
-    def generate_all(self, repos: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Generates all report formats."""
+    def generate_all(self, repos: List[Dict[str, Any]], cooled_repos: List[Dict[str, Any]] = None, archive_total: int = 0) -> Dict[str, Any]:
+        """Generates all report formats.
+
+        Args:
+            repos: 经策展的项目列表。
+            cooled_repos: 今日因高🌟存档而被过滤掉的项目（仅展示用，不进入策展管线）。
+            archive_total: 当前高🌟项目存档总数。
+        """
         total_input = self.config.github.max_trending_repos
+        cooled_repos = cooled_repos or []
 
         context = {
             "repos": repos,
@@ -35,11 +42,13 @@ class ReportFormatter:
             "timestamp": self.timestamp,
             "total_input": total_input,
             "model_v3": self.config.ai.model_v3,
-            "model_r1": self.config.ai.model_r1
+            "model_r1": self.config.ai.model_r1,
+            "cooled_repos": cooled_repos,
+            "archive_total": archive_total,
         }
 
         markdown_report = self._render_template("report.md.j2", context, self._fallback_markdown(repos))
-        feishu_payload = self._build_feishu_collapsible_payload(repos)
+        feishu_payload = self._build_feishu_collapsible_payload(repos, cooled_repos, archive_total)
         slack_payload = self._render_json_template("slack_blocks.json.j2", context, self._fallback_slack(repos))
 
         return {
@@ -48,8 +57,9 @@ class ReportFormatter:
             "slack": slack_payload
         }
 
-    def _build_feishu_collapsible_payload(self, repos: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _build_feishu_collapsible_payload(self, repos: List[Dict[str, Any]], cooled_repos: List[Dict[str, Any]] = None, archive_total: int = 0) -> Dict[str, Any]:
         """Build Feishu Card JSON 2.0 with collapsible panels for each repo."""
+        cooled_repos = cooled_repos or []
         color = "purple" if self.timeframe == "monthly" else "orange" if self.timeframe == "weekly" else "blue"
 
         overview = (
@@ -58,6 +68,18 @@ class ReportFormatter:
             "👇 点击下方项目面板即可在飞书内展开阅读全文。"
         )
         elements: List[Dict[str, Any]] = [{"tag": "markdown", "content": overview}]
+
+        # 高🌟项目存档状态（透明披露本次过滤与累计存档数）
+        if cooled_repos or archive_total:
+            cooled_names = "、".join(r["full_name"] for r in cooled_repos[:8])
+            if len(cooled_repos) > 8:
+                cooled_names += f" 等 {len(cooled_repos)} 个"
+            archive_note = (
+                f"🌟 **高🌟项目存档**: 今日 {len(cooled_repos)} 个高星项目处于 30 天冷却期"
+                f"（{cooled_names or '无'}）；累计存档 {archive_total} 个。"
+            )
+            elements.append({"tag": "markdown", "content": archive_note})
+            elements.append({"tag": "hr"})
 
         for r in repos:
             rating = r.get("rating", "B")

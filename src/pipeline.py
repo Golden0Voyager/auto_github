@@ -4,10 +4,11 @@ import json
 import yaml
 import time
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from src.config import AppConfig
 from src.crawler import GitHubCrawler
 from src.llm import LLMClient
+from src.dedup import RepoHistoryTracker
 
 # Base Directory
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,6 +21,8 @@ class CurationPipeline:
         self.llm = llm_client
         self.crawler = GitHubCrawler(config)
         self.persona_key = persona_key
+        # 高星项目去重追踪器（节省 LLM 算力 + 给新兴项目留展位）
+        self.dedup = RepoHistoryTracker(config)
         
         # Load Personas Prompt
         personas_path = BASE_DIR / "config" / "personas.yaml"
@@ -44,31 +47,72 @@ class CurationPipeline:
         """
         self.use_mock = use_mock
         print(f"\n[Pipeline] Starting 6-Stage Pipeline (Timeframe: {since}, Persona: {self.current_persona['name']}, Mock: {use_mock})")
-        
+
+        # 预清理过期的存档项目（cooldown 已过的项目重新允许进入策展）
+        purged = self.dedup.purge_expired_cooldowns()
+        if purged:
+            print(f"[Dedup] 已清理 {purged} 项过期存档项目，重新允许进入策展")
+
         # --- Stage 1: Crawl (抓取) ---
         raw_repos = self._stage_crawl(since, use_mock)
         if not raw_repos:
             print("[Pipeline Error] Stage 1 failed to acquire repositories. Aborting.")
             return {}
-            
+
+        # --- Stage 1.5: Dedup (高星项目存档过滤) ---
+        active_repos, cooled_repos = self.dedup.filter_active(raw_repos)
+        if cooled_repos:
+            print(
+                f"[Dedup] 过滤掉 {len(cooled_repos)} 个处于 30 天冷却期的高🌟项目:"
+                f" {', '.join(r.get('full_name', '?') for r in cooled_repos[:5])}"
+                + (" ..." if len(cooled_repos) > 5 else "")
+            )
+        if not active_repos:
+            print("[Pipeline Info] All fetched repos are in archive cooldown. Nothing to curate today.")
+            return {
+                "meta": {
+                    "timeframe": since,
+                    "persona": self.current_persona["name"],
+                    "total_input_repos": len(raw_repos),
+                    "total_curated_repos": 0,
+                    "cooled_repos": [r["full_name"] for r in cooled_repos],
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                },
+                "repos": [],
+                "reports": {},
+            }
+
         # --- Stage 2: Analyze (分析 & 过滤) ---
-        analyzed_repos = self._stage_analyze(raw_repos)
+        analyzed_repos = self._stage_analyze(active_repos)
         if not analyzed_repos:
             print("[Pipeline Info] Stage 2: No repos passed analysis threshold. Aborting.")
             return {}
-            
+
         # --- Stage 3: Summarize (精细总结) ---
         summarized_repos = self._stage_summarize(analyzed_repos)
-        
+
         # --- Stage 4: Reflect (智能体反思 & 降噪) ---
         refined_repos = self._stage_reflect(summarized_repos)
-        
+
         # --- Stage 5: Translate (高保真翻译) ---
         translated_repos = self._stage_translate(refined_repos)
-        
+
         # --- Stage 6: Refine Layout (精修排版与多端打包) ---
-        reports = self._stage_refine_layout(translated_repos, since)
-        
+        reports = self._stage_refine_layout(
+            translated_repos,
+            since,
+            cooled_repos=cooled_repos,
+            archive_total=self.dedup.archive_count,
+        )
+
+        # --- 写回: 记录本次出现的项目；满足条件的晋升到存档 ---
+        newly_archived = self.dedup.record_occurrences(active_repos)
+        if newly_archived:
+            print(
+                f"[Dedup] 新增 {len(newly_archived)} 个项目进入「高🌟项目存档」:"
+                f" {', '.join(newly_archived)}"
+            )
+
         print("[Pipeline] All 6 Stages completed successfully!")
         return {
             "meta": {
@@ -76,10 +120,13 @@ class CurationPipeline:
                 "persona": self.current_persona["name"],
                 "total_input_repos": len(raw_repos),
                 "total_curated_repos": len(translated_repos),
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                "cooled_repos": [r["full_name"] for r in cooled_repos],
+                "newly_archived": newly_archived,
+                "archive_total": self.dedup.archive_count,
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             },
             "repos": translated_repos,
-            "reports": reports
+            "reports": reports,
         }
 
     def _stage_crawl(self, since: str, use_mock: bool) -> List[Dict[str, Any]]:
@@ -488,13 +535,17 @@ class CurationPipeline:
         print(f"[Stage 5 Done] Translated {len(translated_repos)} summaries.")
         return translated_repos
 
-    def _stage_refine_layout(self, repos: List[Dict[str, Any]], since: str) -> Dict[str, Any]:
+    def _stage_refine_layout(self, repos: List[Dict[str, Any]], since: str, cooled_repos: Optional[List[Dict[str, Any]]] = None, archive_total: int = 0) -> Dict[str, Any]:
         """Stage 6: Refine layout to construct aesthetic Markdown and Feishu interactive card payloads."""
         print("\n=== Stage 6: Refine Layout (精修排版与多端打包) ===")
         from src.formatter import ReportFormatter
         
         formatter = ReportFormatter(self.config, self.current_persona, since)
-        reports = formatter.generate_all(repos)
+        reports = formatter.generate_all(
+            repos,
+            cooled_repos=cooled_repos or [],
+            archive_total=archive_total,
+        )
         
         print("[Stage 6 Done] Generated reports in multiple formats.")
         return reports

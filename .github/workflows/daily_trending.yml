@@ -51,9 +51,9 @@ jobs:
 
     - name: Run Curator Pipeline
       env:
-        # LLM Engine API Keys
+        # LLM Engine API Keys (Token Plan 免费公测端点)
         SENSENOVA_API_KEY: ${{ secrets.SENSENOVA_API_KEY }}
-        SENSENOVA_BASE_URL: https://api.sensenova.cn/compatible-mode/v2
+        SENSENOVA_BASE_URL: https://token.sensenova.cn/v1
         
         # GitHub API Token (automatically provided by GitHub to bypass API limits)
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
