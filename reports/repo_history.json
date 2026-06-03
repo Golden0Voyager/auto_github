@@ -1,99 +1,130 @@
 {
   "chopratejas/headroom": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "microsoft/markitdown": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "affaan-m/ECC": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "D4Vinci/Scrapling": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "nesquena/hermes-webui": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "reconurge/flowsint": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "OpenBMB/VoxCPM": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "stefan-jansen/machine-learning-for-trading": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "jamwithai/production-agentic-rag-course": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "supermemoryai/supermemory": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "harry0703/MoneyPrinterTurbo": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "Lum1104/Understand-Anything": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "hardikpandya/stop-slop": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "Leonxlnx/taste-skill": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "revfactory/harness": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "rohitg00/ai-engineering-from-scratch": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "colbymchenry/codegraph": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "mukul975/Anthropic-Cybersecurity-Skills": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "Hmbown/CodeWhale": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "anthropics/financial-services": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "CloakHQ/CloakBrowser": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "rohitg00/agentmemory": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "Imbad0202/academic-research-skills": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "fathah/hermes-desktop": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "deepseek-ai/DeepGEMM": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "deepseek-ai/DeepEP": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "deepseek-ai/awesome-deepseek-agent": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "deepseek-ai/3FS": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "deepseek-ai/FlashMLA": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "openai/codex": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "openai/plugins": [
     "2026-06-02"
   ],
   "openai/imagegencam": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "openai/openai-python": [
     "2026-06-02"
@@ -102,7 +133,8 @@
     "2026-06-02"
   ],
   "google-deepmind/mujoco": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "google-deepmind/mujoco_warp": [
     "2026-06-02"
@@ -114,7 +146,8 @@
     "2026-06-02"
   ],
   "google-deepmind/gemma": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "google-research/openfst": [
     "2026-06-02"
@@ -123,43 +156,56 @@
     "2026-06-02"
   ],
   "google-research/google-research": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "google-research/era": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "google-research/connectomics": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "meta-llama/PurpleLlama": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "meta-llama/llama-api-typescript": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "meta-llama/llama-cookbook": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "meta-llama/llama-api-python": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "meta-llama/prompt-ops": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "mistralai/search-starter-app": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "mistralai/workflows-starter-app": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "mistralai/mistral-common": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "mistralai/platform-docs-public": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "mistralai/client-ts": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "microsoft/frontier-agentic-modernization-hackathon": [
     "2026-06-02"
@@ -177,10 +223,12 @@
     "2026-06-02"
   ],
   "huggingface/transformers": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "huggingface/trl": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "huggingface/blog": [
     "2026-06-02"
@@ -192,82 +240,107 @@
     "2026-06-02"
   ],
   "zhipuai/zhipuai-sdk-java": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "zhipuai/zhipuai-sdk-python": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "zhipuai/OSSRH-92316": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "THUDM/slime": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "THUDM/INFTY": [
     "2026-06-02"
   ],
   "THUDM/AgentBench": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "THUDM/AgentRL": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "THUDM/MobileRL": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "MoonshotAI/kimi-code": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "MoonshotAI/kimi-cli": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "MoonshotAI/kimi-agent-sdk": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "MoonshotAI/FlashKDA": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "MoonshotAI/kosong": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "MiniMax-AI/minimax-code": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "MiniMax-AI/cli": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "MiniMax-AI/MiniMax-M3": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "MiniMax-AI/OpenRoom": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "MiniMax-AI/MiniMax-Provider-Verifier": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "xai-org/xai-sdk-python": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "xai-org/xai-proto": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "xai-org/x-algorithm": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "xai-org/xai-cookbook": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "xai-org/grok-prompts": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "NousResearch/hermes-agent": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "NousResearch/pokemon-agent": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "NousResearch/atropos": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "NousResearch/hermes-example-plugins": [
     "2026-06-02"
@@ -276,58 +349,73 @@
     "2026-06-02"
   ],
   "Tencent-Hunyuan/HunyuanOCR": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "Tencent-Hunyuan/Hy-MT": [
     "2026-06-02"
   ],
   "Tencent-Hunyuan/HY-World-2.0": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "Tencent-Hunyuan/HunyuanWorld-Mirror": [
     "2026-06-02"
   ],
   "Tencent-Hunyuan/HY-Motion-1.0": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "XiaomiMiMo/MiMo-Skills": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "XiaomiMiMo/MiMo-V2.5-ASR": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "XiaomiMiMo/MiMo-Embodied": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "XiaomiMiMo/MiMo-Audio": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "XiaomiMiMo/MiMo-V2-Flash": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "QwenLM/qwen-code": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "QwenLM/Qwen-VLA": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "QwenLM/Qwen3.6": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "QwenLM/Qwen-Image-Bench": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "QwenLM/FlashQLA": [
     "2026-06-02"
   ],
   "vllm-project/vllm": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "vllm-project/vllm-ascend": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "vllm-project/tpu-inference": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "vllm-project/guidellm": [
     "2026-06-02"
@@ -336,10 +424,12 @@
     "2026-06-02"
   ],
   "modelcontextprotocol/python-sdk": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "modelcontextprotocol/inspector": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "modelcontextprotocol/rust-sdk": [
     "2026-06-02"
@@ -351,43 +441,54 @@
     "2026-06-02"
   ],
   "unslothai/unsloth": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "unslothai/notebooks": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "unslothai/unsloth-zoo": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "unslothai/llama.cpp": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "unslothai/hyperlearn": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "sgl-project/sglang-jax": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "sgl-project/sglang": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "sgl-project/sglang-omni": [
     "2026-06-02"
   ],
   "sgl-project/sgl-project.github.io": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "sgl-project/ci-data": [
     "2026-06-02"
   ],
   "karpathy/nanochat": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "karpathy/karpathy.github.io": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "karpathy/autoresearch": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "karpathy/rustbpe": [
     "2026-06-02"
@@ -396,13 +497,15 @@
     "2026-06-02"
   ],
   "lucidrains/dreamer4": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "lucidrains/transformer-directed-evolution": [
     "2026-06-02"
   ],
   "lucidrains/populora": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "lucidrains/kalmanformer": [
     "2026-06-02"
@@ -411,115 +514,152 @@
     "2026-06-02"
   ],
   "ggerganov/tmp2": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "ggerganov/ggterm": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "ggerganov/ggwave": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "ggerganov/imtui": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "ggerganov/ggsock": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "comfyanonymous/ComfyUI_examples": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "comfyanonymous/ComfyUI_TensorRT": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "comfyanonymous/ComfyUI_bitsandbytes_NF4": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "comfyanonymous/ComfyUI_Blog": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "comfyanonymous/ComfyUI_experiments": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "jxnl/blog": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "jxnl/dots": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "jxnl/instructor-go": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "jxnl/tao-te-ching": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "jxnl/book-of-disquiet": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "danielmiessler/SecLists": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "danielmiessler/Fabric": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "danielmiessler/Personal_AI_Infrastructure": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "danielmiessler/TheAlgorithm": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "danielmiessler/Ladder": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "tiangolo/markdown-include-variants": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "tiangolo/library-skills": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "tiangolo/sandbox": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "tiangolo/latest-changes": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "tiangolo/pydantic-sqlalchemy": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "danijar/embodied": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "danijar/dreamerv3": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "danijar/dotfiles-template": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "danijar/dotfiles": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "danijar/ninjax": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "jonbarron/jonbarron.github.io": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "jonbarron/gaussid": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "jonbarron/robust_loss_pytorch": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "jonbarron/tabilize": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "jonbarron/epanechnikov": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "keijiro/DriftMayhem": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "keijiro/UnityMCP-Testbed": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "keijiro/Metawire": [
     "2026-06-02"
@@ -531,33 +671,154 @@
     "2026-06-02"
   ],
   "patriciogonzalezvivo/vera": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "patriciogonzalezvivo/patriciogonzalezvivo.com": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "patriciogonzalezvivo/essaysforpeace": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "patriciogonzalezvivo/berthe": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "patriciogonzalezvivo/southUp": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "mattdesl/canvas-sketch": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "mattdesl/lcms-wasm": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "mattdesl/gifenc": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "mattdesl/dictionary-of-colour-combinations": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
   ],
   "mattdesl/workshop-web-audio": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-03"
+  ],
+  "openai/role-based-plugins": [
+    "2026-06-03"
+  ],
+  "openai/openai-node": [
+    "2026-06-03"
+  ],
+  "openai/openai-agents-js": [
+    "2026-06-03"
+  ],
+  "google-deepmind/seeing_without_pixels": [
+    "2026-06-03"
+  ],
+  "google-deepmind/dm-haiku": [
+    "2026-06-03"
+  ],
+  "google-deepmind/concordia": [
+    "2026-06-03"
+  ],
+  "google-research/nodesynth": [
+    "2026-06-03"
+  ],
+  "google-research/honeyval": [
+    "2026-06-03"
+  ],
+  "microsoft/Build-CLI": [
+    "2026-06-03"
+  ],
+  "microsoft/PowerToys": [
+    "2026-06-03"
+  ],
+  "microsoft/playwright": [
+    "2026-06-03"
+  ],
+  "microsoft/coreutils": [
+    "2026-06-03"
+  ],
+  "microsoft/terminal": [
+    "2026-06-03"
+  ],
+  "huggingface/cadgenbench": [
+    "2026-06-03"
+  ],
+  "huggingface/diffusers": [
+    "2026-06-03"
+  ],
+  "huggingface/hub-docs": [
+    "2026-06-03"
+  ],
+  "THUDM/IndexCache": [
+    "2026-06-03"
+  ],
+  "NousResearch/neural-steering": [
+    "2026-06-03"
+  ],
+  "NousResearch/hermes-compression-eval": [
+    "2026-06-03"
+  ],
+  "Tencent-Hunyuan/Hy-MT2": [
+    "2026-06-03"
+  ],
+  "Tencent-Hunyuan/HY-Embodied-0.5-X": [
+    "2026-06-03"
+  ],
+  "QwenLM/qwen-code-docs": [
+    "2026-06-03"
+  ],
+  "vllm-project/ci-infra": [
+    "2026-06-03"
+  ],
+  "vllm-project/vllm-omni": [
+    "2026-06-03"
+  ],
+  "modelcontextprotocol/typescript-sdk": [
+    "2026-06-03"
+  ],
+  "modelcontextprotocol/modelcontextprotocol": [
+    "2026-06-03"
+  ],
+  "modelcontextprotocol/csharp-sdk": [
+    "2026-06-03"
+  ],
+  "sgl-project/sgl-kernel-npu": [
+    "2026-06-03"
+  ],
+  "sgl-project/sgl-kernel-xpu": [
+    "2026-06-03"
+  ],
+  "karpathy/jobs": [
+    "2026-06-03"
+  ],
+  "karpathy/hn-time-capsule": [
+    "2026-06-03"
+  ],
+  "lucidrains/h-net-dynamic-chunking": [
+    "2026-06-03"
+  ],
+  "lucidrains/neat": [
+    "2026-06-03"
+  ],
+  "lucidrains/disco-rl-pytorch": [
+    "2026-06-03"
+  ],
+  "keijiro/AIA-Extensions": [
+    "2026-06-03"
+  ],
+  "keijiro/jp.keijiro.apriltag": [
+    "2026-06-03"
+  ],
+  "keijiro/Karbon": [
+    "2026-06-03"
   ]
 }
