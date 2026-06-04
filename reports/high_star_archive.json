@@ -1,1 +1,240 @@
-{}
+{
+  "chopratejas/headroom": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 10576,
+    "occurrences": 3
+  },
+  "affaan-m/ECC": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 206143,
+    "occurrences": 3
+  },
+  "NousResearch/hermes-agent": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 179647,
+    "occurrences": 3
+  },
+  "microsoft/markitdown": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 143252,
+    "occurrences": 3
+  },
+  "nesquena/hermes-webui": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 13210,
+    "occurrences": 3
+  },
+  "D4Vinci/Scrapling": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 60536,
+    "occurrences": 3
+  },
+  "harry0703/MoneyPrinterTurbo": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 79027,
+    "occurrences": 3
+  },
+  "Lum1104/Understand-Anything": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 51410,
+    "occurrences": 3
+  },
+  "Leonxlnx/taste-skill": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 32711,
+    "occurrences": 3
+  },
+  "supermemoryai/supermemory": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 25322,
+    "occurrences": 3
+  },
+  "colbymchenry/codegraph": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 39912,
+    "occurrences": 3
+  },
+  "anthropics/financial-services": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 29832,
+    "occurrences": 3
+  },
+  "CloakHQ/CloakBrowser": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 23723,
+    "occurrences": 3
+  },
+  "Hmbown/CodeWhale": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 36951,
+    "occurrences": 3
+  },
+  "rohitg00/agentmemory": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 21051,
+    "occurrences": 3
+  },
+  "Imbad0202/academic-research-skills": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 26868,
+    "occurrences": 3
+  },
+  "fathah/hermes-desktop": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 10055,
+    "occurrences": 3
+  },
+  "deepseek-ai/FlashMLA": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 12687,
+    "occurrences": 3
+  },
+  "openai/codex": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 88441,
+    "occurrences": 3
+  },
+  "google-deepmind/mujoco": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 13744,
+    "occurrences": 3
+  },
+  "google-research/google-research": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 38058,
+    "occurrences": 3
+  },
+  "meta-llama/llama-cookbook": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 18340,
+    "occurrences": 3
+  },
+  "huggingface/trl": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 18538,
+    "occurrences": 3
+  },
+  "huggingface/transformers": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 161257,
+    "occurrences": 3
+  },
+  "xai-org/x-algorithm": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 26042,
+    "occurrences": 3
+  },
+  "QwenLM/qwen-code": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 24902,
+    "occurrences": 3
+  },
+  "vllm-project/vllm": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 81898,
+    "occurrences": 3
+  },
+  "unslothai/unsloth": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 65693,
+    "occurrences": 3
+  },
+  "sgl-project/sglang": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 28936,
+    "occurrences": 3
+  },
+  "karpathy/nanochat": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 54574,
+    "occurrences": 3
+  },
+  "karpathy/autoresearch": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 85007,
+    "occurrences": 3
+  },
+  "danielmiessler/SecLists": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 71337,
+    "occurrences": 3
+  },
+  "danielmiessler/Fabric": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 41986,
+    "occurrences": 3
+  },
+  "danielmiessler/Personal_AI_Infrastructure": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-04",
+    "cooldown_until": "2026-07-04",
+    "stars": 14613,
+    "occurrences": 3
+  }
+}
