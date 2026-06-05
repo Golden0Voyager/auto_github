@@ -33,6 +33,19 @@ class DedupConfig(BaseModel):
     history_file: str = "reports/repo_history.json"
     archive_file: str = "reports/high_star_archive.json"
 
+class Stage2PreFilterConfig(BaseModel):
+    """Stage 2 LLM 批处理前的廉价预筛。
+
+    Stage 2 把所有 N 个 repo 一次性塞给 LLM 做分类 + 评级。
+    当 N 很大时（188+），completion 触顶 max_tokens=4096 后 JSON 截断，
+    解析失败 → fallback 静态 stub。这是 Stage 2 "假成功 / 实际浪费 token" 的根因。
+
+    解决方案：在调用 LLM 之前用 stars 降序砍掉长尾。
+    这是 0 token 成本的本地排序，Stage 2 LLM 仍可对入选项目自由打 S/A/B 评级。
+    """
+    enabled: bool = True
+    max_repos: int = 88
+
 class NotificationConfig(BaseModel):
     feishu_webhook_url: Optional[str] = None
     slack_webhook_url: Optional[str] = None
@@ -44,6 +57,7 @@ class AppConfig(BaseModel):
     github: GitHubConfig = Field(default_factory=GitHubConfig)
     ai: AIConfig = Field(default_factory=AIConfig)
     dedup: DedupConfig = Field(default_factory=DedupConfig)
+    stage2_pre_filter: Stage2PreFilterConfig = Field(default_factory=Stage2PreFilterConfig)
     notifications: NotificationConfig = Field(default_factory=NotificationConfig)
 
 def load_config() -> AppConfig:

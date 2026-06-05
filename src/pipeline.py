@@ -210,6 +210,19 @@ class CurationPipeline:
             f"累计: {after['call_count']} 次 / {total_tokens:,} tokens"
         )
 
+    def _prefilter_top_n(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        cfg = self.config.stage2_pre_filter
+        if not cfg.enabled or len(repos) <= cfg.max_repos:
+            return repos
+        sorted_repos = sorted(repos, key=lambda r: r.get("stars", 0), reverse=True)
+        kept = sorted_repos[:cfg.max_repos]
+        dropped = len(repos) - len(kept)
+        print(
+            f"[Pre-filter] Stage 2 输入预筛: {len(repos)} → {len(kept)} repo "
+            f"(按 stars 降序砍掉 {dropped} 个长尾，max_repos={cfg.max_repos})"
+        )
+        return kept
+
     def run(self, since: str = "daily", use_mock: bool = False) -> Dict[str, Any]:
         """Runs the entire 6-stage pipeline.
         
@@ -241,6 +254,23 @@ class CurationPipeline:
             )
         if not active_repos:
             print("[Pipeline Info] All fetched repos are in archive cooldown. Nothing to curate today.")
+            return {
+                "meta": {
+                    "timeframe": since,
+                    "persona": self.current_persona["name"],
+                    "total_input_repos": len(raw_repos),
+                    "total_curated_repos": 0,
+                    "cooled_repos": [r["full_name"] for r in cooled_repos],
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                },
+                "repos": [],
+                "reports": {},
+            }
+
+        # --- Stage 1.75: Pre-filter (按 stars 砍长尾，零 token 成本避免 Stage 2 撞 max_tokens) ---
+        active_repos = self._prefilter_top_n(active_repos)
+        if not active_repos:
+            print("[Pipeline Info] All repos filtered out by pre-filter. Aborting.")
             return {
                 "meta": {
                     "timeframe": since,
