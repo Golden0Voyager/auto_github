@@ -107,10 +107,8 @@ class ReportNotifier:
                         "elements": list(payload["card"]["body"]["elements"]) + [
                             {"tag": "hr"},
                             {
-                                "tag": "note",
-                                "elements": [
-                                    {"tag": "plain_text", "content": self._llm_footer_text(llm_stats, locale="zh")}
-                                ]
+                                "tag": "markdown",
+                                "content": self._llm_footer_text(llm_stats, locale="zh")
                             }
                         ]
                     }
