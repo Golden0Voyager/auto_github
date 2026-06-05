@@ -102,15 +102,18 @@ class ReportNotifier:
                 **payload,
                 "card": {
                     **payload["card"],
-                    "elements": list(payload["card"]["elements"]) + [
-                        {"tag": "hr"},
-                        {
-                            "tag": "note",
-                            "elements": [
-                                {"tag": "plain_text", "content": self._llm_footer_text(llm_stats, locale="zh")}
-                            ]
-                        }
-                    ]
+                    "body": {
+                        **payload["card"]["body"],
+                        "elements": list(payload["card"]["body"]["elements"]) + [
+                            {"tag": "hr"},
+                            {
+                                "tag": "note",
+                                "elements": [
+                                    {"tag": "plain_text", "content": self._llm_footer_text(llm_stats, locale="zh")}
+                                ]
+                            }
+                        ]
+                    }
                 }
             }
         print("[Notify] Sending interactive card to Feishu Webhook...")
