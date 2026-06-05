@@ -674,7 +674,8 @@
     "2026-06-02"
   ],
   "lucidrains/vit-pytorch": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-05"
   ],
   "ggerganov/tmp2": [
     "2026-06-02",
@@ -959,7 +960,8 @@
     "2026-06-03"
   ],
   "openai/openai-agents-js": [
-    "2026-06-03"
+    "2026-06-03",
+    "2026-06-05"
   ],
   "google-deepmind/seeing_without_pixels": [
     "2026-06-03",
@@ -1356,6 +1358,51 @@
     "2026-06-05"
   ],
   "keijiro/agent-skills": [
+    "2026-06-05"
+  ],
+  "CopilotKit/CopilotKit": [
+    "2026-06-05"
+  ],
+  "Panniantong/Agent-Reach": [
+    "2026-06-05"
+  ],
+  "666ghj/MiroFish": [
+    "2026-06-05"
+  ],
+  "mvanhorn/last30days-skill": [
+    "2026-06-05"
+  ],
+  "run-llama/liteparse": [
+    "2026-06-05"
+  ],
+  "google-deepmind/formal-conjectures": [
+    "2026-06-05"
+  ],
+  "google-deepmind/ai-foundations": [
+    "2026-06-05"
+  ],
+  "microsoft/apm": [
+    "2026-06-05"
+  ],
+  "microsoft/axe-pipelines-samples": [
+    "2026-06-05"
+  ],
+  "microsoft/aspire": [
+    "2026-06-05"
+  ],
+  "huggingface/kernels": [
+    "2026-06-05"
+  ],
+  "MoonshotAI/checkpoint-engine": [
+    "2026-06-05"
+  ],
+  "vllm-project/vllm-gaudi": [
+    "2026-06-05"
+  ],
+  "vllm-project/speculators": [
+    "2026-06-05"
+  ],
+  "modelcontextprotocol/go-sdk": [
     "2026-06-05"
   ]
 }
