@@ -1424,5 +1424,11 @@
   ],
   "microsoft/microsoft-ui-reactor": [
     "2026-06-05"
+  ],
+  "huggingface/datasets": [
+    "2026-06-05"
+  ],
+  "microsoft/BCApps": [
+    "2026-06-05"
   ]
 }
