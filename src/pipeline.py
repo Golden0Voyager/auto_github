@@ -196,6 +196,20 @@ class CurationPipeline:
             "prompt_focus": "关注 LLM 系统学习、Vibecoding、Agent 架构和工程落地。"
         })
 
+    def _log_llm_stage(self, stage_name: str, before: Dict[str, int]) -> None:
+        after = self.llm.get_stats()
+        d_calls = after["call_count"] - before["call_count"]
+        d_fail = after["failed_attempt_count"] - before["failed_attempt_count"]
+        d_p = after["total_prompt_tokens"] - before["total_prompt_tokens"]
+        d_c = after["total_completion_tokens"] - before["total_completion_tokens"]
+        total_tokens = after["total_prompt_tokens"] + after["total_completion_tokens"]
+        fail_note = f" (+{d_fail} 重试失败)" if d_fail > 0 else ""
+        print(
+            f"[LLM] {stage_name}: +{d_calls} 成功调用{fail_note} | "
+            f"tokens +{d_p:,} in / +{d_c:,} out | "
+            f"累计: {after['call_count']} 次 / {total_tokens:,} tokens"
+        )
+
     def run(self, since: str = "daily", use_mock: bool = False) -> Dict[str, Any]:
         """Runs the entire 6-stage pipeline.
         
@@ -241,16 +255,22 @@ class CurationPipeline:
             }
 
         # --- Stage 2: Analyze (分析 & 过滤) ---
+        before = self.llm.get_stats()
         analyzed_repos = self._stage_analyze(active_repos)
+        self._log_llm_stage("Stage 2 Analyze", before)
         if not analyzed_repos:
             print("[Pipeline Info] Stage 2: No repos passed analysis threshold. Aborting.")
             return {}
 
         # --- Stage 3+4: Summarize & Reflect (合并批处理，1 次 LLM 调用) ---
+        before = self.llm.get_stats()
         refined_repos = self._stage_summarize_and_reflect(analyzed_repos)
+        self._log_llm_stage("Stage 3+4 Summarize+Reflect", before)
 
         # --- Stage 5: Translate (批处理，1 次 LLM 调用) ---
+        before = self.llm.get_stats()
         translated_repos = self._stage_translate(refined_repos)
+        self._log_llm_stage("Stage 5 Translate", before)
 
         # --- Stage 6: Refine Layout (精修排版与多端打包) ---
         reports = self._stage_refine_layout(

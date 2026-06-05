@@ -121,6 +121,17 @@ def main():
         for channel, success in notif_results.items():
             status = "✅ Delivered" if success else "❌ Failed"
             print(f"  - {channel.capitalize()}: {status}")
+
+        stats = llm_client.get_stats()
+        print("LLM 调用统计:")
+        print(f"  - 成功调用: {stats['call_count']} 次")
+        if stats["failed_attempt_count"] > 0:
+            print(f"  - 失败/重试: {stats['failed_attempt_count']} 次")
+        print(
+            f"  - Token 消耗: {stats['total_prompt_tokens']:,} input + "
+            f"{stats['total_completion_tokens']:,} output = "
+            f"{stats['total_tokens']:,} total"
+        )
         print("=" * 60 + "\n")
         
     except Exception as e:

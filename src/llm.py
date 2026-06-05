@@ -15,13 +15,15 @@ class LLMClient:
         self.base_url = config.ai.base_url
         self.model_v3 = config.ai.model_v3
         self.model_r1 = config.ai.model_r1
-        
-        # Check API key presence
+
+        self.call_count: int = 0
+        self.failed_attempt_count: int = 0
+        self.total_prompt_tokens: int = 0
+        self.total_completion_tokens: int = 0
+
         if not self.api_key:
             print(f"[LLM Warning] No API key found for provider '{self.provider}'. LLM requests will fail unless mock runs are used.")
-            
-        # Initialize OpenAI client (SenseNova/OpenAI are fully compatible)
-        # Note: We use the standard synchronous OpenAI client
+
         if self.api_key:
             self.client = OpenAI(
                 api_key=self.api_key,
@@ -80,29 +82,33 @@ class LLMClient:
                 print(f"[LLM] Requesting model={model} (Attempt {attempt + 1}/{retries})...")
                 
                 response = self.client.chat.completions.create(**kwargs)
-                
-                # Extract text and optional reasoning_content (DeepSeek specific)
+
                 choice = response.choices[0]
                 content = choice.message.content or ""
-                
-                # Check for reasoning_content (either direct field or additional_kwargs)
+
+                usage = getattr(response, "usage", None)
+                if usage:
+                    self.total_prompt_tokens += getattr(usage, "prompt_tokens", 0) or 0
+                    self.total_completion_tokens += getattr(usage, "completion_tokens", 0) or 0
+                self.call_count += 1
+
                 reasoning = None
                 if hasattr(choice.message, "reasoning_content"):
                     reasoning = getattr(choice.message, "reasoning_content")
                 elif hasattr(choice.message, "model_extra") and choice.message.model_extra:
                     reasoning = choice.message.model_extra.get("reasoning_content")
-                
-                # Respect rate limiting after successful calls as well
+
                 time.sleep(self.config.ai.rate_limit_delay / 2.0)
-                
+
                 return {
                     "content": content,
                     "reasoning": reasoning,
                     "model": model
                 }
-                
+
             except Exception as e:
                 err_msg = str(e)
+                self.failed_attempt_count += 1
                 print(f"[LLM Warning] Attempt {attempt + 1} failed: {err_msg}")
                 
                 # If it's a rate limit error (429), try backing off
@@ -121,3 +127,18 @@ class LLMClient:
                     time.sleep(2)
                     
         raise RuntimeError("LLM request failed after maximum retries due to persistent rate limiting.")
+
+    def get_stats(self) -> Dict[str, int]:
+        return {
+            "call_count": self.call_count,
+            "failed_attempt_count": self.failed_attempt_count,
+            "total_prompt_tokens": self.total_prompt_tokens,
+            "total_completion_tokens": self.total_completion_tokens,
+            "total_tokens": self.total_prompt_tokens + self.total_completion_tokens,
+        }
+
+    def reset_stats(self) -> None:
+        self.call_count = 0
+        self.failed_attempt_count = 0
+        self.total_prompt_tokens = 0
+        self.total_completion_tokens = 0
