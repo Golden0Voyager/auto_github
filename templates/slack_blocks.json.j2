@@ -23,7 +23,7 @@
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text": "*{% if r.rating == 'S' %}👑 [S] {% elif r.rating == 'A' %}🔥 [A] {% else %}🔹 [{{ r.rating }}] {% endif %} <{{ r.url }}|{{ r.full_name }}>*\n*Tags*: {% for t in r.tags %}`{{ t }}` {% endfor %} | *Lang*: `{{ r.language }}` | *Stars*: {% if r.period_stars %}{{ r.period_stars }}{% else %}⭐️ {{ r.stars }}{% endif %}\n\n_Reason: {{ r.selection_reason }}_\n\n{{ r.chinese_summary | replace('\"', '\\\"') | replace('\n', '\\n') }}"
+        "text": "*{% if r.rating == 'S' %}👑 [S] {% elif r.rating == 'A' %}🔥 [A] {% else %}🔹 [{{ r.rating }}] {% endif %} <{{ r.url }}|{{ r.full_name }}>*\n{% if r.description %}📝 _{{ r.description | truncate(120) }}_\n{% endif %}*Tags*: {% for t in r.tags %}`{{ t }}` {% endfor %} | *Lang*: `{{ r.language }}` | *Stars*: {% if r.period_stars %}{{ r.period_stars }}{% else %}⭐️ {{ r.stars }}{% endif %}\n\n_Reason: {{ r.selection_reason }}_\n\n{{ r.chinese_summary | replace('\"', '\\\"') | replace('\n', '\\n') }}"
       }
     }
     {% if not loop.last %}

@@ -13,6 +13,91 @@ from src.dedup import RepoHistoryTracker
 # Base Directory
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+TAG_KEYWORDS = {
+    "#LLM":        ["llm", "language model", "gpt", "inference", "transformer", "tokenizer", "embedding"],
+    "#Agent":      ["agent", "multi-agent", "autonomous", "tool-use", "function call", "mcp", "orchestrat"],
+    "#RAG":        ["rag", "retrieval", "vector", "chroma", "qdrant"],
+    "#MoE":        ["moe", "mixture-of-experts", "mixture of experts", "sparse expert"],
+    "#MLA":        ["mla", "latent attention", "multi-head latent"],
+    "#Inference":  ["vllm", "tgi", "tensorrt", "sgl"],
+    "#ComfyUI":    ["comfyui", "stable diffusion", "sdxl", "controlnet", "lora"],
+    "#Vision":     ["vision", "detection", "segmentation", "yolo", "ocr", "image recognition"],
+    "#Speech":     ["speech", "audio", "whisper", "tts", "asr", "voice", "transcrib"],
+    "#Security":   ["security", "vulnerab", "scanner", "trivy", "sast", "dast", "pentest"],
+    "#Generative": ["diffusion", "image generation", "video generation", "text-to-image", "text-to-video"],
+    "#Framework":  ["framework", "library", "sdk", "toolkit"],
+    "#WebUI":      ["webui", "dashboard", "frontend"],
+    "#CLI":        ["cli", "command-line", "terminal", "tui"],
+    "#DevTools":   ["ide", "editor", "vscode", "code completion", "copilot", "lint"],
+    "#Database":   ["database", "sql", "vector db", "orm", "postgres", "clickhouse"],
+}
+
+LANGUAGE_TAGS = {
+    "Python": "#Python", "Go": "#Go", "TypeScript": "#TypeScript",
+    "JavaScript": "#JavaScript", "Rust": "#Rust", "C++": "#C++",
+    "C": "#C", "Java": "#Java",
+}
+
+
+def _infer_tags_fallback(repo: Dict[str, Any]) -> List[str]:
+    desc_lower = (repo.get("description", "") or "").lower()
+    name_lower = repo.get("full_name", "").lower()
+    text = f"{desc_lower} {name_lower}"
+    tags: List[str] = []
+    for tag, keywords in TAG_KEYWORDS.items():
+        if any(kw in text for kw in keywords):
+            tags.append(tag)
+            if len(tags) >= 3:
+                break
+    lang = repo.get("language", "")
+    if lang in LANGUAGE_TAGS and len(tags) < 3:
+        lang_tag = LANGUAGE_TAGS[lang]
+        if lang_tag not in tags:
+            tags.append(lang_tag)
+    if not tags:
+        tags = ["#OpenSource"]
+    return tags[:3]
+
+
+def _infer_selection_reason_fallback(repo: Dict[str, Any]) -> str:
+    desc = (repo.get("description", "") or "").strip()
+    lang = repo.get("language", "") or "未知"
+    stars = repo.get("stars", 0) or 0
+    period = repo.get("period_stars", "")
+    parts: List[str] = []
+    if period:
+        parts.append(f"今日 {period}")
+    if lang != "未知":
+        parts.append(f"语言: {lang}")
+    if stars >= 1000:
+        parts.append(f"总星标 ⭐️ {stars:,}")
+    if desc:
+        truncated = desc[:80] + ("..." if len(desc) > 80 else "")
+        parts.append(f"核心定位: {truncated}")
+    if not parts:
+        return "基于 trending 榜单的客观收录，等待 LLM 复审补充深度分析。"
+    return " · ".join(parts)
+
+
+def _infer_rating_fallback(repo: Dict[str, Any]) -> str:
+    stars = repo.get("stars", 0) or 0
+    period = repo.get("period_stars", "")
+    period_num = 0
+    if period:
+        m = re.search(r"(\d[\d,]*)", period)
+        if m:
+            try:
+                period_num = int(m.group(1).replace(",", ""))
+            except ValueError:
+                pass
+    if stars >= 100000 or period_num >= 3000:
+        return "S"
+    if stars >= 20000 or period_num >= 500:
+        return "A"
+    return "B"
+
+
 class CurationPipeline:
     """Manages the 6-stage GitHub Trend & LLM Giant Curation Pipeline."""
     
@@ -271,14 +356,13 @@ class CurationPipeline:
             
         except Exception as e:
             print(f"[Stage 2 Error] Failed to analyze repositories: {e}")
-            # Fallback: if AI analysis fails, keep all repositories as 'B' with simple tags
-            print("[Stage 2 Fallback] Retaining top repositories as fallback.")
+            print("[Stage 2 Fallback] Retaining top repositories with rule-based tag inference.")
             fallback_repos = []
             for r in repos[:6]:
                 rc = r.copy()
-                rc["rating"] = "A" if "deepseek" in r["full_name"].lower() else "B"
-                rc["tags"] = ["#LLM", "#AI"]
-                rc["selection_reason"] = "Selected due to high popularity."
+                rc["rating"] = _infer_rating_fallback(r)
+                rc["tags"] = _infer_tags_fallback(r)
+                rc["selection_reason"] = _infer_selection_reason_fallback(r)
                 fallback_repos.append(rc)
             return fallback_repos
 
