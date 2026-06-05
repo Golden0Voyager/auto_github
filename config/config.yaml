@@ -70,6 +70,11 @@ dedup:
   history_file: "reports/repo_history.json"
   archive_file: "reports/high_star_archive.json"
 
+# Stage 2 LLM 批处理前的廉价预筛（避免 188+ repo 一次性塞给 LLM 时 completion 触顶 max_tokens=4096）
+stage2_pre_filter:
+  enabled: true
+  max_repos: 88  # 按 stars 降序保留头部 N 个，砍掉长尾
+
 # Notification Settings
 notifications:
   # Webhook configurations (will read from env variables if available)
