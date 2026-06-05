@@ -35,10 +35,10 @@
   <br>
 
 {% if daily_repos | length > 0 %}
-| 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 |
-| :---: | :--- | :---: | :---: | :--- |
+| 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
+| :---: | :--- | :---: | :---: | :--- | :--- |
 {% for r in daily_repos -%}
-| **`{{ r.rating }}`** | [{{ r.full_name }}]({{ r.url }}) | `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} ({{ r.period_stars }}) | {% for t in r.tags %}`{{ t }}` {% endfor %} |
+| **`{{ r.rating }}`** | [{{ r.full_name }}]({{ r.url }}) | `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} ({{ r.period_stars }}) | {% for t in r.tags %}`{{ t }}` {% endfor %} | {{ r.description_short }} |
 {% endfor %}
 {% else %}
 *暂无数据。可通过运行 `--since daily` 触发每日热门趋势抓取。*
@@ -51,10 +51,10 @@
   <br>
 
 {% if weekly_repos | length > 0 %}
-| 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 |
-| :---: | :--- | :---: | :---: | :--- |
+| 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
+| :---: | :--- | :---: | :---: | :--- | :--- |
 {% for r in weekly_repos -%}
-| **`{{ r.rating }}`** | [{{ r.full_name }}]({{ r.url }}) | `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} ({{ r.period_stars }}) | {% for t in r.tags %}`{{ t }}` {% endfor %} |
+| **`{{ r.rating }}`** | [{{ r.full_name }}]({{ r.url }}) | `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} ({{ r.period_stars }}) | {% for t in r.tags %}`{{ t }}` {% endfor %} | {{ r.description_short }} |
 {% endfor %}
 {% else %}
 *暂无数据。可通过运行 `--since weekly` 触发每周热门趋势抓取。*
@@ -67,10 +67,10 @@
   <br>
 
 {% if monthly_repos | length > 0 %}
-| 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 |
-| :---: | :--- | :---: | :---: | :--- |
+| 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
+| :---: | :--- | :---: | :---: | :--- | :--- |
 {% for r in monthly_repos -%}
-| **`{{ r.rating }}`** | [{{ r.full_name }}]({{ r.url }}) | `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} ({{ r.period_stars }}) | {% for t in r.tags %}`{{ t }}` {% endfor %} |
+| **`{{ r.rating }}`** | [{{ r.full_name }}]({{ r.url }}) | `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} ({{ r.period_stars }}) | {% for t in r.tags %}`{{ t }}` {% endfor %} | {{ r.description_short }} |
 {% endfor %}
 {% else %}
 *暂无数据。可通过运行 `--since monthly` 触发每月热门趋势抓取。*
@@ -83,10 +83,10 @@
   <br>
 
 {% if giant_repos | length > 0 %}
-| 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 |
-| :---: | :--- | :---: | :---: | :--- |
+| 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
+| :---: | :--- | :---: | :---: | :--- | :--- |
 {% for r in giant_repos -%}
-| **`{{ r.rating }}`** | [{{ r.full_name }}]({{ r.url }}) | `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} (大厂活跃) | {% for t in r.tags %}`{{ t }}` {% endfor %} |
+| **`{{ r.rating }}`** | [{{ r.full_name }}]({{ r.url }}) | `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} (大厂活跃) | {% for t in r.tags %}`{{ t }}` {% endfor %} | {{ r.description_short }} |
 {% endfor %}
 {% else %}
 *暂无数据。*

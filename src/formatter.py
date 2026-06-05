@@ -35,8 +35,17 @@ class ReportFormatter:
         total_input = self.config.github.max_trending_repos
         cooled_repos = cooled_repos or []
 
+        enriched_repos = []
+        for r in repos:
+            rc = dict(r)
+            desc = (r.get("description") or "").strip()
+            short_desc = desc[:80] + ("…" if len(desc) > 80 else "")
+            short_desc = short_desc.replace("|", "\\|").replace("\n", " ")
+            rc["description_short"] = short_desc
+            enriched_repos.append(rc)
+
         context = {
-            "repos": repos,
+            "repos": enriched_repos,
             "persona": self.persona,
             "timeframe": self.timeframe,
             "timestamp": self.timestamp,
@@ -94,15 +103,21 @@ class ReportFormatter:
             tags = " ".join(f"`{t}`" for t in r.get("tags", [])) or "无"
             language = r.get("language") or "未知"
             stars_display = f"+{r['period_stars']} this {self.timeframe}" if r.get("period_stars") else f"{r.get('stars', 0)}"
+            raw_desc = (r.get("description") or "").strip()
+            desc_line = ""
+            if raw_desc:
+                truncated = raw_desc[:150] + ("…" if len(raw_desc) > 150 else "")
+                desc_line = f"**📝 简介**: {truncated}"
 
             content_lines = [
+                desc_line,
                 f"**🏷️ 标签**: {tags} | **语言**: `{language}` | **总星标**: ⭐️ {stars_display}",
                 "",
                 f"*{r.get('selection_reason', '')}*",
                 "",
                 r.get("chinese_summary", ""),
             ]
-            content = "\n".join(content_lines)
+            content = "\n".join(line for line in content_lines if line is not None)
 
             panel: Dict[str, Any] = {
                 "tag": "collapsible_panel",
