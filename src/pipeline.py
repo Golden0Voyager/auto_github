@@ -515,16 +515,22 @@ class CurationPipeline:
 
     def _summarize_reflect_batch(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         system_prompt = (
-            "You are an uncompromising senior principal architect and AI review expert.\n"
+            "You are a senior principal architect and AI review expert writing a curated technical digest.\n"
             "Write the final English summary for each repo below in ONE shot. No drafting, no follow-up.\n\n"
             "Strict rules:\n"
-            "1. **No AI fluff**: Ban marketing adjectives or enthusiastic cliches ('revolutionary', 'game-changing', 'transformative', 'rocket', 'exciting', 'powerhouse'). The language must be clinical, dense, and objective.\n"
+            "1. **No marketing fluff**: Ban sales adjectives and cliches ('revolutionary', 'game-changing', 'transformative', 'rocket', 'exciting', 'powerhouse', 'cutting-edge'). The language must be clinical, concrete, and informative — facts and mechanisms, not enthusiasm.\n"
             "2. **Universality**: Output MUST be universally applicable. ABSOLUTELY FORBID mentioning any specific individual names (e.g. Haining, 于海宁, Golden0Voyager) or unique personal backgrounds (e.g. MFA, Contemporary Art, Art Museums). The report must be a professional, stand-alone industry technical report.\n"
             "3. **No first-person**: No 'I', 'we', or personal pronouns.\n\n"
+            "Per-section writing rules (this is where quality most often breaks):\n"
+            "a. **Length**: each section is 2-4 sentences, 100-180 English characters. ONE-sentence sections are FORBIDDEN — they read as a list of clauses with no opening, no closing, no flow.\n"
+            "b. **Structure**: open with a topic sentence that names the core insight or mechanism, then expand with 1-2 sentences of why-it-matters, trade-off, or concrete application. End with a clear point, not a trailing clause.\n"
+            "c. **Anti-comma-stacking**: do NOT write 'X is A, B, C, and D' in a single sentence. Use periods to separate distinct claims. A sentence with 4+ comma-separated clauses is a quality failure.\n"
+            "d. **Concrete over abstract**: prefer real terms (e.g., 'KV Cache memory', 'LSP protocol', 'piece-table buffer') over hand-waves like 'efficient', 'scalable', 'high-performance'.\n"
+            "e. **Optional bold lead-in** for a key term: '- **MLA (Multi-head Latent Attention)**: ...' style is welcome when there is a named mechanism to highlight.\n\n"
             "Format per repo (exact markdown headers, in English):\n"
-            "### Core Technical Problem\n[text]\n\n"
-            "### Implementation & Engineering Depth\n[text]\n\n"
-            "### Vibecoding & Engineering Application\n[text]\n\n"
+            "### Core Technical Problem\n[2-4 sentences]\n\n"
+            "### Implementation & Engineering Depth\n[2-4 sentences]\n\n"
+            "### Vibecoding & Engineering Application\n[2-4 sentences]\n\n"
             "Return a JSON array of objects: "
             '[{"full_name": "<owner/repo>", "refined_summary": "### Core Technical Problem\\n...\\n### Implementation & Engineering Depth\\n...\\n### Vibecoding & Engineering Application\\n..."}].\n'
             "Do not wrap with any text outside the JSON block. Keep the response strictly to the JSON array."
@@ -574,12 +580,17 @@ class CurationPipeline:
     def _summarize_reflect_per_repo(self, r: Dict[str, Any]) -> Dict[str, Any]:
         rc = r.copy()
         system_prompt = (
-            "You are an uncompromising senior principal architect and AI review expert.\n"
+            "You are a senior principal architect writing a curated technical digest.\n"
             "Write the final English summary in ONE shot. No drafting, no follow-up.\n\n"
             "Strict rules:\n"
-            "1. **No AI fluff**: Ban marketing adjectives or enthusiastic cliches.\n"
-            "2. **Universality**: No specific individual names or personal backgrounds.\n"
+            "1. **No marketing fluff**: ban 'revolutionary', 'game-changing', 'cutting-edge', etc. Clinical, concrete, informative prose only.\n"
+            "2. **Universality**: no specific individual names or personal backgrounds.\n"
             "3. **No first-person**.\n\n"
+            "Per-section rules (quality-critical):\n"
+            "a. Each section: 2-4 sentences, 100-180 characters. ONE-sentence sections are FORBIDDEN.\n"
+            "b. Topic-then-detail: lead with the core insight, then expand with mechanism, trade-off, or application.\n"
+            "c. No comma-stacking ('X is A, B, C, and D'). Use periods to separate claims.\n"
+            "d. Concrete terms over abstract hand-waves.\n\n"
             "Format (exact markdown headers):\n"
             "### Core Technical Problem\n### Implementation & Engineering Depth\n### Vibecoding & Engineering Application"
         )
