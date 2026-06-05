@@ -125,7 +125,8 @@
   "deepseek-ai/DeepEP": [
     "2026-06-02",
     "2026-06-03",
-    "2026-06-04"
+    "2026-06-04",
+    "2026-06-05"
   ],
   "deepseek-ai/awesome-deepseek-agent": [
     "2026-06-02",
@@ -539,7 +540,8 @@
   "vllm-project/vllm-ascend": [
     "2026-06-02",
     "2026-06-03",
-    "2026-06-04"
+    "2026-06-04",
+    "2026-06-05"
   ],
   "vllm-project/tpu-inference": [
     "2026-06-02",
@@ -555,7 +557,8 @@
   ],
   "modelcontextprotocol/python-sdk": [
     "2026-06-02",
-    "2026-06-03"
+    "2026-06-03",
+    "2026-06-05"
   ],
   "modelcontextprotocol/inspector": [
     "2026-06-02",
@@ -563,7 +566,8 @@
     "2026-06-04"
   ],
   "modelcontextprotocol/rust-sdk": [
-    "2026-06-02"
+    "2026-06-02",
+    "2026-06-05"
   ],
   "modelcontextprotocol/kotlin-sdk": [
     "2026-06-02",
@@ -1111,7 +1115,8 @@
     "2026-06-04"
   ],
   "openai/openai-cookbook": [
-    "2026-06-04"
+    "2026-06-04",
+    "2026-06-05"
   ],
   "openai/role-specific-plugins": [
     "2026-06-04"
@@ -1121,10 +1126,12 @@
     "2026-06-05"
   ],
   "google-deepmind/alphagenome_research": [
-    "2026-06-04"
+    "2026-06-04",
+    "2026-06-05"
   ],
   "google-deepmind/dm_control": [
-    "2026-06-04"
+    "2026-06-04",
+    "2026-06-05"
   ],
   "google-research/reasoning-bank": [
     "2026-06-04",
@@ -1161,7 +1168,8 @@
     "2026-06-04"
   ],
   "huggingface/skills": [
-    "2026-06-04"
+    "2026-06-04",
+    "2026-06-05"
   ],
   "THUDM/ComputerRL": [
     "2026-06-04"
@@ -1297,6 +1305,57 @@
     "2026-06-05"
   ],
   "keijiro/LowLevelDigger": [
+    "2026-06-05"
+  ],
+  "google-research/language-table": [
+    "2026-06-05"
+  ],
+  "google-research/timesfm": [
+    "2026-06-05"
+  ],
+  "google-research/language": [
+    "2026-06-05"
+  ],
+  "microsoft/testfx": [
+    "2026-06-05"
+  ],
+  "microsoft/Foundry-Local": [
+    "2026-06-05"
+  ],
+  "microsoft/mcp": [
+    "2026-06-05"
+  ],
+  "microsoft/mxc": [
+    "2026-06-05"
+  ],
+  "huggingface/lerobot": [
+    "2026-06-05"
+  ],
+  "huggingface/huggingface_hub": [
+    "2026-06-05"
+  ],
+  "Tencent-Hunyuan/PlanningBench": [
+    "2026-06-05"
+  ],
+  "QwenLM/qwen-code-examples": [
+    "2026-06-05"
+  ],
+  "vllm-project/semantic-router": [
+    "2026-06-05"
+  ],
+  "tiangolo/uvicorn-gunicorn-fastapi-docker": [
+    "2026-06-05"
+  ],
+  "tiangolo/uvicorn-gunicorn-docker": [
+    "2026-06-05"
+  ],
+  "keijiro/DungeonMatchHeroes": [
+    "2026-06-05"
+  ],
+  "keijiro/dotfiles": [
+    "2026-06-05"
+  ],
+  "keijiro/agent-skills": [
     "2026-06-05"
   ]
 }

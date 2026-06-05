@@ -257,5 +257,12 @@
     "cooldown_until": "2026-07-05",
     "stars": 12611,
     "occurrences": 3
+  },
+  "modelcontextprotocol/python-sdk": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-05",
+    "cooldown_until": "2026-07-05",
+    "stars": 23245,
+    "occurrences": 3
   }
 }
