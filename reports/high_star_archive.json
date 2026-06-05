@@ -236,5 +236,26 @@
     "cooldown_until": "2026-07-04",
     "stars": 14613,
     "occurrences": 3
+  },
+  "rohitg00/ai-engineering-from-scratch": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-05",
+    "cooldown_until": "2026-07-05",
+    "stars": 28513,
+    "occurrences": 3
+  },
+  "huggingface/diffusers": {
+    "first_seen": "2026-06-03",
+    "archived_at": "2026-06-05",
+    "cooldown_until": "2026-07-05",
+    "stars": 33776,
+    "occurrences": 3
+  },
+  "modelcontextprotocol/typescript-sdk": {
+    "first_seen": "2026-06-03",
+    "archived_at": "2026-06-05",
+    "cooldown_until": "2026-07-05",
+    "stars": 12611,
+    "occurrences": 3
   }
 }
