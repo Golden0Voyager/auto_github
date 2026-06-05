@@ -988,7 +988,8 @@
     "2026-06-03"
   ],
   "microsoft/playwright": [
-    "2026-06-03"
+    "2026-06-03",
+    "2026-06-05"
   ],
   "microsoft/coreutils": [
     "2026-06-03"
@@ -1409,6 +1410,15 @@
     "2026-06-05"
   ],
   "modelcontextprotocol/ext-apps": [
+    "2026-06-05"
+  ],
+  "microsoft/WSL": [
+    "2026-06-05"
+  ],
+  "microsoft/TRELLIS.2": [
+    "2026-06-05"
+  ],
+  "microsoft/litebox": [
     "2026-06-05"
   ]
 }
