@@ -1404,5 +1404,11 @@
   ],
   "modelcontextprotocol/go-sdk": [
     "2026-06-05"
+  ],
+  "microsoft/agent-framework": [
+    "2026-06-05"
+  ],
+  "modelcontextprotocol/ext-apps": [
+    "2026-06-05"
   ]
 }
