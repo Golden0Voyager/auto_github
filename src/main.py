@@ -95,7 +95,7 @@ def main():
             
         # 4. Push notifications
         notifier = ReportNotifier(config)
-        notif_results = notifier.notify_all(curated_data["reports"], args.since)
+        notif_results = notifier.notify_all(curated_data["reports"], args.since, llm_stats=llm_client.get_stats())
         
         print("\n" + "=" * 60)
         print("🎉 Execution Completed Successfully!")
