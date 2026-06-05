@@ -67,7 +67,7 @@ python src/main.py --since weekly --persona advanced
 | Stage 2 Analyze | 1 (batch) | N 个 repo 一次性分类 + 评级 |
 | **Stage 3+4 Summarize+Reflect** | **1 (batch)** | 合并为 1 个 LLM 调，要求返回 JSON 数组；旧 per-repo 反思已并入 prompt 约束 |
 | **Stage 5 Translate** | **1 (batch)** | 一次性翻译 N 条；旧 per-repo 翻译已并入 batch |
-| **合计** | **2 次** | N=9 时从 28 次降到 2 次（~93% ↓） |
+| **合计** | **3 次** | N=9 时从 28 次降到 3 次（~89% ↓）；N=15 时从 46 次降到 3 次（~93% ↓） |
 
 - **降级路径**：batch 解析失败时，per-repo 串行回退（最多 1+N 次）。
   per-repo 也失败时，Stage 3+4 走静态 stub，Stage 5 回退到英文原文。
