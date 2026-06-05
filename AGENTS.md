@@ -52,11 +52,29 @@ python src/main.py --since weekly --persona advanced
   （`config.yaml` 里 `model_v3` 和 `model_r1` 是同一字符串）。
 - **DeepSeek-R1 已下线** —— `llm.py:46-48` 注释明示：原 R1 的 `reasoning_content`
   思考链不再返回。`call_llm(..., use_reasoning=True)` 仍可调用，但实际拿到的是 flash-lite 的
-  普通 `content`，不是真推理链。Stage 4 Reflect 的"反思"效果来自 prompt 约束，不再来自 R1。
+  普通 `content`，不是真推理链。Stage 3+4 的"反思"效果来自 prompt 约束，不再来自 R1。
 - `sensenova-6.7-flash-lite` Token Plan 端点是 `https://token.sensenova.cn/v1`（**不是**
   `api.sensenova.cn`），默认硬编码在 `config.py:70`。
 - 429 限流由 `LLMClient.call_llm` 自动指数退避（最多 5 次），`rate_limit_delay: 2.0s`
   在每次成功调用后还会睡 `delay/2`，是节流大头。
+
+### LLM 调用次数（T2 节流后）
+
+管线全程**只调 2 次 LLM**（之前是 1+3N 次）：
+
+| 阶段 | 调用 | 说明 |
+| :--- | :---: | :--- |
+| Stage 2 Analyze | 1 (batch) | N 个 repo 一次性分类 + 评级 |
+| **Stage 3+4 Summarize+Reflect** | **1 (batch)** | 合并为 1 个 LLM 调，要求返回 JSON 数组；旧 per-repo 反思已并入 prompt 约束 |
+| **Stage 5 Translate** | **1 (batch)** | 一次性翻译 N 条；旧 per-repo 翻译已并入 batch |
+| **合计** | **2 次** | N=9 时从 28 次降到 2 次（~93% ↓） |
+
+- **降级路径**：batch 解析失败时，per-repo 串行回退（最多 1+N 次）。
+  per-repo 也失败时，Stage 3+4 走静态 stub，Stage 5 回退到英文原文。
+- **代码入口**：`pipeline._stage_summarize_and_reflect` / `pipeline._stage_translate`，
+  对应 batch 实现分别是 `_summarize_reflect_batch` / `_translate_batch`，per-repo 回退是 `*_per_repo`。
+- **响应格式**：两处 batch 都用 `_parse_json_from_response` 解 JSON 数组
+  `[{"full_name": "...", "<field>": "..."}]`，匹配不到某个 full_name 自动降级 per-repo。
 
 ### 抓取行为
 
