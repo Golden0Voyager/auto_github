@@ -8,6 +8,39 @@ AI 智能体策展系统：每日抓取 GitHub Trending 与大厂动态，经 6 
 
 ---
 
+## 设计哲学：LLM Token 经济性
+
+LLM 调用的真实成本由**四笔账**叠加，不是单次 token 总和：
+
+1. **请求税**：每次 API 请求都重发一遍 system prompt（`max_tokens` / 模型名 / 安全约束等固定开销不可省），并被 provider 计 1 个 request。
+2. **轮次税**：每次 round-trip 是一次完整的 request/response 闭环；串行的 N 个 stage = N 次往返。
+3. **token 税**：prompt 的 input + completion 的 output，按字符计费。
+4. **失败税**：429 限流下，调用越多越容易撞墙；每次重试都消耗预算。
+
+**五条原则**（按优先级排序，改代码时自上而下检验）：
+
+| # | 原则 | 含义 |
+| :--- | :--- | :--- |
+| 1 | **每个 token 必须为决策服务** | 出现在 prompt/completion 里的每段文本，都应该回答"它在为哪个决策贡献信息"。闲聊、复述、套话一律砍。 |
+| 2 | **批处理摊销请求税** | N 个独立决策合并到 1 次 LLM 调用，让 system prompt / JSON schema / few-shot 这些固定开销被 N 摊薄。N=9 → 89%↓；N=15 → 93%↓。 |
+| 3 | **减少轮次 > 减少单次 token** | 固定成本比可变成本大。Stage 3+4 合并成 1 次批调用比"每条少 200 token"省得多。 |
+| 4 | **prompt 约束替代思考链** | 反思 / 多步推理靠 prompt 设计完成，**不靠**让模型自己思考（DeepSeek-R1 风格）。`reasoning_content` 算 token 但不产生结构化收益。 |
+| 5 | **降级路径必须存在** | 批处理失败 → per-repo 回退 → 静态 stub。三层兜底保证主流程不中断；降级不是 bug，是契约的一部分。 |
+
+**配套实践**：
+- **可观测先行**：加 `get_stats()` / `reset_stats()` 之前别动模型调用代码。`call_count` / `failed_attempt_count` / `total_prompt_tokens` / `total_completion_tokens` 四件套是底线。
+- **per-stage snapshot**：在 stage 边界 diff `get_stats()`，把成本归因到具体 stage。比"主流程结束打一行总计"信息密度高一个数量级。
+- **provider 不切换本仓的限流假设**：SenseNova Token Plan 5h/1500 次配额、`rate_limit_delay: 2.0s`、`max_retries: 5` 是按这个额度调过的；换 provider 之前要重算。
+
+**反模式（看到就改）**：
+- ❌ per-repo 串行 N 次调用（除非 batch 解析失败）
+- ❌ system prompt 每次重新拼接历史对话
+- ❌ 失败时无脑重试到 429 撞墙
+- ❌ 把"反思"塞进 thinking token 而不是塞进 prompt 指令
+- ❌ 没有降级路径，主流程被 batch JSON 解析失败带崩
+
+---
+
 ## 命令速查
 
 ```bash
