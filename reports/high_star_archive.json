@@ -264,5 +264,103 @@
     "cooldown_until": "2026-07-05",
     "stars": 23245,
     "occurrences": 3
+  },
+  "openai/openai-python": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-06",
+    "cooldown_until": "2026-07-06",
+    "stars": 30905,
+    "occurrences": 3
+  },
+  "lucidrains/vit-pytorch": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-06",
+    "cooldown_until": "2026-07-06",
+    "stars": 25290,
+    "occurrences": 3
+  },
+  "karpathy/llm-council": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-06",
+    "cooldown_until": "2026-07-06",
+    "stars": 20222,
+    "occurrences": 3
+  },
+  "EveryInc/compound-engineering-plugin": {
+    "first_seen": "2026-06-04",
+    "archived_at": "2026-06-06",
+    "cooldown_until": "2026-07-06",
+    "stars": 19972,
+    "occurrences": 3
+  },
+  "Open-LLM-VTuber/Open-LLM-VTuber": {
+    "first_seen": "2026-06-04",
+    "archived_at": "2026-06-06",
+    "cooldown_until": "2026-07-06",
+    "stars": 10050,
+    "occurrences": 3
+  },
+  "modelcontextprotocol/inspector": {
+    "first_seen": "2026-06-02",
+    "archived_at": "2026-06-06",
+    "cooldown_until": "2026-07-06",
+    "stars": 10011,
+    "occurrences": 4
+  },
+  "microsoft/vscode": {
+    "first_seen": "2026-06-04",
+    "archived_at": "2026-06-07",
+    "cooldown_until": "2026-07-07",
+    "stars": 186023,
+    "occurrences": 3
+  },
+  "CopilotKit/CopilotKit": {
+    "first_seen": "2026-06-05",
+    "archived_at": "2026-06-07",
+    "cooldown_until": "2026-07-07",
+    "stars": 33357,
+    "occurrences": 3
+  },
+  "mvanhorn/last30days-skill": {
+    "first_seen": "2026-06-05",
+    "archived_at": "2026-06-07",
+    "cooldown_until": "2026-07-07",
+    "stars": 29123,
+    "occurrences": 3
+  },
+  "openai/symphony": {
+    "first_seen": "2026-06-05",
+    "archived_at": "2026-06-07",
+    "cooldown_until": "2026-07-07",
+    "stars": 25112,
+    "occurrences": 3
+  },
+  "huggingface/lerobot": {
+    "first_seen": "2026-06-05",
+    "archived_at": "2026-06-07",
+    "cooldown_until": "2026-07-07",
+    "stars": 24750,
+    "occurrences": 3
+  },
+  "Panniantong/Agent-Reach": {
+    "first_seen": "2026-06-05",
+    "archived_at": "2026-06-07",
+    "cooldown_until": "2026-07-07",
+    "stars": 22583,
+    "occurrences": 3
+  },
+  "google-research/timesfm": {
+    "first_seen": "2026-06-05",
+    "archived_at": "2026-06-07",
+    "cooldown_until": "2026-07-07",
+    "stars": 20539,
+    "occurrences": 3
+  },
+  "microsoft/winget-pkgs": {
+    "first_seen": "2026-06-04",
+    "archived_at": "2026-06-07",
+    "cooldown_until": "2026-07-07",
+    "stars": 10662,
+    "occurrences": 3
   }
 }
