@@ -1,18 +1,19 @@
-import os
 import time
-import requests
-from typing import List, Dict, Any, Optional
-from openai import OpenAI
+from typing import Any, Dict, List, Optional
+
 from src.config import AppConfig
 
+
 class LLMClient:
-    """Wrapper around OpenAI-compatible API (SenseNova, OpenAI, etc.) with built-in retry and backoff."""
-    
+    """Wrapper around LLM API with auto_hub.llm as primary backend and direct OpenAI SDK fallback.
+
+    Pipeline gate contract: `self.client` is truthy iff at least one backend is wired,
+    matching the pre-migration API that `pipeline.py` relies on for fallback decisions.
+    """
+
     def __init__(self, config: AppConfig):
         self.config = config
         self.provider = config.ai.default_provider
-        self.api_key = config.ai.api_key
-        self.base_url = config.ai.base_url
         self.model_v3 = config.ai.model_v3
         self.model_r1 = config.ai.model_r1
 
@@ -21,68 +22,153 @@ class LLMClient:
         self.total_prompt_tokens: int = 0
         self.total_completion_tokens: int = 0
 
-        if not self.api_key:
-            print(f"[LLM Warning] No API key found for provider '{self.provider}'. LLM requests will fail unless mock runs are used.")
+        self._hub: Any = None
+        self._fallback: Any = None
 
-        if self.api_key:
-            self.client = OpenAI(
-                api_key=self.api_key,
-                base_url=self.base_url
+        if not config.ai.api_key:
+            print(
+                f"[LLM Warning] No API key found for provider '{self.provider}'. "
+                f"LLM requests will fail unless mock runs are used."
             )
-        else:
-            self.client = None
+
+        try:
+            from auto_hub.llm import LLMClient as HubClient
+            self._hub = HubClient.from_env(
+                max_retries=5,
+                rate_limit_delay=config.ai.rate_limit_delay,
+            )
+        except (RuntimeError, ImportError):
+            pass
+
+        if self._hub is None and config.ai.api_key:
+            from openai import OpenAI
+            self._fallback = OpenAI(api_key=config.ai.api_key, base_url=config.ai.base_url)
+
+    @property
+    def client(self) -> Any:
+        """Backward-compat truthy accessor for `pipeline.py` fallback gates."""
+        return self._hub if self._hub is not None else self._fallback
 
     def call_llm(
-        self, 
-        messages: List[Dict[str, str]], 
+        self,
+        messages: List[Dict[str, str]],
         use_reasoning: bool = False,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         retries: int = 5,
-        backoff_factor: float = 2.0
+        backoff_factor: float = 2.0,
     ) -> Dict[str, Any]:
-        """Calls the LLM with robust error-handling, backoff, and rate-limiting support.
-        
-        Args:
-            messages: List of chat message dicts (role, content)
-            use_reasoning: If True, uses model_r1 (reflect stage). Else uses model_v3.
-                注：原 DeepSeek-R1 已被 sensenova-6.7-flash-lite 替代，思考链
-                reasoning_content 不再可用，Stage 4 反思通过普通 content 字段返回。
-            temperature: Sampling temperature
-            max_tokens: Maximum tokens to generate
-            retries: Number of retries on rate limit (429) or temporary server errors
-            backoff_factor: Multiplier for backoff delay
+        """Calls the LLM with fallback support.
+
+        Delegates to auto_hub.llm when available; on hub failure, transparently
+        falls back to the direct OpenAI SDK path so the pipeline never blocks.
         """
-        if not self.client:
+        if self._hub is None and self._fallback is None:
             print("[LLM Error] Cannot call LLM: API key is not configured.")
             return {"content": "Error: LLM API key not configured.", "reasoning": None}
-            
+
         model = self.model_r1 if use_reasoning else self.model_v3
         temp = temperature if temperature is not None else self.config.ai.temperature
         max_t = max_tokens if max_tokens is not None else self.config.ai.max_tokens
-        
-        # sensenova-6.7-flash-lite 支持 temperature (0-2)，但保留旧 R1 的温度容错逻辑作为兜底
-        kwargs = {
-            "model": model,
-            "messages": messages,
-            "max_tokens": max_t,
-        }
-        
-        if not use_reasoning:
-            kwargs["temperature"] = temp
-            
+
+        if self._hub is not None:
+            return self._call_with_hub_or_fallback(messages, model, temp, max_t, use_reasoning, retries, backoff_factor)
+
+        return self._call_via_fallback(messages, model, temp, max_t, use_reasoning, retries, backoff_factor)
+
+    def _sync_stats_from_hub(self) -> None:
+        """Mirror hub CallStats into auto_github counters (single source of truth = hub)."""
+        if self._hub is None or not hasattr(self._hub, "stats"):
+            return
+        snapshot = self._hub.stats.snapshot()
+        self.call_count = snapshot["call_count"]
+        self.failed_attempt_count = snapshot["failed_attempt_count"]
+        self.total_prompt_tokens = snapshot["total_prompt_tokens"]
+        self.total_completion_tokens = snapshot["total_completion_tokens"]
+
+    def _call_with_hub_or_fallback(
+        self,
+        messages: List[Dict[str, str]],
+        model: str,
+        temperature: Optional[float],
+        max_tokens: Optional[int],
+        use_reasoning: bool,
+        retries: int,
+        backoff_factor: float,
+    ) -> Dict[str, Any]:
+        """Try hub first; on hard failure, degrade to direct OpenAI SDK path.
+
+        Hub's CallStats is the single source of truth — auto_github counters
+        are mirrored from `self._hub.stats` after every attempt.
+        """
         delay = self.config.ai.rate_limit_delay
-        
+        last_err: Optional[Exception] = None
+
         for attempt in range(retries):
             try:
-                # Active rate control: force a brief delay before each API call to respect the QPS/RPM
                 if attempt > 0:
                     time.sleep(delay * (backoff_factor ** (attempt - 1)))
-                
-                print(f"[LLM] Requesting model={model} (Attempt {attempt + 1}/{retries})...")
-                
-                response = self.client.chat.completions.create(**kwargs)
 
+                print(f"[LLM] Requesting model={model} (Attempt {attempt + 1}/{retries}) [hub]...")
+
+                content = self._hub.chat(
+                    messages=messages,
+                    model=model,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                self._sync_stats_from_hub()
+
+                time.sleep(self.config.ai.rate_limit_delay / 2.0)
+                return {"content": content, "reasoning": None, "model": model}
+
+            except Exception as e:
+                last_err = e
+                self._sync_stats_from_hub()
+                err_msg = str(e).lower()
+                print(f"[LLM Warning] Hub attempt {attempt + 1} failed: {e}")
+
+                is_rate_limit = "429" in err_msg or "rate limit" in err_msg or "too many requests" in err_msg
+                if is_rate_limit and attempt < retries - 1:
+                    continue
+                if not is_rate_limit and attempt < retries - 1:
+                    time.sleep(2)
+                    continue
+                break
+
+        if self._fallback is not None:
+            print(f"[LLM Info] Hub exhausted ({last_err}); degrading to direct OpenAI SDK.")
+            return self._call_via_fallback(
+                messages, model, temperature, max_tokens, use_reasoning, retries, backoff_factor
+            )
+
+        raise RuntimeError(f"LLM request failed via hub (no fallback available). Last error: {last_err}")
+
+    def _call_via_fallback(
+        self,
+        messages: List[Dict[str, str]],
+        model: str,
+        temperature: Optional[float],
+        max_tokens: Optional[int],
+        use_reasoning: bool,
+        retries: int,
+        backoff_factor: float,
+    ) -> Dict[str, Any]:
+        """Fallback: direct OpenAI SDK call (same as pre-migration behavior)."""
+        kwargs: Dict[str, Any] = {"model": model, "messages": messages, "max_tokens": max_tokens}
+        if not use_reasoning:
+            kwargs["temperature"] = temperature
+
+        delay = self.config.ai.rate_limit_delay
+
+        for attempt in range(retries):
+            try:
+                if attempt > 0:
+                    time.sleep(delay * (backoff_factor ** (attempt - 1)))
+
+                print(f"[LLM] Requesting model={model} (Attempt {attempt + 1}/{retries}) [direct]...")
+
+                response = self._fallback.chat.completions.create(**kwargs)
                 choice = response.choices[0]
                 content = choice.message.content or ""
 
@@ -92,7 +178,7 @@ class LLMClient:
                     self.total_completion_tokens += getattr(usage, "completion_tokens", 0) or 0
                 self.call_count += 1
 
-                reasoning = None
+                reasoning: Optional[str] = None
                 if hasattr(choice.message, "reasoning_content"):
                     reasoning = getattr(choice.message, "reasoning_content")
                 elif hasattr(choice.message, "model_extra") and choice.message.model_extra:
@@ -100,32 +186,24 @@ class LLMClient:
 
                 time.sleep(self.config.ai.rate_limit_delay / 2.0)
 
-                return {
-                    "content": content,
-                    "reasoning": reasoning,
-                    "model": model
-                }
+                return {"content": content, "reasoning": reasoning, "model": model}
 
             except Exception as e:
                 err_msg = str(e)
                 self.failed_attempt_count += 1
-                print(f"[LLM Warning] Attempt {attempt + 1} failed: {err_msg}")
-                
-                # If it's a rate limit error (429), try backing off
+                print(f"[LLM Warning] Direct attempt {attempt + 1} failed: {err_msg}")
+
                 if "429" in err_msg or "rate limit" in err_msg.lower() or "too many requests" in err_msg.lower():
-                    # We back off and retry
                     continue
-                # If it's a model parameters issue with reasoning models (e.g. temperature), remove temperature and retry
                 elif "temperature" in err_msg.lower() and use_reasoning and "temperature" in kwargs:
                     print("[LLM Info] Retrying R1 without temperature parameter...")
                     del kwargs["temperature"]
                     continue
                 else:
-                    # For other errors, sleep briefly and retry
                     if attempt == retries - 1:
                         raise e
                     time.sleep(2)
-                    
+
         raise RuntimeError("LLM request failed after maximum retries due to persistent rate limiting.")
 
     def get_stats(self) -> Dict[str, int]:
@@ -142,3 +220,5 @@ class LLMClient:
         self.failed_attempt_count = 0
         self.total_prompt_tokens = 0
         self.total_completion_tokens = 0
+        if self._hub is not None and hasattr(self._hub, "stats"):
+            self._hub.stats.reset()
