@@ -362,5 +362,26 @@
     "cooldown_until": "2026-07-07",
     "stars": 10662,
     "occurrences": 3
+  },
+  "openai/openai-cookbook": {
+    "first_seen": "2026-06-04",
+    "archived_at": "2026-06-08",
+    "cooldown_until": "2026-07-08",
+    "stars": 74067,
+    "occurrences": 3
+  },
+  "lfnovo/open-notebook": {
+    "first_seen": "2026-06-05",
+    "archived_at": "2026-06-08",
+    "cooldown_until": "2026-07-08",
+    "stars": 27542,
+    "occurrences": 3
+  },
+  "huggingface/skills": {
+    "first_seen": "2026-06-04",
+    "archived_at": "2026-06-08",
+    "cooldown_until": "2026-07-08",
+    "stars": 10634,
+    "occurrences": 3
   }
 }
