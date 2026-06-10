@@ -404,5 +404,19 @@
     "cooldown_until": "2026-07-09",
     "stars": 11164,
     "occurrences": 3
+  },
+  "aquasecurity/trivy": {
+    "first_seen": "2026-06-04",
+    "archived_at": "2026-06-10",
+    "cooldown_until": "2026-07-10",
+    "stars": 36255,
+    "occurrences": 3
+  },
+  "RyanCodrai/turbovec": {
+    "first_seen": "2026-06-08",
+    "archived_at": "2026-06-10",
+    "cooldown_until": "2026-07-10",
+    "stars": 10409,
+    "occurrences": 3
   }
 }
