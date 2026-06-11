@@ -418,5 +418,33 @@
     "cooldown_until": "2026-07-10",
     "stars": 10409,
     "occurrences": 3
+  },
+  "microsoft/PowerToys": {
+    "first_seen": "2026-06-03",
+    "archived_at": "2026-06-11",
+    "cooldown_until": "2026-07-11",
+    "stars": 134057,
+    "occurrences": 3
+  },
+  "Egonex-AI/Understand-Anything": {
+    "first_seen": "2026-06-09",
+    "archived_at": "2026-06-11",
+    "cooldown_until": "2026-07-11",
+    "stars": 56806,
+    "occurrences": 3
+  },
+  "refactoringhq/tolaria": {
+    "first_seen": "2026-06-09",
+    "archived_at": "2026-06-11",
+    "cooldown_until": "2026-07-11",
+    "stars": 15074,
+    "occurrences": 3
+  },
+  "huggingface/ml-intern": {
+    "first_seen": "2026-06-05",
+    "archived_at": "2026-06-11",
+    "cooldown_until": "2026-07-11",
+    "stars": 10403,
+    "occurrences": 3
   }
 }
