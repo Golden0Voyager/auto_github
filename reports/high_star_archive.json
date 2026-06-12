@@ -362,5 +362,103 @@
     "cooldown_until": "2026-07-07",
     "stars": 10662,
     "occurrences": 3
+  },
+  "openai/openai-cookbook": {
+    "first_seen": "2026-06-04",
+    "archived_at": "2026-06-08",
+    "cooldown_until": "2026-07-08",
+    "stars": 74067,
+    "occurrences": 3
+  },
+  "lfnovo/open-notebook": {
+    "first_seen": "2026-06-05",
+    "archived_at": "2026-06-08",
+    "cooldown_until": "2026-07-08",
+    "stars": 27542,
+    "occurrences": 3
+  },
+  "huggingface/skills": {
+    "first_seen": "2026-06-04",
+    "archived_at": "2026-06-08",
+    "cooldown_until": "2026-07-08",
+    "stars": 10634,
+    "occurrences": 3
+  },
+  "ruvnet/RuView": {
+    "first_seen": "2026-06-07",
+    "archived_at": "2026-06-09",
+    "cooldown_until": "2026-07-09",
+    "stars": 72124,
+    "occurrences": 3
+  },
+  "openai/openai-agents-python": {
+    "first_seen": "2026-06-05",
+    "archived_at": "2026-06-09",
+    "cooldown_until": "2026-07-09",
+    "stars": 27008,
+    "occurrences": 3
+  },
+  "microsoft/agent-framework": {
+    "first_seen": "2026-06-05",
+    "archived_at": "2026-06-09",
+    "cooldown_until": "2026-07-09",
+    "stars": 11164,
+    "occurrences": 3
+  },
+  "aquasecurity/trivy": {
+    "first_seen": "2026-06-04",
+    "archived_at": "2026-06-10",
+    "cooldown_until": "2026-07-10",
+    "stars": 36255,
+    "occurrences": 3
+  },
+  "RyanCodrai/turbovec": {
+    "first_seen": "2026-06-08",
+    "archived_at": "2026-06-10",
+    "cooldown_until": "2026-07-10",
+    "stars": 10409,
+    "occurrences": 3
+  },
+  "microsoft/PowerToys": {
+    "first_seen": "2026-06-03",
+    "archived_at": "2026-06-11",
+    "cooldown_until": "2026-07-11",
+    "stars": 134057,
+    "occurrences": 3
+  },
+  "Egonex-AI/Understand-Anything": {
+    "first_seen": "2026-06-09",
+    "archived_at": "2026-06-11",
+    "cooldown_until": "2026-07-11",
+    "stars": 56806,
+    "occurrences": 3
+  },
+  "refactoringhq/tolaria": {
+    "first_seen": "2026-06-09",
+    "archived_at": "2026-06-11",
+    "cooldown_until": "2026-07-11",
+    "stars": 15074,
+    "occurrences": 3
+  },
+  "huggingface/ml-intern": {
+    "first_seen": "2026-06-05",
+    "archived_at": "2026-06-11",
+    "cooldown_until": "2026-07-11",
+    "stars": 10403,
+    "occurrences": 3
+  },
+  "x1xhlol/system-prompts-and-models-of-ai-tools": {
+    "first_seen": "2026-06-10",
+    "archived_at": "2026-06-12",
+    "cooldown_until": "2026-07-12",
+    "stars": 139972,
+    "occurrences": 3
+  },
+  "phuryn/pm-skills": {
+    "first_seen": "2026-06-09",
+    "archived_at": "2026-06-12",
+    "cooldown_until": "2026-07-12",
+    "stars": 16459,
+    "occurrences": 3
   }
 }

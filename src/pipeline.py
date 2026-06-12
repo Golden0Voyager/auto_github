@@ -195,6 +195,8 @@ class CurationPipeline:
             "description": "默认开发者画像",
             "prompt_focus": "关注 LLM 系统学习、Vibecoding、Agent 架构和工程落地。"
         })
+        # 初始化 mock 标志，在 run() 中覆盖
+        self.use_mock = False
 
     def _log_llm_stage(self, stage_name: str, before: Dict[str, int]) -> None:
         after = self.llm.get_stats()

@@ -42,6 +42,14 @@ class ReportFormatter:
             short_desc = desc[:80] + ("…" if len(desc) > 80 else "")
             short_desc = short_desc.replace("|", "\\|").replace("\n", " ")
             rc["description_short"] = short_desc
+            # Ensure all keys that templates expect have defaults
+            rc.setdefault("period_stars", "")
+            rc.setdefault("tags", [])
+            rc.setdefault("rating", "B")
+            rc.setdefault("chinese_summary", "")
+            rc.setdefault("refined_summary", "")
+            rc.setdefault("selection_reason", "")
+            rc.setdefault("language", "Unknown")
             enriched_repos.append(rc)
 
         context = {
@@ -213,7 +221,7 @@ class ReportFormatter:
             lines.append(f"### [{r.get('rating', 'B')}] {r['full_name']}")
             lines.append(f"- **URL**: {r['url']}")
             lines.append(f"- **Tags**: {', '.join(r.get('tags', []))}")
-            lines.append(f"- **Description**: {r['description']}\n")
+            lines.append(f"- **Description**: {(r.get('description') or '')[:200]}\n")
             lines.append(r.get('chinese_summary', r.get('refined_summary', '')))
             lines.append("\n---\n")
             
