@@ -34,8 +34,9 @@ def crawler_config() -> AppConfig:
 class TestGitHubCrawlerInit:
     """Test crawler initialization."""
 
-    def test_init_no_token(self, crawler_config):
+    def test_init_no_token(self, crawler_config, monkeypatch):
         """Without GITHUB_TOKEN, API headers should not have Authorization."""
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
         crawler = GitHubCrawler(crawler_config)
         assert "Authorization" not in crawler.api_headers
 
