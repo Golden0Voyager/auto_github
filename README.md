@@ -1,5 +1,17 @@
 # 🌌 auto_github: 开源趋势与大厂动态 AI 智能体策展系统
 
+<p align="center">
+  <a href="https://github.com/Golden0Voyager/auto_github/actions/workflows/daily_trending.yml">
+    <img src="https://github.com/Golden0Voyager/auto_github/actions/workflows/daily_trending.yml/badge.svg" alt="CI - Tests &amp; Curation Pipeline">
+  </a>
+  <a href="https://github.com/Golden0Voyager/auto_github">
+    <img src="https://img.shields.io/badge/python-3.12-blue" alt="Python 3.12">
+  </a>
+  <a href="https://github.com/Golden0Voyager/auto_github/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
+  </a>
+</p>
+
 一个基于“策展思维”设计的高审美、低信噪比开源趋势与大厂动态监测系统。它能够每日自动抓取 GitHub 热门项目及 LLM 大厂的最新动态，通过由商汤 SenseNova **Token Plan** 驱动的“抓取 - 去重 - 分析 - 总结 - 反思 - 翻译 - 排版”六阶段智能体管线，最终输出为精美且富有技术深度的多维画像评级报告。
 
 ---

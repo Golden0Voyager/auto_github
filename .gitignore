@@ -119,3 +119,8 @@ reports/debug/
 # Skill-generated analysis artifacts
 .understand-anything/
 .codegraph/
+
+# Test artifacts / MagicMock directories
+MagicMock/
+.coverage
+.coverage.*
