@@ -446,5 +446,19 @@
     "cooldown_until": "2026-07-11",
     "stars": 10403,
     "occurrences": 3
+  },
+  "x1xhlol/system-prompts-and-models-of-ai-tools": {
+    "first_seen": "2026-06-10",
+    "archived_at": "2026-06-12",
+    "cooldown_until": "2026-07-12",
+    "stars": 139972,
+    "occurrences": 3
+  },
+  "phuryn/pm-skills": {
+    "first_seen": "2026-06-09",
+    "archived_at": "2026-06-12",
+    "cooldown_until": "2026-07-12",
+    "stars": 16459,
+    "occurrences": 3
   }
 }
