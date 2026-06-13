@@ -324,6 +324,12 @@ class TestParseJsonFromResponse:
         assert len(result) == 1
         assert result[0]["full_name"] == "e/f"
 
+    def test_dict_without_list_returns_empty(self, parser):
+        """Valid JSON dict with no list values should return []."""
+        text = '{"status": "ok", "count": 5}'
+        result = parser(text)
+        assert result == []
+
     def test_invalid_json_raises(self, parser):
         text = "This is not JSON at all."
         with pytest.raises(Exception):

@@ -87,10 +87,7 @@ def _infer_rating_fallback(repo: Dict[str, Any]) -> str:
     if period:
         m = re.search(r"(\d[\d,]*)", period)
         if m:
-            try:
-                period_num = int(m.group(1).replace(",", ""))
-            except ValueError:
-                pass
+            period_num = int(m.group(1).replace(",", ""))
     if stars >= 100000 or period_num >= 3000:
         return "S"
     if stars >= 20000 or period_num >= 500:
@@ -338,10 +335,7 @@ class CurationPipeline:
             if period_stars:
                 m = re.search(r"(\d[\d,]*)", period_stars)
                 if m:
-                    try:
-                        period_num = int(m.group(1).replace(",", ""))
-                    except ValueError:
-                        pass
+                    period_num = int(m.group(1).replace(",", ""))
             is_first_seen = r.get("is_first_seen", False)
 
             is_early = stars < 3000 or (stars < 5000 and is_first_seen)

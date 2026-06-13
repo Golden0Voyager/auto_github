@@ -311,3 +311,102 @@ class TestPipelineRunEdgeCases:
         ])
         result = pipeline.run(since="daily", use_mock=True)
         assert result == {}
+
+    def test_stage_summarize_reflect_per_repo_fallback_with_batch_failure(self, batch_config, batch_repos):
+        """When batch JSON parsing fails, _stage_summarize_and_reflect should fall back to per-repo."""
+        client = MagicMock()
+        client.call_llm.side_effect = [
+            {"content": "Not valid JSON at all."},
+            {"content": "### Core Technical Problem\nThe analysis."},
+            {"content": "### Core Technical Problem\nAnother analysis."},
+        ]
+        pipeline = CurationPipeline(batch_config, client)
+        pipeline.use_mock = False
+        result = pipeline._stage_summarize_and_reflect(batch_repos)
+        assert len(result) == len(batch_repos)
+        for r in result:
+            assert "refined_summary" in r
+
+    def test_stage_crawl_non_mock_uses_crawler(self, batch_config):
+        """_stage_crawl without mock should call crawler methods."""
+        client = MagicMock()
+        pipeline = CurationPipeline(batch_config, client)
+        pipeline.crawler.crawl_trending = MagicMock(side_effect=[
+            [{"full_name": "a/daily", "stars": 100, "source": "trending",
+              "language": "Python", "description": "Daily repo", "period_stars": "10 stars today"}],
+            [{"full_name": "b/weekly", "stars": 200, "source": "trending",
+              "language": "Python", "description": "Weekly repo", "period_stars": "50 stars this week"}],
+            [{"full_name": "c/monthly", "stars": 300, "source": "trending",
+              "language": "Python", "description": "Monthly repo", "period_stars": "100 stars this month"}],
+        ])
+        pipeline.crawler.fetch_giant_repos = MagicMock(return_value=[
+            {"full_name": "giant/repo", "stars": 50000, "source": "llm_giant",
+             "language": "Python", "description": "Giant repo", "period_stars": ""},
+        ])
+        result = pipeline._stage_crawl("daily", use_mock=False)
+        assert len(result) > 0
+        assert pipeline.crawler.crawl_trending.call_count == 3
+        assert pipeline.crawler.fetch_giant_repos.call_count == 1
+        names = [r["full_name"] for r in result]
+        assert "a/daily" in names
+        assert "giant/repo" in names
+
+    def test_run_purge_expired_prints_message(self, batch_config):
+        """purge_expired_cooldowns returning > 0 should print message."""
+        client = MagicMock()
+        client.get_stats.return_value = {
+            "call_count": 0, "failed_attempt_count": 0,
+            "total_prompt_tokens": 0, "total_completion_tokens": 0, "total_tokens": 0,
+        }
+        pipeline = CurationPipeline(batch_config, client)
+        # Add an expired cooldown entry
+        pipeline.dedup._archive["test/repo"] = {"cooldown_until": "2000-01-01"}
+        result = pipeline.run(since="daily", use_mock=True)
+        assert "meta" in result
+
+    def test_run_newly_archived_prints_message(self, batch_config):
+        """When repos get archived, should print message."""
+        client = MagicMock()
+        client.get_stats.return_value = {
+            "call_count": 0, "failed_attempt_count": 0,
+            "total_prompt_tokens": 0, "total_completion_tokens": 0, "total_tokens": 0,
+        }
+        pipeline = CurationPipeline(batch_config, client)
+        # Clear archive + pre-populate history to trigger archive on next run
+        pipeline.dedup._archive.clear()
+        pipeline.dedup._history.clear()
+        pipeline.dedup._history["deepseek-ai/DeepSeek-R1"] = ["2026-01-01", "2026-01-02"]
+        result = pipeline.run(since="daily", use_mock=True)
+        assert result["meta"]["total_curated_repos"] > 0
+
+    def test_stage_crawl_non_mock_dedup_merges_period_stars(self, batch_config):
+        """When same repo appears in two trending lists, should merge period_stars."""
+        client = MagicMock()
+        pipeline = CurationPipeline(batch_config, client)
+        # shared/repo appears in both daily (no period_stars) and weekly (has period_stars)
+        pipeline.crawler.crawl_trending = MagicMock(side_effect=[
+            [{"full_name": "shared/repo", "stars": 100, "source": "trending",
+              "language": "Python", "description": "Daily repo", "period_stars": ""}],
+            [{"full_name": "shared/repo", "stars": 200, "source": "trending",
+              "language": "Python", "description": "Weekly version with period_stars",
+              "period_stars": "50 stars this week"}],
+            [],
+        ])
+        pipeline.crawler.fetch_giant_repos = MagicMock(return_value=[])
+        result = pipeline._stage_crawl("daily", use_mock=False)
+        assert len(result) == 1
+        assert result[0]["period_stars"] == "50 stars this week"
+
+    def test_run_bucket_alloc_zero_slots_returns_early(self, batch_config):
+        """When bucket allocation returns empty (total_slots=0), run should return early."""
+        client = MagicMock()
+        client.get_stats.return_value = {
+            "call_count": 0, "failed_attempt_count": 0,
+            "total_prompt_tokens": 0, "total_completion_tokens": 0, "total_tokens": 0,
+        }
+        pipeline = CurationPipeline(batch_config, client)
+        pipeline.config.bucket_allocation.enabled = True
+        pipeline.config.bucket_allocation.total_slots = 0
+        result = pipeline.run(since="daily", use_mock=True)
+        # Should return meta with 0 curated repos
+        assert result.get("meta", {}).get("total_curated_repos", -1) == 0
