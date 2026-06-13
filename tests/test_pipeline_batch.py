@@ -144,6 +144,39 @@ class TestTranslateStage:
         assert "Core Pain Point Solved" in result["chinese_summary"]
         assert "Open-source engineering project" in result["chinese_summary"]
 
+    def test_translate_per_repo_empty_llm_content_uses_stub(self, batch_config):
+        """When LLM returns empty content, should use stub instead."""
+        client = MagicMock()
+        client.call_llm.return_value = {"content": ""}
+        pipeline = CurationPipeline(batch_config, client)
+        pipeline.use_mock = False
+
+        repo = {"full_name": "test/repo", "refined_summary": "This is a sufficiently long English technical analysis text that exceeds the 50 character minimum threshold for translation LLM calls.", "stars": 1000}
+        result = pipeline._translate_per_repo(repo)
+        assert "Core Pain Point Solved" in result["chinese_summary"]
+
+    def test_translate_per_repo_empty_llm_content_whitespace_uses_stub(self, batch_config):
+        """When LLM returns whitespace-only content, should use stub."""
+        client = MagicMock()
+        client.call_llm.return_value = {"content": "   \n  \n  "}
+        pipeline = CurationPipeline(batch_config, client)
+        pipeline.use_mock = False
+
+        repo = {"full_name": "test/repo", "refined_summary": "This is a sufficiently long English technical analysis text that exceeds the 50 character minimum threshold for translation LLM calls.", "stars": 1000}
+        result = pipeline._translate_per_repo(repo)
+        assert "Core Pain Point Solved" in result["chinese_summary"]
+
+    def test_translate_per_repo_exception_uses_refined_summary(self, batch_config):
+        """When LLM raises exception, should fall back to refined_summary."""
+        client = MagicMock()
+        client.call_llm.side_effect = RuntimeError("Translation failed")
+        pipeline = CurationPipeline(batch_config, client)
+        pipeline.use_mock = False
+
+        repo = {"full_name": "test/repo", "refined_summary": "This is a sufficiently long English technical analysis text that exceeds the 50 character minimum threshold for translation LLM calls.", "stars": 1000}
+        result = pipeline._translate_per_repo(repo)
+        assert result["chinese_summary"] == "This is a sufficiently long English technical analysis text that exceeds the 50 character minimum threshold for translation LLM calls."
+
 
 class TestStage2AnalyzeLLMPath:
     """Test the LLM path for Stage 2 Analyze."""
@@ -247,3 +280,34 @@ class TestPipelineRunEdgeCases:
         assert len(repos) > 0
         for r in repos:
             assert "full_name" in r
+
+    def test_run_bucket_alloc_empty_returns_early(self, batch_config):
+        """When bucket allocation returns empty, should return early meta."""
+        client = MagicMock()
+        client.get_stats.return_value = {
+            "call_count": 0, "failed_attempt_count": 0,
+            "total_prompt_tokens": 0, "total_completion_tokens": 0, "total_tokens": 0,
+        }
+        pipeline = CurationPipeline(batch_config, client)
+        # Mock get_mock_data to return empty -> bucket alloc gets nothing
+        pipeline.crawler.get_mock_data = MagicMock(return_value=[])
+        result = pipeline.run(since="daily", use_mock=True)
+        assert result == {} or result.get("meta", {}).get("total_curated_repos", 0) == 0
+
+    def test_run_stage2_empty_returns_empty(self, batch_config):
+        """When Stage 2 filters everything out, should return {}."""
+        client = MagicMock()
+        client.get_stats.return_value = {
+            "call_count": 0, "failed_attempt_count": 0,
+            "total_prompt_tokens": 0, "total_completion_tokens": 0, "total_tokens": 0,
+        }
+        pipeline = CurationPipeline(batch_config, client)
+        # Mock _stage_analyze to return empty after stage 2
+        pipeline._stage_analyze = MagicMock(return_value=[])
+        pipeline.crawler.get_mock_data = MagicMock(return_value=[
+            {"full_name": "test/repo", "stars": 100, "source": "trending",
+             "language": "Python", "description": "Test", "owner": "test",
+             "name": "repo", "url": "https://github.com/test/repo", "period_stars": ""}
+        ])
+        result = pipeline.run(since="daily", use_mock=True)
+        assert result == {}

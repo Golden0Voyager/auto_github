@@ -499,3 +499,61 @@ class TestPipelineRunWithBucketAllocation:
         pipeline.config.bucket_allocation.enabled = False
         result = pipeline.run(since="daily", use_mock=True)
         assert result["meta"]["total_curated_repos"] > 0
+
+
+class TestBucketAllocationEdgeCases2:
+    """Additional edge cases for bucket allocation (overfill, ValueError, etc.)."""
+
+    def test_unparseable_period_stars_does_not_crash(self):
+        """period_stars with unparseable format should not crash bucket allocation."""
+        cfg = AppConfig()
+        cfg.bucket_allocation.enabled = True
+        cfg.bucket_allocation.total_slots = 9
+        client = MagicMock()
+        pipeline = CurationPipeline(cfg, client)
+
+        repos = [
+            {"full_name": f"repo/{i}", "stars": 10000 + i, "period_stars": "invalid",
+             "description": "A high-star repo", "language": "Python",
+             "source": "trending", "tags": [], "rating": "A"}
+            for i in range(15)
+        ]
+        result = pipeline._bucket_allocate(repos)
+        assert len(result) <= cfg.bucket_allocation.total_slots
+        for r in result:
+            assert "_bucket" in r
+
+    def test_overfill_trims_to_total_slots(self):
+        """When more than total_slots repos selected, should trim to total_slots."""
+        cfg = AppConfig()
+        cfg.bucket_allocation.enabled = True
+        cfg.bucket_allocation.total_slots = 3
+        cfg.bucket_allocation.early_bird = 1
+        cfg.bucket_allocation.high_star_hot = 1
+        cfg.bucket_allocation.deep_dive = 1
+        client = MagicMock()
+        pipeline = CurationPipeline(cfg, client)
+
+        # Create repos that fill early-bird and high-star, then overflow deep-dive
+        repos = []
+        for i in range(3):
+            repos.append({
+                "full_name": f"early/{i}", "stars": 2000, "period_stars": "",
+                "description": "Some tool", "language": "Python",
+                "source": "trending", "tags": [], "rating": "B",
+                "is_first_seen": True,
+            })
+        for i in range(3):
+            repos.append({
+                "full_name": f"high/{i}", "stars": 15000, "period_stars": "",
+                "description": "High star repo", "language": "Python",
+                "source": "trending", "tags": [], "rating": "A",
+            })
+        for i in range(3):
+            repos.append({
+                "full_name": f"deep/{i}", "stars": 5000, "period_stars": "",
+                "description": "A medium star repo with some features", "language": "Python",
+                "source": "trending", "tags": [], "rating": "B",
+            })
+        result = pipeline._bucket_allocate(repos)
+        assert len(result) == cfg.bucket_allocation.total_slots

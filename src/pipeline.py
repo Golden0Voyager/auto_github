@@ -122,19 +122,14 @@ def _infer_tds_fallback(desc: str) -> str:
 
 
 def _ensure_markdown_spacing(text: str) -> str:
-    """Post-process LLM output to ensure proper markdown spacing.
-
-    - Ensures one blank line before/after each ### header
-    - Ensures paragraphs within sections are separated by blank lines
-    - Removes trailing whitespace
-    """
     import re
     lines = text.split("\n")
     result = []
     for i, line in enumerate(lines):
         stripped = line.strip()
         if stripped.startswith("###"):
-            if result and result[-1] != "":
+            prev_is_header = result and result[-1].strip().startswith("###")
+            if result and result[-1] != "" and not prev_is_header:
                 result.append("")
             result.append(line)
             next_line = lines[i + 1] if i + 1 < len(lines) else ""

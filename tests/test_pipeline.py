@@ -27,6 +27,7 @@ from src.pipeline import (
     _infer_tags_fallback,
     _infer_selection_reason_fallback,
     _infer_rating_fallback,
+    _ensure_markdown_spacing,
     MOCK_TRANSLATIONS,
     TAG_KEYWORDS,
     LANGUAGE_TAGS,
@@ -206,10 +207,67 @@ class TestInferRatingFallback:
     def test_none_values_default_to_b(self):
         assert _infer_rating_fallback({"stars": None, "period_stars": None}) == "B"
 
+    def test_unparseable_period_does_not_crash(self):
+        """Unparseable period_stars should not crash (ValueError guard)."""
+        assert _infer_rating_fallback({"stars": 100, "period_stars": "invalid"}) == "B"
+
 
 # ===================================================================
-# MOCK_TRANSLATIONS
+# _ensure_markdown_spacing
 # ===================================================================
+
+class TestEnsureMarkdownSpacing:
+    """Test the _ensure_markdown_spacing post-processor."""
+
+    def test_empty_string(self):
+        assert _ensure_markdown_spacing("") == ""
+
+    def test_no_headers_passthrough(self):
+        text = "Some plain text\n\nWith a paragraph."
+        assert _ensure_markdown_spacing(text) == text
+
+    def test_header_gets_leading_blank(self):
+        """Content before ### should get a blank line inserted before ###."""
+        text = "content\n### header"
+        result = _ensure_markdown_spacing(text)
+        assert result == "content\n\n### header"
+
+    def test_header_gets_trailing_blank(self):
+        """Content after ### should get a blank line inserted after ###."""
+        text = "### header\ncontent"
+        result = _ensure_markdown_spacing(text)
+        assert result == "### header\n\ncontent"
+
+    def test_header_already_spaced_unchanged(self):
+        """Already well-spaced headers should not be modified."""
+        text = "### header\n\ncontent\n\n### header2\n\ncontent2"
+        result = _ensure_markdown_spacing(text)
+        assert result == text
+
+    def test_consecutive_headers_no_extra_blank(self):
+        """Consecutive headers should NOT get blank between them."""
+        text = "### header1\n### header2"
+        result = _ensure_markdown_spacing(text)
+        assert result == text
+
+    def test_first_line_is_header(self):
+        """First line being a header should not break."""
+        text = "### header\ncontent"
+        result = _ensure_markdown_spacing(text)
+        assert result == "### header\n\ncontent"
+
+    def test_multiple_headers_all_spaced(self):
+        """Multiple headers with content gaps should all get spacing."""
+        text = "intro\n### h1\nbody1\n### h2\nbody2\nend"
+        result = _ensure_markdown_spacing(text)
+        lines = result.split("\n")
+        assert lines[0] == "intro"
+        assert lines[1] == ""
+        assert lines[2] == "### h1"
+        assert lines[3] == ""
+        assert lines[4] == "body1"
+        assert lines[5] == ""
+        assert lines[6] == "### h2"
 
 class TestMockTranslations:
     """Test the MOCK_TRANSLATIONS constant."""
