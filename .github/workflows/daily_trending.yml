@@ -117,7 +117,7 @@ jobs:
         echo "Running pipeline with timeframe=$TIMEFRAME and persona=$PERSONA..."
         python src/main.py --since "$TIMEFRAME" --persona "$PERSONA"
 
-    - name: Commit and Push Daily Report Logs
+    - name: Commit and Push Daily Report Logs to reports branch
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -127,7 +127,7 @@ jobs:
           git add reports/
           git commit -m "docs: auto-commit daily github curation report logs [skip ci]"
           
-           # Push to auto-docs branch (dedicated branch for generated docs)
+          # Push to auto-docs branch (dedicated branch for generated docs)
           for attempt in 1 2 3; do
             git pull --rebase -X theirs origin auto-docs
             if git push origin HEAD:auto-docs; then
