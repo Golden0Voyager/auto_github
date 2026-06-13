@@ -99,75 +99,117 @@ def _infer_rating_fallback(repo: Dict[str, Any]) -> str:
 
 
 MOCK_TRANSLATIONS = {
-    "deepseek-ai/DeepSeek-V3": """### 核心解决的工程痛点
-解决了超大规模混合专家模型 (MoE, 671B总参数 / 37B激活) 在极高并发吞吐下的显存挤压瓶颈，重点攻克了多智能体 (Multi-Agent) 协同场景下频繁并发产生的 KV Cache 内存崩溃压力。
+    "deepseek-ai/DeepSeek-V3": """### 要解决的核心痛点
 
-### 底层架构与工程设计
-- **MLA (Multi-head Latent Attention)**: 通过对 Key 和 Value 进行潜在投影压缩（Low-rank Latent Projection），将 KV Cache 的显存开销缩减为原本的几分之一，极大释放了推理期硬件承载力。
-- **DeepSeekMoE & MTP**: 设计无辅助损失负载均衡机制，消除了训练稳定性难题；结合多 Token 预测目标 (Multi-Token Prediction)，以并行化流程极大拉升了 token 生成吞吐。
+大模型做推理时，显存经常被 KV Cache 吃光——这是所有跑过 MoE 模型的人都踩过的坑。DeepSeek-V3 把 671B 总参数塞进推理管线时，如果按传统的多头注意力来算，KV Cache 会膨胀到几乎存不下任何 batch。这不是渐进式优化能解决的，需要对注意力机制的存储结构做根本性改造。
 
-### 极客实战与工作流落地
-对于系统化 LLM 学习者，MLA 的底秩投影压缩是设计并发 Agent 工作流时规避高昂网关延迟的利器。推荐使用 `rtk` (Rust Token Killer) 在本地配置透明代理，拦截冗余的交互回显，从而在多 Agent 动态辩论中削减多达 80% 的 API Token 消耗。""",
+### 设计巧思与架构取舍
 
-    "deepseek-ai/DeepSeek-R1": """### 核心解决的工程痛点
-突破了传统大模型依赖海量人工对齐 (SFT) 数据才能掌握复杂逻辑推理的限制，实现了大模型在无人工标注背景下自主进行"反思-纠偏-定理证明"的深度泛化能力。
+DeepSeek-V3 的选择是 MLA（Multi-head Latent Attention），把 Key 和 Value 压缩到一个低秩潜在空间里再做投影——本质上是拿一个小的计算开销换一个巨大的显存节省。配合无辅助损失的负载均衡策略，它绕过了传统 MoE 训练中"辅助 loss 拖累主任务"的老问题。另外 MTP（Multi-Token Prediction）让模型一次预测多个 token，生成吞吐直接翻倍。
 
-### 底层架构与工程设计
-- **大规模强化学习 (RL)**: 在无 SFT 前置的基座模型上直接通过强化学习注入规则，模型自发学会生成可读的 Native Reasoning Trace (思考链条)。
-- **开源蒸馏生态**: 将强大的推理本领蒸馏并开源至轻量级框架（如 Qwen-1.4B/14B/32B/72B 等），使得普通边缘计算设备也具备高阶思考能力。
+### 工程启示与可迁移经验
 
-### 极客实战与工作流落地
-中阶开发者在进行软件回归测试与自动 Debug 等 Agent 系统设计时，可引入 R1 的 `reasoning_content` 作为天然的思维诊断数据。配合 custom MCP 工具精准拦截并过滤中间推理链降噪，从而规避 Agent 陷入死循环决策。""",
+MLA 的低秩投影思路是个值得记住的模式：当某个中间结果大到成为瓶颈时，不要直接砍数据量，而是找个好的压缩方式。这个思路不止适用于注意力机制——在任何需要缓存中间状态的系统里都能复用。另外，无辅助损失的负载均衡意味着"别让优化目标的副作用盖过主目标"，这是个在 Agent 系统设计里也常见的教训。
 
-    "lucidrains/MLA-pytorch": """### 核心解决的工程痛点
-填补了开源社区缺乏高度清晰、易读、且纯粹的 Multi-Head Latent Attention (MLA) 复现库这一空白，方便开发者不依赖庞大的大模型框架，即可单独在 PyTorch 中调试潜在投影压缩机制。
+### 关联生态与延展阅读
 
-### 底层架构与工程设计
-- **底秩解耦投影 (Decoupled Projection)**: 严格复现了 DeepSeek V2/V3 论文中针对 Query 向量与 Key/Value 向量进行的低秩压缩降维算法。
-- **旋转位置编码 (RoPE)**: 巧妙打通了低秩投影解耦与旋转位置编码的融合细节，保留了极佳的长文本检索精度。
+搭配 **deepseek-ai/DeepSeek-R1** 使用效果最好——V3 负责生成，R1 负责推理验证，形成"快思考 + 慢思考"的双引擎架构。如果想理解 MLA 的底层实现细节，**lucidrains/MLA-pytorch** 提供了一个干净的可复现参考实现。""",
 
-### 极客实战与工作流落地
-这是进行底层注意力优化与自研多模态 Transformer 时的必读代码。建议克隆到本地，通过 mock 测试集观测其 KV Cache 随 batch 增长的曲线，体会"展位控制"的物理空间局限。""",
+    "deepseek-ai/DeepSeek-R1": """### 要解决的核心痛点
 
-    "google-research/sima": """### 核心解决的工程痛点
-打破了传统 AI Agent 只能执行单一特定游戏指令的物理局限，探索了跨 3D 虚拟世界的通用多模态自主感知与操纵能力（Generalist Game Agent）。
+大模型做复杂推理时经常"想一半就编答案"。传统的解法是喂海量人工标注的思维链数据做 SFT——但标注成本极高，而且标注质量直接决定天花板。R1 要证明的是：不需要人类手把手教，模型自己通过强化学习就能学会"怎么思考"。
 
-### 底层架构与工程设计
-- **3D 跨域多世界感知 (Multiworld Perception)**: 统一底层视觉与键盘/鼠标映射动作空间，使得智能体在完全不同的 3D 游戏引擎中表现出一致性物理常识。
-- **图像到指令对齐 (ViT + GNN)**: 精细化提炼视觉世界模型表征，将神经网络对于物理世界动力学的认知投射到动作空间序列。
+### 设计巧思与架构取舍
 
-### 极客实战与工作流落地
-非常适合作为研究"具身智能"与"世界生成模型"的中阶教材。可将 SIMA 的物理常识投射概念应用于 ComfyUI 批量图像控制链中，借助 ControlNet 物理干预，生成视觉连续性极高的一致性 3D 虚拟展位。""",
+R1 的激进之处在于：它在基座模型上直接跑强化学习（没有前置 SFT），只靠规则奖励信号就让模型自发产生了可读的反思链。它学会的不是具体问题的答案，而是一套"自我纠偏"的通用推理策略。更聪明的是将这种推理能力蒸馏到小模型（1.5B 到 72B）——让小模型也具备接近大模型的推理水平，成本却降了两个数量级。
 
-    "meta-llama/llama3": """### 核心解决的工程痛点
-为整个开源社区提供了一个高度工业级对齐、易于本地部署并可商业化使用的超高质量基础语言模型。
+### 工程启示与可迁移经验
 
-### 底层架构与工程设计
-- **128K 分词器与 Grouped Query Attention (GQA)**: 实现了超长上下文窗口的高效计算，GQA 机制完美平衡了多头注意力与显存效率。
-- **大规模指令微调**: 采用数十万高质量精修指令数据集，保证了优异的人类意图遵循与低幻觉率。
+"奖励设计比训练数据更重要"是 R1 带来的核心启示——在 Agent 系统里，设计正确的反馈信号远比准备海量示例样本高效。另外，蒸馏策略的通用性很强：如果某项能力在大模型上已经收敛，把它蒸馏到小模型通常比从小模型开始训练性价比高得多。
 
-### 极客实战与工作流落地
-这是中阶极客搭建离线 RAG 语义索引或本地知识库的"黄金底座"。配合本地离线工具链，可极速构建高性能私有知识检索系统。""",
+### 关联生态与延展阅读
 
-    "huggingface/transformers": """### 核心解决的工程痛点
-抹平了不同机器学习底座（PyTorch, TensorFlow, JAX）的物理界限，建立了全球统一、最高频使用的 Transformer 架构标准调用接口。
+R1 是 **deepseek-ai/DeepSeek-V3** 推理层的互补组件——V3 做生成，R1 做验证。如果跑本地部署，推荐搭配 **meta-llama/llama3** 的 8B 版本做基础嵌入，R1 蒸馏版做推理路由，是一个成本可控的"快慢协同"方案。""",
 
-### 底层架构与工程设计
-- **高度模块化封装**: 支持一键加载全网数十万公开预训练模型、快速进行本地微调与推理。
-- **硬件异构加速**: 完美融合 FlashAttention-2 与 QLoRA，自动优化多卡与异构计算集群吞吐。
+    "lucidrains/MLA-pytorch": """### 要解决的核心痛点
 
-### 极客实战与工作流落地
-极客开发管线的基础设施。通过将此包与自定义 Python MCP 服务结合，可实现精准的模型性能观测与延迟 Telemetry 上报。""",
+MLA（Multi-head Latent Attention）是 DeepSeek-V3 论文中最关键的结构创新，但原实现埋在 671B 参数的大工程里，普通开发者很难扒出来单独理解。想在 PyTorch 里做注意力机制的消融实验，需要一个干净、完整、不依赖大框架的参考实现。
 
-    "comfyanonymous/ComfyUI": """### 核心解决的工程痛点
-彻底解决了传统的 WebUI 图像生成界面在大批量、复杂图生图与多模型融合干预流程中"面条式代码"和难以复用的问题。
+### 设计巧思与架构取舍
 
-### 底层架构与工程设计
-- **流式有向无环图 (DAG)**: 将 ComfyUI 的生成算子高度原子化，设计为输入-输出插槽的图拓扑节点，支持无限分叉与并行判定。
-- **程序化 Python API**: 支持将整个复杂图形面板无缝转换为 JSON 配置，在 Python 底层进行权重热插拔与节点动态生成。
+这个库的核心贡献是把 MLA 中的"低秩解耦投影"分离成一个独立的模块——Query 向量单独投影，Key/Value 共享一个低秩压缩，然后通过 RoPE 做位置编码拼接。这样的解耦让研究者可以单独调投影秩的大小来观测对长文本检索精度的影响，而不需要部署整个大模型。严格复现意味着每一行代码都能对应回论文公式。
 
-### 极客实战与工作流落地
-对于关注系统设计与美学表现的技术极客而言，这正是流程控制与工程美学完美结合的代表。您可以将 ComfyUI Python API 深度融入多端生成流，通过 Agent 智能体动态编排 ComfyUI 流程，实现对 Flux/SDXL 节点的高精度干预。""",
+### 工程启示与可迁移经验
+
+这个项目的存在本身就是个好习惯：当你读论文发现一个有趣的结构时，写一个干净的可复现实现放进开源社区。这种"解耦复现"策略的价值在于：它让研究者可以在玩具尺度上验证想法的有效性再决定是否投入大工程。在做 Agent 系统时也可以用同样的思路——先 mock 再上生产。
+
+### 关联生态与延展阅读
+
+作为 MLA 的独立参考实现，搭配 **deepseek-ai/DeepSeek-V3** 的论文一起阅读效果最佳。如果想看这个注意力变体在传统 Transformer 里的替代效果，可以跟 **huggingface/transformers** 的标准多头注意力实现做对照实验。""",
+
+    "google-research/sima": """### 要解决的核心痛点
+
+AI Agent 做过多的游戏只能在一个固定的虚拟世界里运行。每换一个 3D 环境，模型就得重新训练或者做大量适配。SIMA 的命题是：能不能训练一个 Agent，不管把它丢进哪个 3D 世界，它都能理解"物理"规则并正确交互？
+
+### 设计巧思与架构取舍
+
+SIMA 把视觉输入和鼠标/键盘动作空间统一映射到一个跨域表征上——不管游戏引擎是 Unity、Unreal 还是自研，底层给的画面都是像素，操作都是动作序列。它没有为每个游戏单独做适配，而是让模型自己学习"在不同物理引擎下的一致性行为"。ViT + GNN 的组合让视觉感知和物理常识推理在一个共同空间里对齐。
+
+### 工程启示与可迁移经验
+
+跨域泛化的思路值得借鉴：当你的 Agent 需要适配多个后端时，不要为每个后端写适配器，而是找到所有后端共有的抽象层（像素 / 动作序列 / API 格式），在那个抽象层上训练模型。这个"找共同抽象层"的思维模式在 MCP 服务设计、多平台工具集成等场景都能复用。
+
+### 关联生态与延展阅读
+
+SIMA 的跨域感知思路跟 **comfyanonymous/ComfyUI** 的 DAG 编排有相通之处——都是把复杂流程拆成通用原子节点。搭配使用可以探索"用 Agent 自动编排 ComfyUI 工作流"的方向。""",
+
+    "meta-llama/llama3": """### 要解决的核心痛点
+
+开源大模型在此前一直处在"能用但不放心用"的阶段——要么协议限制商用，要么性能跟闭源差一大截。LLaMA 3 的定位是给开源社区一个真正工业级的基座模型：性能接近 GPT-4 级别，协议允许商用，部署门槛可控。
+
+### 设计巧思与架构取舍
+
+128K token 的分词器和 GQA（Grouped Query Attention）是两个关键设计。GQA 在多头注意力和显存效率之间找到了一个实用的平衡点——不需要像 MLA 那样做低秩压缩，但比标准的 MHA 省了近一半的 KV Cache。数十万条精修指令的微调数据集则让模型在指令遵循和低幻觉率上有了质的提升。
+
+### 工程启示与可迁移经验
+
+LLaMA 3 展示了"足够好的基线模型比花哨的方案更重要"：它没有用 MoE 或者 MLA 这些激进架构，而是把 GQA、数据质量、指令微调这些基本功做到极致。对做项目的启示是：先确认基线是否已经足够，再考虑要不要上复杂架构。很多时候瓶颈不在架构而在数据质量。
+
+### 关联生态与延展阅读
+
+LLaMA 3 是整个开源 LLM 生态的基础设施。搭配 **huggingface/transformers** 做加载推理，配合本地 RAG 管道构建私有知识库。如果需要蒸馏 R1 级别的推理能力到小模型，LLaMA 3 的 8B 版本是做蒸馏目标的最佳选择之一。""",
+
+    "huggingface/transformers": """### 要解决的核心痛点
+
+在 transformers 出现之前，想用不同框架（PyTorch / TensorFlow / JAX）跑同一个模型，通常要写多份适配代码。社区里每个新模型都要重新实现一套训练和推理接口——重复造轮子成了常态，没有人把精力花在真正的模型创新上。
+
+### 设计巧思与架构取舍
+
+Transformers 库做了一个极其干净的抽象：模型架构和训练框架解耦。同一个模型配置可以一键在 PyTorch、TensorFlow、JAX 之间切换，不需要改模型代码。FlashAttention-2 和 QLoRA 的原生融合意味着在不改用户代码的前提下就能白嫖性能优化——这种"透明升级"的设计思路值得所有基础设施项目学习。
+
+### 工程启示与可迁移经验
+
+"好接口长在复用边界上"是 transformers 教给工程社区最重要的一课。它定义的 `from_pretrained` / `AutoModel` 等 API 模式现在已经是 NLP 行业的事实标准。如果你在做一个生态工具，不妨想想：用户最常做的 3 个操作是什么？把这 3 个操作做成一行能调用的 API，剩下的让用户自己组合。
+
+### 关联生态与延展阅读
+
+Transformers 是一切 LLM 工程的基础设施。搭配 **meta-llama/llama3** 做推理，配合 vLLM 做生产部署，是当前最主流的开源 LLM 工程栈。了解 FlashAttention-2、QLoRA 这些性能优化的底层实现能帮你榨干硬件性能。""",
+
+    "comfyanonymous/ComfyUI": """### 要解决的核心痛点
+
+传统的 Stable Diffusion WebUI 在处理复杂的多模型工作流时，操作界面会迅速变成一团乱麻——节点之间是面条式的连线，想复用某个子流程只能手动复制粘贴。ComfyUI 的解法是：把图像生成流程变成一张有向无环图（DAG），每个算子是一个独立节点，输入输出清晰可见。
+
+### 设计巧思与架构取舍
+
+DAG 拓扑的最大优势是可组合性：你可以把 ControlNet、IP-Adapter、LoRA 等所有组件都拖拽到画布上，自由决定它们的连接顺序，而不是被 WebUI 的固定流程限制。Python API 的支持更进一步——你可以在 Python 脚本里动态构造和修改整个图，实现批量生成时的"权重热插拔"。这种原子化设计让它不仅是一个 UI 工具，更是一个流程引擎。
+
+### 工程启示与可迁移经验
+
+DAG 这种拓扑结构不止适用于图像生成——任何需要编排多个独立步骤的工作流（数据处理、Agent 链、测试管线）都可以用同样的思路来设计。ComfyUI 证明了一个道理：好的流程控制工具应该让用户看得见每一步的状态，并能自由调整顺序而不破坏整体。
+
+### 关联生态与延展阅读
+
+ComfyUI 是 Stable Diffusion 工作流编排的核心工具。如果把 ComfyUI 的 DAG 编排思路跟 Agent 系统结合——用 Agent 动态决定节点连接顺序——就能实现自动化的图像生成管线。相关的 ControlNet、IP-Adapter 等插件进一步扩展了它的能力边界。""",
 }
 
 
@@ -489,120 +531,82 @@ class CurationPipeline:
             return fallback_repos
 
     def _stage_summarize_and_reflect(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Stage 3+4 merged: One batch LLM call writes the final English refined_summary for all repos.
+        """Stage 3+4: Per-repo summarization with the new 4-section + vibecoding style.
 
-        Happy path = 1 LLM call. On batch failure, falls back to per-repo iteration,
-        then to static stub on per-repo failure.
+        One LLM call per repo. Falls back to static stub on failure.
         """
-        print("\n=== Stage 3+4: Summarize & Reflect (合并批处理) ===")
+        print("\n=== Stage 3+4: Summarize & Reflect (逐仓库深度分析) ===")
 
         if self.use_mock or not self.llm.client:
-            print("[Stage 3+4 Fallback] Bypassing LLM. Generating mock refined summaries offline.")
+            print("[Stage 3+4 Fallback] Bypassing LLM. Generating mock summaries offline.")
             result = []
             for r in repos:
                 rc = r.copy()
-                rc["refined_summary"] = f"Refined technical analysis of {r['full_name']} removing all AI marketing fluff. Structured for {self.current_persona['name']}."
+                rc["refined_summary"] = MOCK_TRANSLATIONS.get(
+                    r["full_name"],
+                    self._summarize_reflect_stub(r)
+                )
                 rc["reflection_trace"] = ""
                 result.append(rc)
             return result
 
-        try:
-            result = self._summarize_reflect_batch(repos)
-            print(f"[Stage 3+4 Batch Done] Processed {len(result)} repositories in one LLM call.")
-            return result
-        except Exception as e:
-            print(f"[Stage 3+4 Batch Error] {e}, falling back to per-repo iteration.")
-
-        return [self._summarize_reflect_per_repo(r) for r in repos]
-
-    def _summarize_reflect_batch(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        system_prompt = (
-            "You are a senior principal architect and AI review expert writing a curated technical digest.\n"
-            "Write the final English summary for each repo below in ONE shot. No drafting, no follow-up.\n\n"
-            "Strict rules:\n"
-            "1. **No marketing fluff**: Ban sales adjectives and cliches ('revolutionary', 'game-changing', 'transformative', 'rocket', 'exciting', 'powerhouse', 'cutting-edge'). The language must be clinical, concrete, and informative — facts and mechanisms, not enthusiasm.\n"
-            "2. **Universality**: Output MUST be universally applicable. ABSOLUTELY FORBID mentioning any specific individual names (e.g. Haining, 于海宁, Golden0Voyager) or unique personal backgrounds (e.g. MFA, Contemporary Art, Art Museums). The report must be a professional, stand-alone industry technical report.\n"
-            "3. **No first-person**: No 'I', 'we', or personal pronouns.\n\n"
-            "Per-section writing rules (this is where quality most often breaks):\n"
-            "a. **Length**: each section is 2-4 sentences, 100-180 English characters. ONE-sentence sections are FORBIDDEN — they read as a list of clauses with no opening, no closing, no flow.\n"
-            "b. **Structure**: open with a topic sentence that names the core insight or mechanism, then expand with 1-2 sentences of why-it-matters, trade-off, or concrete application. End with a clear point, not a trailing clause.\n"
-            "c. **Anti-comma-stacking**: do NOT write 'X is A, B, C, and D' in a single sentence. Use periods to separate distinct claims. A sentence with 4+ comma-separated clauses is a quality failure.\n"
-            "d. **Concrete over abstract**: prefer real terms (e.g., 'KV Cache memory', 'LSP protocol', 'piece-table buffer') over hand-waves like 'efficient', 'scalable', 'high-performance'.\n"
-            "e. **Optional bold lead-in** for a key term: '- **MLA (Multi-head Latent Attention)**: ...' style is welcome when there is a named mechanism to highlight.\n\n"
-            "Format per repo (exact markdown headers, in English):\n"
-            "### Core Technical Problem\n[2-4 sentences]\n\n"
-            "### Implementation & Engineering Depth\n[2-4 sentences]\n\n"
-            "### Vibecoding & Engineering Application\n[2-4 sentences]\n\n"
-            "Return a JSON array of objects: "
-            '[{"full_name": "<owner/repo>", "refined_summary": "### Core Technical Problem\\n...\\n### Implementation & Engineering Depth\\n...\\n### Vibecoding & Engineering Application\\n..."}].\n'
-            "Do not wrap with any text outside the JSON block. Keep the response strictly to the JSON array."
-        )
-
-        repos_data = [
-            {
-                "full_name": r["full_name"],
-                "description": r.get("description", ""),
-                "language": r.get("language", ""),
-                "tags": r.get("tags", []),
-                "rating": r.get("rating", "B"),
-                "selection_reason": r.get("selection_reason", ""),
-            }
-            for r in repos
-        ]
-        user_content = json.dumps(repos_data, ensure_ascii=False, indent=2)
-
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content},
-        ]
-
-        res = self.llm.call_llm(messages, use_reasoning=False, temperature=0.3)
-        items = self._parse_json_from_response(res["content"])
-
-        by_name: Dict[str, str] = {}
-        for item in items:
-            name = item.get("full_name")
-            summary = item.get("refined_summary", "")
-            if name and summary:
-                by_name[name] = summary
-
         result = []
         for r in repos:
-            rc = r.copy()
-            name = r["full_name"]
-            if name in by_name:
-                rc["refined_summary"] = by_name[name]
-                rc["reflection_trace"] = ""
-            else:
-                print(f"[Stage 3+4 Warning] Missing in batch response: {name}, falling back to per-repo")
-                rc = self._summarize_reflect_per_repo(rc)
+            print(f"  [{r['full_name']}] Generating analysis...")
+            rc = self._summarize_reflect_per_repo(r)
             result.append(rc)
+
+        print(f"[Stage 3+4 Done] Analyzed {len(result)} repositories.")
         return result
 
     def _summarize_reflect_per_repo(self, r: Dict[str, Any]) -> Dict[str, Any]:
         rc = r.copy()
         system_prompt = (
-            "You are a senior principal architect writing a curated technical digest.\n"
-            "Write the final English summary in ONE shot. No drafting, no follow-up.\n\n"
-            "Strict rules:\n"
-            "1. **No marketing fluff**: ban 'revolutionary', 'game-changing', 'cutting-edge', etc. Clinical, concrete, informative prose only.\n"
-            "2. **Universality**: no specific individual names or personal backgrounds.\n"
-            "3. **No first-person**.\n\n"
-            "Per-section rules (quality-critical):\n"
-            "a. Each section: 2-4 sentences, 100-180 characters. ONE-sentence sections are FORBIDDEN.\n"
-            "b. Topic-then-detail: lead with the core insight, then expand with mechanism, trade-off, or application.\n"
-            "c. No comma-stacking ('X is A, B, C, and D'). Use periods to separate claims.\n"
-            "d. Concrete terms over abstract hand-waves.\n\n"
-            "Format (exact markdown headers):\n"
-            "### Core Technical Problem\n### Implementation & Engineering Depth\n### Vibecoding & Engineering Application"
+            "You are a senior technical writer and open-source project analyst.\n\n"
+            "Your task: Based on the given GitHub repository information, write a deep technical analysis in English.\n"
+            "Target reader: Vibecoding practitioners \u2014 technically literate but not necessarily CS-trained.\n"
+            "  They care about: 'Can I run this? Can I tune it? How does this make my Agent hallucinate less?'\n"
+            "  They dislike: abstract theory without practical connection, jargon without explanation.\n\n"
+            "Output format: 4 markdown sections, 3-5 sentences each, fully developed.\n\n"
+            "### Core Pain Point Solved\n"
+            "[Not a description rehash. Show the reader why they should care:\n"
+            "What common pain point exists in this scenario?\n"
+            "Why are existing solutions inadequate?\n"
+            "What key contradiction or tension does this project address?]\n\n"
+            "### Design & Architectural Trade-offs\n"
+            "[Not a feature list. Reveal the reasoning behind key decisions:\n"
+            "Why did the authors choose A over B? What trade-off did they make?\n"
+            "What's interesting about the architecture worth learning from?\n"
+            "Open with a relatable observation, then layer in technical depth.]\n\n"
+            "### Engineering Insights & Transferable Lessons\n"
+            "[The most valuable section. Extract patterns the reader can apply elsewhere:\n"
+            "e.g., its error-handling strategy, module decomposition philosophy,\n"
+            "performance optimization path, or a 'I never thought of doing it that way' insight.]\n\n"
+            "### Ecosystem & Related Projects\n"
+            "[Recommend 2-3 related high-star projects (>5000 stars).\n"
+            "Explain: why are they related? What can you build by chaining them together?\n"
+            "Only recommend projects you are confident exist in your training data.\n"
+            "Better to recommend fewer than to hallucinate.]\n\n"
+            "---\n"
+            "Content rules (MANDATORY):\n"
+            "- NO marketing fluff: revolutionary, game-changing, transformative, cutting-edge, state-of-the-art, powerful\n"
+            "- NO personal names, personal background references, first-person pronouns\n"
+            "- Language must be objective, concrete, information-dense\n"
+            "- Prefer specific terminology over abstract description\n"
+            "  ('GQA attention with KV cache rotation' NOT 'advanced attention mechanism')\n"
+            "- NO one-sentence paragraphs. Each section: 3-5 sentences\n"
+            "- Section 4: only recommend verified famous projects (>5000 stars). Better to skip than hallucinate.\n"
+            "- Open each section with a relatable hook question or scenario, then build up to technical depth"
         )
         user_content = (
             f"Repository: {r['full_name']}\n"
-            f"Description: {r.get('description', '')}\n"
+            f"Stars: {r.get('stars', 0)}\n"
+            f"Period Stars: {r.get('period_stars', '')}\n"
             f"Language: {r.get('language', '')}\n"
+            f"Description: {r.get('description', '')}\n"
             f"Tags: {', '.join(r.get('tags', []))}\n"
             f"Rating: {r.get('rating', 'B')}\n"
-            f"Selection reason: {r.get('selection_reason', '')}"
+            f"Selection Reason: {r.get('selection_reason', '')}"
         )
         messages = [
             {"role": "system", "content": system_prompt},
@@ -612,106 +616,76 @@ class CurationPipeline:
             res = self.llm.call_llm(messages, use_reasoning=False, temperature=0.3)
             rc["refined_summary"] = res["content"]
         except Exception as e:
-            print(f"[Stage 3+4 Warning] Per-repo also failed for {r['full_name']}: {e}")
-            rc["refined_summary"] = (
-                f"### Core Technical Problem\n{r.get('description', 'Engineering challenge.')}\n\n"
-                f"### Implementation & Engineering Depth\nStandard implementation; deeper review pending.\n\n"
-                f"### Vibecoding & Engineering Application\nIntegrate via standard practices."
-            )
+            print(f"[Stage 3+4 Warning] Failed for {r['full_name']}: {e}")
+            rc["refined_summary"] = self._summarize_reflect_stub(r)
         rc["reflection_trace"] = ""
         return rc
 
-    def _stage_translate(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Stage 5: One batch LLM call translates all refined_summary to Chinese.
+    def _summarize_reflect_stub(self, r: Dict[str, Any]) -> str:
+        """Static fallback stub when LLM is unavailable for summarization."""
+        desc = r.get("description", "Open-source engineering project") or "Open-source engineering project"
+        return (
+            f"### Core Pain Point Solved\n{desc}\n\n"
+            f"### Design & Architectural Trade-offs\n"
+            f"Standard implementation with community-driven design decisions. "
+            f"Deeper LLM analysis pending for this cycle.\n\n"
+            f"### Engineering Insights & Transferable Lessons\n"
+            f"Refer to the project README and issue tracker for engineering discussions.\n\n"
+            f"### Ecosystem & Related Projects\n"
+            f"Explore related repositories via the project's dependency graph and GitHub Topics page."
+        )
 
-        Happy path = 1 LLM call. On batch failure, falls back to per-repo iteration,
-        then to English text on per-repo failure.
+    def _stage_translate(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Stage 5: Per-repo high-fidelity translation to Chinese.
+
+        One LLM call per repo. Falls back to English text on failure.
         """
-        print("\n=== Stage 5: Translate (高保真学术级中文翻译 - 批处理) ===")
+        print("\n=== Stage 5: Translate (逐仓库专业中文润色) ===")
 
         if self.use_mock or not self.llm.client:
-            print("[Stage 5 Fallback] Bypassing LLM. Rendering pre-authored mock translations.")
+            print("[Stage 5 Fallback] Bypassing LLM. Using mock translations.")
             result = []
             for r in repos:
                 rc = r.copy()
                 rc["chinese_summary"] = MOCK_TRANSLATIONS.get(
                     r["full_name"],
-                    f"### 核心解决的工程痛点\n解决开源项目 {r['full_name']} 的工程挑战。\n\n"
-                    f"### 底层架构与工程设计\n高度模块化设计。\n\n"
-                    f"### 极客实战与工作流落地\n可集成入现有 Multi-Agent 工作流。",
+                    r.get("refined_summary", ""),
                 )
                 result.append(rc)
             return result
 
-        try:
-            result = self._translate_batch(repos)
-            print(f"[Stage 5 Batch Done] Translated {len(result)} repositories in one LLM call.")
-            return result
-        except Exception as e:
-            print(f"[Stage 5 Batch Error] {e}, falling back to per-repo iteration.")
-
-        return [self._translate_per_repo(r) for r in repos]
-
-    def _translate_batch(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        system_prompt = (
-            "You are an expert bilingual technical editor.\n"
-            "Translate each English summary into elegant, natural, professional Chinese.\n\n"
-            "Rules:\n"
-            "- Keep industry-standard English acronyms untranslated: RAG, Agent, MoE, MLA, KV Cache, ComfyUI, ControlNet, Telemetry, Token, Prompt, CLI, Webhook, MCP.\n"
-            "- Maintain the exact 3-section markdown header structure in Chinese:\n"
-            "  ### 核心解决的工程痛点\n"
-            "  ### 底层架构与工程设计\n"
-            "  ### 极客实战与工作流落地\n"
-            "- Avoid literal translation; use fluent professional Chinese developer vocabulary.\n\n"
-            "Return a JSON array of objects: "
-            '[{"full_name": "<owner/repo>", "chinese_summary": "### 核心解决的工程痛点\\n...\\n### 底层架构与工程设计\\n...\\n### 极客实战与工作流落地\\n..."}].\n'
-            "Do not wrap with any text outside the JSON block. Keep the response strictly to the JSON array."
-        )
-
-        repos_data = [
-            {"full_name": r["full_name"], "refined_summary": r.get("refined_summary", "")}
-            for r in repos
-        ]
-        user_content = json.dumps(repos_data, ensure_ascii=False, indent=2)
-
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content},
-        ]
-
-        res = self.llm.call_llm(messages, use_reasoning=False, temperature=0.2)
-        items = self._parse_json_from_response(res["content"])
-
-        by_name: Dict[str, str] = {}
-        for item in items:
-            name = item.get("full_name")
-            summary = item.get("chinese_summary", "")
-            if name and summary:
-                by_name[name] = summary
-
         result = []
         for r in repos:
-            rc = r.copy()
-            name = r["full_name"]
-            if name in by_name:
-                rc["chinese_summary"] = by_name[name]
-            else:
-                print(f"[Stage 5 Warning] Missing in batch response: {name}, falling back to per-repo")
-                rc = self._translate_per_repo(rc)
+            print(f"  [{r['full_name']}] Translating...")
+            rc = self._translate_per_repo(r)
             result.append(rc)
+
+        print(f"[Stage 5 Done] Translated {len(result)} repositories.")
         return result
 
     def _translate_per_repo(self, r: Dict[str, Any]) -> Dict[str, Any]:
         rc = r.copy()
         system_prompt = (
-            "You are an expert bilingual technical editor.\n"
-            "Translate the provided English technical analysis into elegant, natural, professional Chinese.\n\n"
-            "Rules:\n"
-            "- Keep industry-standard English acronyms untranslated.\n"
-            "- Maintain the exact 3-section markdown header structure in Chinese:\n"
-            "  ### 核心解决的工程痛点\n"
-            "  ### 底层架构与工程设计\n"
-            "  ### 极客实战与工作流落地"
+            "You are a senior tech media writer (style: Founder Park / 42HOW).\n"
+            "Translate the following GitHub project English analysis into professional Chinese.\n\n"
+            "Style requirements:\n"
+            "1. Write like a seasoned tech blogger: start with a relatable hook or question, "
+            "then build up to technical depth naturally\n"
+            "2. Target audience: Vibecoding practitioners \u2014 "
+            "they can code but may not have CS degrees. They care about 'does it work and can I tune it,' "
+            "not theoretical proofs. Use analogies and end-to-end workflow examples.\n"
+            "3. Keep industry-standard English terms untranslated: RAG, Agent, MoE, RLHF, MCTS, KV Cache, GQA, MLA\n"
+            "4. Keep project names in English (e.g., llama.cpp, vllm)\n"
+            "5. Strict Chinese section header mapping:\n"
+            "   - Core Pain Point Solved \u2192 要解决的核心痛点\n"
+            "   - Design & Architectural Trade-offs \u2192 设计巧思与架构取舍\n"
+            "   - Engineering Insights & Transferable Lessons \u2192 工程启示与可迁移经验\n"
+            "   - Ecosystem & Related Projects \u2192 关联生态与延展阅读\n"
+            "6. For key design decisions, add 'what if they chose the other path' perspective\n"
+            "7. For Section 4, explain why these projects work better together\n"
+            "8. If a technical concept may be unfamiliar to Chinese readers, "
+            "add a parenthetical note (max 20% of original length)\n"
+            "9. Do NOT add information not present in the original text"
         )
         user_content = f"English Technical Analysis:\n\n{r.get('refined_summary', '')}"
         messages = [
@@ -722,7 +696,7 @@ class CurationPipeline:
             res = self.llm.call_llm(messages, use_reasoning=False, temperature=0.2)
             rc["chinese_summary"] = res["content"]
         except Exception as e:
-            print(f"[Stage 5 Warning] Per-repo also failed for {r['full_name']}: {e}")
+            print(f"[Stage 5 Warning] Translation failed for {r['full_name']}: {e}")
             rc["chinese_summary"] = r.get("refined_summary", "")
         return rc
 
