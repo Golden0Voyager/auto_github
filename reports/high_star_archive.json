@@ -465,14 +465,14 @@
     "first_seen": "2026-06-11",
     "archived_at": "2026-06-13",
     "cooldown_until": "2026-07-13",
-    "stars": 226339,
+    "stars": 226437,
     "occurrences": 3
   },
-  "microsoft/playwright": {
-    "first_seen": "2026-06-03",
+  "addyosmani/agent-skills": {
+    "first_seen": "2026-06-11",
     "archived_at": "2026-06-13",
     "cooldown_until": "2026-07-13",
-    "stars": 90856,
+    "stars": 57550,
     "occurrences": 3
   }
 }
