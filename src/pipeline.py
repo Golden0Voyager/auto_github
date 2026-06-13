@@ -871,9 +871,13 @@ class CurationPipeline:
         ]
         try:
             res = self.llm.call_llm(messages, use_reasoning=False, temperature=0.2)
-            content = res["content"]
-            content = _ensure_markdown_spacing(content)
-            rc["chinese_summary"] = content
+            content = (res.get("content") or "").strip()
+            if not content:
+                print(f"  [Stage 5 Warning] {r['full_name']}: LLM returned empty content, using stub")
+                rc["chinese_summary"] = self._summarize_reflect_stub(r)
+            else:
+                content = _ensure_markdown_spacing(content)
+                rc["chinese_summary"] = content
         except Exception as e:
             print(f"[Stage 5 Warning] Translation failed for {r['full_name']}: {e}")
             rc["chinese_summary"] = r.get("refined_summary", "")
