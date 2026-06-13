@@ -127,7 +127,7 @@ class TestTranslateStage:
         pipeline = CurationPipeline(batch_config, client)
         pipeline.use_mock = False
 
-        repo = {"full_name": "test/repo", "refined_summary": "English.", "stars": 1000}
+        repo = {"full_name": "test/repo", "refined_summary": "This is a sufficiently long English technical analysis text that exceeds the 50 character minimum threshold for translation LLM calls.", "stars": 1000}
         result = pipeline._translate_per_repo(repo)
         assert "chinese_summary" in result
         assert result["chinese_summary"] == "要解决的核心痛点\nTest translation."

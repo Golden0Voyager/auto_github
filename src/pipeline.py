@@ -609,25 +609,30 @@ class CurationPipeline:
             
         system_prompt = (
             "You are an expert GitHub Open-Source Analyst and Research Assistant. "
-            "Your task is to analyze a batch of GitHub repositories and select the ones that are highly relevant to the target user profile.\n\n"
+            "Your task is to analyze a batch of GitHub repositories, rate each one, and assign tags. "
+            "Process ALL provided repositories — do not drop any.\n\n"
             f"Target User Profile: {self.current_persona['name']}\n"
             f"Profile Focus: {self.current_persona['prompt_focus']}\n\n"
-            "Criteria for selection:\n"
+            "Criteria for rating:\n"
             "1. Relevance: LLM application engineering, multi-agent frameworks, RAG index/chunking optimization, ComfyUI node flows/ControlNet, local productivity/vibecoding helper tools (like Claude Code, RTK, CLI proxies), or core AI infra.\n"
             "2. Value: Exclude trivial repositories, basic lists/collections, or standard tutorials unless they are exceptional. Prioritize high-quality, practical repositories.\n"
-            "3. Rating: Rate selected repositories as:\n"
+            "3. Rating: Rate each repository as:\n"
             "   - 'S': Absolute must-know, state-of-the-art breakthrough or crucial paradigm shift.\n"
             "   - 'A': Highly practical, robust technical value, very relevant to the profile.\n"
             "   - 'B': Interesting utility, good developer ergonomics, solid experiment.\n"
             "   - 'C': Moderate interest but marginally relevant.\n"
-"4. Tags: Add 2-3 specific technical hashtags (e.g. #Agent, #RAG, #MoE, #MLA, #ComfyUI, #Vibecoding, #Telemetry).\n"
-             "5. Technical Depth (T/E/S): Classify each selected repo's engineering depth:\n"
-             "   - T (Technical): Core architecture innovation, system-level breakthrough, custom CUDA/Metal, novel algorithm, compiler/runtime engineering\n"
-             "   - E (Engineering): Solid tooling, well-crafted framework, practical workflow orchestration, Apple ecosystem tools (Raycast, SwiftUI, MLX, CoreML), dev productivity\n"
-             "   - S (Standard): Configuration, documentation, wrapper, basic tutorial\n"
-             "   If unsure, default to E.\n\n"
-             "Return a strictly valid JSON array of selected objects containing exactly the following keys: "
-             "['index', 'full_name', 'rating', 'tags', 'reason_for_selection', 'technical_depth']. Do not wrap with text outside the JSON block."
+            "4. Tags: Add 2-3 specific technical hashtags (e.g. #Agent, #RAG, #MoE, #MLA, #ComfyUI, #Vibecoding, #Telemetry).\n"
+            "5. Technical Depth (T/E/S): Classify each selected repo's engineering depth:\n"
+            "   - T (Technical): Core architecture innovation, system-level breakthrough, custom CUDA/Metal, novel algorithm, compiler/runtime engineering\n"
+            "   - E (Engineering): Solid tooling, well-crafted framework, practical workflow orchestration, Apple ecosystem tools (Raycast, SwiftUI, MLX, CoreML), dev productivity\n"
+            "   - S (Standard): Configuration, documentation, wrapper, basic tutorial\n"
+            "   If unsure, default to E.\n\n"
+            "6. reason_for_selection: Keep this VERY SHORT — 1-2 sentences maximum. "
+            "A brief explanation of why this repo matters. Do NOT repeat the full analysis here.\n\n"
+            "Return a strictly valid JSON array containing an entry for EVERY provided repository. "
+            "Each object must have exactly these keys: "
+            "['index', 'full_name', 'rating', 'tags', 'reason_for_selection', 'technical_depth']. "
+            "Do not wrap with text outside the JSON block."
         )
         
         user_content = f"Here is the batch of repositories to analyze:\n\n{json.dumps(repos_summary, ensure_ascii=False, indent=2)}"
@@ -652,7 +657,7 @@ class CurationPipeline:
                     orig_repo = repos[idx].copy()
                     orig_repo["rating"] = item.get("rating", "B")
                     orig_repo["tags"] = item.get("tags", [])
-                    orig_repo["selection_reason"] = item.get("reason_for_selection", "")
+                    orig_repo["selection_reason"] = (item.get("reason_for_selection", "") or "")[:200]
                     orig_repo["technical_depth"] = item.get("technical_depth", "E")
                     analyzed_repos.append(orig_repo)
 
@@ -822,6 +827,11 @@ class CurationPipeline:
 
     def _translate_per_repo(self, r: Dict[str, Any]) -> Dict[str, Any]:
         rc = r.copy()
+        summary = r.get("refined_summary", "") or ""
+        if len(summary.strip()) < 50:
+            print(f"  [Stage 5 Skip] {r['full_name']}: refined_summary too short ({len(summary.strip())} chars), keeping English")
+            rc["chinese_summary"] = summary
+            return rc
         system_prompt = (
             "You are a senior tech media writer (style: Founder Park / 42HOW).\n"
             "Translate the following GitHub project English analysis into professional Chinese.\n\n"
