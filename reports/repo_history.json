@@ -43,16 +43,16 @@
   "NousResearch/hermes-agent": [
     "2026-06-13"
   ],
-  "microsoft/markitdown": [
-    "2026-06-13"
-  ],
-  "microsoft/onnxruntime": [
+  "microsoft/vscode": [
     "2026-06-13"
   ],
   "deepseek-ai/FlashMLA": [
     "2026-06-13"
   ],
   "modelcontextprotocol/typescript-sdk": [
+    "2026-06-13"
+  ],
+  "LMCache/LMCache": [
     "2026-06-13"
   ]
 }
