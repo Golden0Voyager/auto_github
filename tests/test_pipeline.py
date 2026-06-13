@@ -221,9 +221,10 @@ class TestMockTranslations:
 
     def test_translation_has_required_sections(self):
         for name, translation in MOCK_TRANSLATIONS.items():
-            assert "### 核心解决的工程痛点" in translation
-            assert "### 底层架构与工程设计" in translation
-            assert "### 极客实战与工作流落地" in translation
+            assert "### 要解决的核心痛点" in translation
+            assert "### 设计巧思与架构取舍" in translation
+            assert "### 工程启示与可迁移经验" in translation
+            assert "### 关联生态与延展阅读" in translation
 
 
 # ===================================================================
@@ -403,14 +404,21 @@ class TestStageSummarizeAndReflectMock:
             assert isinstance(r["refined_summary"], str)
             assert len(r["refined_summary"]) > 0
 
-    def test_mock_summary_includes_persona(self, pipeline_config, sample_analyzed_repos):
-        """Mock summaries should reference the persona."""
+    def test_mock_summary_uses_preseeded_or_stub(self, pipeline_config, sample_analyzed_repos):
+        """Known repos get MOCK_TRANSLATIONS content; unknown get stub."""
         client = MagicMock()
         pipeline = CurationPipeline(pipeline_config, client, persona_key="advanced")
         pipeline.use_mock = True
         result = pipeline._stage_summarize_and_reflect(sample_analyzed_repos)
         for r in result:
-            assert pipeline.current_persona["name"] in r["refined_summary"]
+            assert "refined_summary" in r
+            assert isinstance(r["refined_summary"], str)
+            assert len(r["refined_summary"]) > 0
+        # Known repo gets pre-authored Chinese; unknown repo gets English stub
+        known_summary = next(r["refined_summary"] for r in result if r["full_name"] == "deepseek-ai/DeepSeek-V3")
+        assert "要解决的核心痛点" in known_summary
+        unknown_summary = next(r["refined_summary"] for r in result if r["full_name"] == "lowstars/tiny-tool")
+        assert "Core Pain Point Solved" in unknown_summary
 
 
 class TestStageTranslateMock:
@@ -457,7 +465,7 @@ class TestStageTranslateMock:
             "language": "Go",
         }]
         result = pipeline._stage_translate(repos)
-        assert "### 核心解决的工程痛点" in result[0]["chinese_summary"]
+        assert result[0]["chinese_summary"] == "English summary."
 
 
 class TestPipelineRunMock:
