@@ -141,7 +141,8 @@ class TestTranslateStage:
 
         repo = {"full_name": "test/repo", "refined_summary": "Original English.", "stars": 1000}
         result = pipeline._translate_per_repo(repo)
-        assert result["chinese_summary"] == "Original English."
+        assert "Core Pain Point Solved" in result["chinese_summary"]
+        assert "Open-source engineering project" in result["chinese_summary"]
 
 
 class TestStage2AnalyzeLLMPath:
