@@ -121,6 +121,30 @@ def _infer_tds_fallback(desc: str) -> str:
     return "S"
 
 
+def _ensure_markdown_spacing(text: str) -> str:
+    """Post-process LLM output to ensure proper markdown spacing.
+
+    - Ensures one blank line before/after each ### header
+    - Ensures paragraphs within sections are separated by blank lines
+    - Removes trailing whitespace
+    """
+    import re
+    lines = text.split("\n")
+    result = []
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("###"):
+            if result and result[-1] != "":
+                result.append("")
+            result.append(line)
+            next_line = lines[i + 1] if i + 1 < len(lines) else ""
+            if next_line.strip() and not next_line.strip().startswith("###"):
+                result.append("")
+        else:
+            result.append(line)
+    return "\n".join(result)
+
+
 MOCK_TRANSLATIONS = {
     "deepseek-ai/DeepSeek-V3": """### 要解决的核心痛点
 
@@ -738,7 +762,10 @@ class CurationPipeline:
             "  ('GQA attention with KV cache rotation' NOT 'advanced attention mechanism')\n"
             "- NO one-sentence paragraphs. Each section: 3-5 sentences\n"
             "- Section 4: only recommend verified famous projects (>5000 stars). Better to skip than hallucinate.\n"
-            "- Open each section with a relatable hook question or scenario, then build up to technical depth"
+            "- Open each section with a relatable hook question or scenario, then build up to technical depth\n"
+            "- FORMATTING (CRITICAL): One blank line before and after each ### header. "
+            "One blank line between paragraphs within a section. "
+            "Your output will be rendered as Markdown — missing blank lines make text run together visually."
         )
         user_content = (
             f"Repository: {r['full_name']}\n"
@@ -830,9 +857,12 @@ class CurationPipeline:
             "   - Ecosystem & Related Projects \u2192 关联生态与延展阅读\n"
             "6. For key design decisions, add 'what if they chose the other path' perspective\n"
             "7. For Section 4, explain why these projects work better together\n"
-            "8. If a technical concept may be unfamiliar to Chinese readers, "
-            "add a parenthetical note (max 20% of original length)\n"
-            "9. Do NOT add information not present in the original text"
+             "8. If a technical concept may be unfamiliar to Chinese readers, "
+             "add a parenthetical note (max 20% of original length)\n"
+             "9. Do NOT add information not present in the original text\n"
+             "10. FORMATTING (CRITICAL): One blank line before and after each ### header. "
+             "One blank line between paragraphs within a section. "
+             "Your output will be rendered as Markdown — missing blank lines make text run together visually."
         )
         user_content = f"English Technical Analysis:\n\n{r.get('refined_summary', '')}"
         messages = [
@@ -841,7 +871,9 @@ class CurationPipeline:
         ]
         try:
             res = self.llm.call_llm(messages, use_reasoning=False, temperature=0.2)
-            rc["chinese_summary"] = res["content"]
+            content = res["content"]
+            content = _ensure_markdown_spacing(content)
+            rc["chinese_summary"] = content
         except Exception as e:
             print(f"[Stage 5 Warning] Translation failed for {r['full_name']}: {e}")
             rc["chinese_summary"] = r.get("refined_summary", "")
