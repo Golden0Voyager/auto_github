@@ -135,20 +135,20 @@ jobs:
         
         # Switch to auto-docs orphan branch (preserves only reports/ on push)
         git fetch origin auto-docs 2>/dev/null || true
-        git checkout -B _docs origin/auto-docs 2>/dev/null || git checkout --orphan _docs
-        
+        git checkout -f -B _docs origin/auto-docs 2>/dev/null || git checkout --orphan _docs
+
         # Replace report files
         rm -rf reports/
         mkdir -p reports
         cp -r /tmp/auto-docs-save/reports/* reports/
         rm -rf /tmp/auto-docs-save
-        
-        git add -A reports/
+
+        git add reports/
         if git diff --cached --quiet; then
           echo "No changes to commit; skipping."
           exit 0
         fi
-        
+
         git commit -m "docs: auto-commit daily github curation report logs [skip ci]"
-        git push origin _docs:auto-docs
+        git push --force origin _docs:auto-docs
         echo "Successfully pushed daily reports to auto-docs (orphan) branch."
