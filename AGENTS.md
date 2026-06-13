@@ -75,21 +75,19 @@ python src/main.py --since weekly --persona advanced
   因此 `python src/main.py` 必须在仓库根运行，不要 `cd src && python main.py`。
 - **CLI 选项**：`--since {daily,weekly,monthly}`、`--persona {beginner,intermediate,advanced}`、
   `--mock`、`--feishu/--slack/--discord <webhook>`（覆盖 config/env）。
-- **必填环境变量只有 1 个**：`SENSENOVA_API_KEY`（`sk-...`）。
+- **必填环境变量只有 1 个**：`OPENROUTER_API_KEY`（老配置 `SENSENOVA_API_KEY` 仍兼容）。
   其余 `FEISHU_WEBHOOK_URL` / `SLACK_WEBHOOK_URL` / `DISCORD_WEBHOOK_URL` / `GITHUB_TOKEN` 都是可选。
 - `python-dotenv` 通过 `load_dotenv()`（main.py:56）从 CWD 加载 `.env`。
 
 ### LLM 引擎（容易混淆）
 
-- **唯一活跃 provider = sensenova**，模型统一是 `sensenova-6.7-flash-lite`
+- **活跃 provider = openrouter**，模型是 `nvidia/nemotron-3-ultra-550b-a55b:free`
   （`config.yaml` 里 `model_v3` 和 `model_r1` 是同一字符串）。
-- **DeepSeek-R1 已下线** —— `llm.py:46-48` 注释明示：原 R1 的 `reasoning_content`
-  思考链不再返回。`call_llm(..., use_reasoning=True)` 仍可调用，但实际拿到的是 flash-lite 的
-  普通 `content`，不是真推理链。Stage 3+4 的"反思"效果来自 prompt 约束，不再来自 R1。
-- `sensenova-6.7-flash-lite` Token Plan 端点是 `https://token.sensenova.cn/v1`（**不是**
-  `api.sensenova.cn`），默认硬编码在 `config.py:70`。
-- 429 限流由 `LLMClient.call_llm` 自动指数退避（最多 5 次），`rate_limit_delay: 2.0s`
-  在每次成功调用后还会睡 `delay/2`，是节流大头。
+- OpenRouter 兼容 OpenAI SDK 格式，通过 `OPENROUTER_API_KEY` 环境变量配置。
+- **节流配置**：`rate_limit_delay: 4.0s`、`max_retries: 8`、`backoff_factor: 3.0`，
+  适配 free tier 的限流特点。
+- 429 限流时自动指数退避（最多 8 次）。`rate_limit_delay/2` 的冷却时间在每次
+  成功调用后还会生效，是节流大头。
 
 ### LLM 调用次数（T2 节流后）
 

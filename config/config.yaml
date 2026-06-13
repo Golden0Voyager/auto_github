@@ -48,15 +48,14 @@ github:
   max_org_repos: 5
 
 # AI Settings & Default Model Options
-# Token Plan 免费公测，详见 docs/api/sensenova-token-plan-usage.md
 ai:
-  default_provider: sensenova  # Options: sensenova, openai, gemini
-  model_v3: sensenova-6.7-flash-lite   # For Crawl/Analyze/Summarize/Translate/Layout
-  model_r1: sensenova-6.7-flash-lite   # For Reflect (R1 已下线，统一使用 flash-lite)
+  default_provider: openrouter  # Options: sensenova, openai, gemini, openrouter
+  model_v3: nvidia/nemotron-3-ultra-550b-a55b:free
+  model_r1: nvidia/nemotron-3-ultra-550b-a55b:free
   temperature: 0.3
-  max_tokens: 4096
-  # Rate limit backup delay (seconds between API calls to prevent 429 RPM/QPS limits)
-  rate_limit_delay: 2.0
+  max_tokens: 8192
+  # Rate limit delay (seconds between API calls to prevent 429 on free tier)
+  rate_limit_delay: 4.0
 
 # 高星项目去重配置（节省算力 + 给新兴项目留展位）
 dedup:

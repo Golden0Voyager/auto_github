@@ -14,13 +14,12 @@ class GitHubConfig(BaseModel):
     max_org_repos: int = 5
 
 class AIConfig(BaseModel):
-    default_provider: str = "sensenova"
-    # Token Plan 端点 + sensenova-6.7-flash-lite，详见 docs/api/sensenova-token-plan-usage.md
-    model_v3: str = "sensenova-6.7-flash-lite"
-    model_r1: str = "sensenova-6.7-flash-lite"
+    default_provider: str = "openrouter"
+    model_v3: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
+    model_r1: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
     temperature: float = 0.3
-    max_tokens: int = 4096
-    rate_limit_delay: float = 2.0
+    max_tokens: int = 8192
+    rate_limit_delay: float = 4.0
     api_key: Optional[str] = None
     base_url: Optional[str] = None
 
@@ -82,14 +81,16 @@ def load_config() -> AppConfig:
     config = AppConfig(**yaml_data)
     
     # Override AI API details from Env
-    # Support multiple names for flexible integration
     sensenova_key = os.getenv("SENSENOVA_API_KEY")
     openai_key = os.getenv("OPENAI_API_KEY")
     gemini_key = os.getenv("GEMINI_API_KEY")
+    openrouter_key = os.getenv("OPENROUTER_API_KEY")
     
-    if config.ai.default_provider == "sensenova":
+    if config.ai.default_provider == "openrouter":
+        config.ai.api_key = openrouter_key or openai_key
+        config.ai.base_url = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+    elif config.ai.default_provider == "sensenova":
         config.ai.api_key = sensenova_key or openai_key
-        # Token Plan 端点：https://token.sensenova.cn/v1（注意：不是 api.sensenova.cn）
         config.ai.base_url = os.getenv("SENSENOVA_BASE_URL", "https://token.sensenova.cn/v1")
     elif config.ai.default_provider == "gemini":
         config.ai.api_key = gemini_key

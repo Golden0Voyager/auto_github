@@ -55,8 +55,8 @@ class LLMClient:
         use_reasoning: bool = False,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        retries: int = 5,
-        backoff_factor: float = 2.0,
+        retries: int = 8,
+        backoff_factor: float = 3.0,
     ) -> Dict[str, Any]:
         """Calls the LLM with fallback support.
 
