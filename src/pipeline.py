@@ -775,6 +775,19 @@ class CurationPipeline:
             f"Explore related repositories via the project's dependency graph and GitHub Topics page."
         )
 
+    def _chinese_stub(self, r: Dict[str, Any]) -> str:
+        """Chinese fallback stub used when Stage 5 translation fails."""
+        desc = r.get("description", "开源工程项目") or "开源工程项目"
+        return (
+            f"### 要解决的核心痛点\n{desc}\n\n"
+            f"### 设计巧思与架构取舍\n"
+            f"标准实现，社区驱动的设计决策。本轮分析暂由兜底策略生成，待后续迭代完善。\n\n"
+            f"### 工程启示与可迁移经验\n"
+            f"请参考项目 README 和 Issue Tracker 获取工程讨论详情。\n\n"
+            f"### 关联生态与延展阅读\n"
+            f"通过依赖关系图和 GitHub Topics 页面探索相关生态项目。"
+        )
+
     def _stage_translate(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Stage 5: Per-repo high-fidelity translation to Chinese.
 
@@ -808,7 +821,7 @@ class CurationPipeline:
         summary = (r.get("refined_summary", "") or "").strip()
         if len(summary) < 50:
             print(f"  [Stage 5 Skip] {r['full_name']}: refined_summary too short ({len(summary)} chars), using stub")
-            rc["chinese_summary"] = self._summarize_reflect_stub(r)
+            rc["chinese_summary"] = self._chinese_stub(r)
             return rc
         system_prompt = (
             "You are a senior tech media writer (style: Founder Park / 42HOW).\n"
@@ -845,7 +858,7 @@ class CurationPipeline:
             content = (res.get("content") or "").strip()
             if not content:
                 print(f"  [Stage 5 Warning] {r['full_name']}: LLM returned empty content, using stub")
-                rc["chinese_summary"] = self._summarize_reflect_stub(r)
+                rc["chinese_summary"] = self._chinese_stub(r)
             else:
                 content = _ensure_markdown_spacing(content)
                 rc["chinese_summary"] = content
