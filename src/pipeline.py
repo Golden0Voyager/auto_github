@@ -1,10 +1,9 @@
-import os
 import re
 import json
 import yaml
 import time
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 from src.config import AppConfig
 from src.crawler import GitHubCrawler
 from src.llm import LLMClient
@@ -12,6 +11,9 @@ from src.dedup import RepoHistoryTracker
 
 # Base Directory
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+RATING_ORDER = {"S": 0, "A": 1, "B": 2, "C": 3}
 
 
 TAG_KEYWORDS = {
@@ -119,7 +121,6 @@ def _infer_tds_fallback(desc: str) -> str:
 
 
 def _ensure_markdown_spacing(text: str) -> str:
-    import re
     lines = text.split("\n")
     result = []
     for i, line in enumerate(lines):
@@ -393,8 +394,6 @@ class CurationPipeline:
         )
         return result
 
-    # Note: _infer_tds removed — use module-level _infer_tds_fallback() instead.
-
     def run(self, since: str = "daily", use_mock: bool = False) -> Dict[str, Any]:
         """Runs the entire 6-stage pipeline.
         
@@ -583,9 +582,8 @@ class CurationPipeline:
                 rc["selection_reason"] = reasons[i % len(reasons)]
                 rc["technical_depth"] = _infer_tds_fallback(rc.get("description", "") or "")
                 analyzed_repos.append(rc)
-            # Sort curated repos primarily by rating (S > A > B > C) and secondarily by star count descending (Plan C)
-            rating_order = {"S": 0, "A": 1, "B": 2, "C": 3}
-            analyzed_repos.sort(key=lambda x: (rating_order.get(x.get("rating", "B"), 4), -x.get("stars", 0)))
+            # Sort curated repos primarily by rating (S > A > B > C) and secondarily by star count descending
+            analyzed_repos.sort(key=lambda x: (RATING_ORDER.get(x.get("rating", "B"), 4), -x.get("stars", 0)))
             return analyzed_repos
 
         # Prepare list of repos for LLM to review in batch to save tokens and avoid 429
@@ -615,16 +613,11 @@ class CurationPipeline:
             "   - 'B': Interesting utility, good developer ergonomics, solid experiment.\n"
             "   - 'C': Moderate interest but marginally relevant.\n"
             "4. Tags: Add 2-3 specific technical hashtags (e.g. #Agent, #RAG, #MoE, #MLA, #ComfyUI, #Vibecoding, #Telemetry).\n"
-            "5. Technical Depth (T/E/S): Classify each selected repo's engineering depth:\n"
-            "   - T (Technical): Core architecture innovation, system-level breakthrough, custom CUDA/Metal, novel algorithm, compiler/runtime engineering\n"
-            "   - E (Engineering): Solid tooling, well-crafted framework, practical workflow orchestration, Apple ecosystem tools (Raycast, SwiftUI, MLX, CoreML), dev productivity\n"
-            "   - S (Standard): Configuration, documentation, wrapper, basic tutorial\n"
-            "   If unsure, default to E.\n\n"
-            "6. reason_for_selection: Keep this VERY SHORT — 1-2 sentences maximum. "
+            "5. reason_for_selection: Keep this VERY SHORT — 1-2 sentences maximum. "
             "A brief explanation of why this repo matters. Do NOT repeat the full analysis here.\n\n"
             "Return a strictly valid JSON array containing an entry for EVERY provided repository. "
             "Each object must have exactly these keys: "
-            "['index', 'full_name', 'rating', 'tags', 'reason_for_selection', 'technical_depth']. "
+            "['index', 'full_name', 'rating', 'tags', 'reason_for_selection']. "
             "Do not wrap with text outside the JSON block."
         )
         
@@ -651,21 +644,10 @@ class CurationPipeline:
                     orig_repo["rating"] = item.get("rating", "B")
                     orig_repo["tags"] = item.get("tags", [])
                     orig_repo["selection_reason"] = (item.get("reason_for_selection", "") or "")[:200]
-                    orig_repo["technical_depth"] = item.get("technical_depth", "E")
                     analyzed_repos.append(orig_repo)
 
-            # TDS 规则引擎覆盖（sanity check on LLM output）
-            for r in analyzed_repos:
-                desc = (r.get("description", "") or "").lower()
-                rule_tds = _infer_tds_fallback(desc)
-                llm_tds = r.get("technical_depth", "E")
-                if rule_tds != llm_tds:
-                    print(f"  [TDS Override] {r['full_name']}: LLM={llm_tds} → Rule={rule_tds}")
-                    r["technical_depth"] = rule_tds
-
-            # Sort curated repos primarily by rating (S > A > B > C) and secondarily by star count descending (Plan C)
-            rating_order = {"S": 0, "A": 1, "B": 2, "C": 3}
-            analyzed_repos.sort(key=lambda x: (rating_order.get(x.get("rating", "B"), 4), -x.get("stars", 0)))
+            # Sort curated repos primarily by rating (S > A > B > C) and secondarily by star count descending
+            analyzed_repos.sort(key=lambda x: (RATING_ORDER.get(x.get("rating", "B"), 4), -x.get("stars", 0)))
             
             print(f"[Stage 2 Done] Selected {len(analyzed_repos)}/{len(repos)} repositories based on persona filtering.")
             for r in analyzed_repos:
