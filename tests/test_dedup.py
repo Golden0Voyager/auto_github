@@ -206,6 +206,98 @@ class TestFilterActive:
         assert active == []
         assert cooled == []
 
+    # ------------------------------------------------------------------
+    # first_seen_map tests
+    # ------------------------------------------------------------------
+
+    def test_first_seen_map_new_repo_is_true(self, dedup_config_with_custom_paths):
+        """A new repo (not in history) should be marked first_seen=True."""
+        tracker = RepoHistoryTracker(dedup_config_with_custom_paths)
+        repos = [_make_repo("brand/new-repo", stars=500)]
+        _, _, first_seen_map = tracker.filter_active(repos)
+        assert first_seen_map.get("brand/new-repo") is True
+
+    def test_first_seen_map_existing_repo_is_false(self, tmp_path):
+        """A repo already in history should be marked first_seen=False."""
+        history = {"existing/repo": ["2026-01-01", "2026-06-01"]}
+        hist_path = tmp_path / "repo_history.json"
+        hist_path.write_text(json.dumps(history), encoding="utf-8")
+        cfg = AppConfig(
+            dedup=DedupConfig(
+                history_file=str(hist_path),
+                archive_file=str(tmp_path / "high_star_archive.json"),
+            )
+        )
+        tracker = RepoHistoryTracker(cfg)
+        repos = [_make_repo("existing/repo", stars=500)]
+        _, _, first_seen_map = tracker.filter_active(repos)
+        assert first_seen_map.get("existing/repo") is False
+
+    def test_first_seen_map_mixed_repos(self, dedup_config_with_custom_paths):
+        """With a mix of new and existing repos, first_seen_map should reflect each."""
+        tracker = RepoHistoryTracker(dedup_config_with_custom_paths)
+        tracker._history = {"old/repo": ["2026-01-01"], "also-old/repo": ["2026-05-01"]}
+        repos = [
+            _make_repo("old/repo", stars=500),
+            _make_repo("new/repo", stars=500),
+            _make_repo("also-old/repo", stars=500),
+        ]
+        _, _, first_seen_map = tracker.filter_active(repos)
+        assert first_seen_map["old/repo"] is False
+        assert first_seen_map["new/repo"] is True
+        assert first_seen_map["also-old/repo"] is False
+
+    def test_first_seen_map_empty_full_name(self, dedup_config_with_custom_paths):
+        """Repos with empty full_name should be marked first_seen=False (not in history)."""
+        tracker = RepoHistoryTracker(dedup_config_with_custom_paths)
+        repos = [{"full_name": ""}]
+        _, _, first_seen_map = tracker.filter_active(repos)
+        assert first_seen_map.get("") is True  # empty string not in history
+
+    def test_first_seen_map_all_new_repos(self, dedup_config_with_custom_paths):
+        """When all repos are new, first_seen_map should be all True."""
+        tracker = RepoHistoryTracker(dedup_config_with_custom_paths)
+        repos = [_make_repo(f"fresh{i}/repo", stars=500) for i in range(5)]
+        _, _, first_seen_map = tracker.filter_active(repos)
+        assert all(first_seen_map.values())
+        assert len(first_seen_map) == 5
+
+    def test_first_seen_map_not_affected_by_cooling(self, tmp_path):
+        """A cooled repo should still have correct first_seen marking."""
+        today = _today()
+        cooldown_future = (datetime.strptime(today, "%Y-%m-%d") + timedelta(days=10)).strftime("%Y-%m-%d")
+        history = {"cooled/repo": ["2026-01-01", "2026-06-01"]}
+        archive = {"cooled/repo": {
+            "first_seen": "2026-01-01", "archived_at": "2026-06-01",
+            "cooldown_until": cooldown_future, "stars": 50000, "occurrences": 3,
+        }}
+        hist_path = tmp_path / "repo_history.json"
+        arch_path = tmp_path / "high_star_archive.json"
+        hist_path.write_text(json.dumps(history), encoding="utf-8")
+        arch_path.write_text(json.dumps(archive), encoding="utf-8")
+        cfg = AppConfig(
+            dedup=DedupConfig(
+                history_file=str(hist_path),
+                archive_file=str(arch_path),
+            )
+        )
+        tracker = RepoHistoryTracker(cfg)
+        repos = [_make_repo("cooled/repo", stars=50000), _make_repo("new/repo", stars=500)]
+        _, _, first_seen_map = tracker.filter_active(repos)
+        # Cooled repo is in history → first_seen=False
+        assert first_seen_map.get("cooled/repo") is False
+        # New repo → first_seen=True
+        assert first_seen_map.get("new/repo") is True
+
+    def test_first_seen_map_type(self, dedup_config_with_custom_paths):
+        """first_seen_map should be a dict with string keys and bool values."""
+        tracker = RepoHistoryTracker(dedup_config_with_custom_paths)
+        repos = [_make_repo("test/repo", stars=500)]
+        _, _, first_seen_map = tracker.filter_active(repos)
+        assert isinstance(first_seen_map, dict)
+        assert all(isinstance(k, str) for k in first_seen_map)
+        assert all(isinstance(v, bool) for v in first_seen_map.values())
+
 
 class TestRecordOccurrences:
     """Test the record_occurrences method."""

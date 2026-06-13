@@ -118,7 +118,7 @@ jobs:
         echo "Running pipeline with timeframe=$TIMEFRAME and persona=$PERSONA..."
         python src/main.py --since "$TIMEFRAME" --persona "$PERSONA"
 
-    - name: Commit and Push Daily Report Logs
+    - name: Commit and Push Daily Report Logs to reports branch
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -128,11 +128,14 @@ jobs:
           git add reports/
           git commit -m "docs: auto-commit daily github curation report logs [skip ci]"
           
-          # Use rebase and retries to handle push race conditions
+          # Ensure the reports branch exists on remote (create it if this is first run)
+          git fetch origin reports 2>/dev/null || git push origin HEAD:reports --force
+          
+          # Push to reports branch instead of main to keep main history clean
           for attempt in 1 2 3; do
-            git pull --rebase -X theirs origin main
-            if git push origin HEAD:main; then
-              echo "Successfully pushed daily reports to GitHub repo."
+            git pull --rebase -X theirs origin reports || true
+            if git push origin HEAD:reports; then
+              echo "Successfully pushed daily reports to reports branch."
               exit 0
             fi
             echo "Push failed due to branch race; retrying in 5 seconds..."
