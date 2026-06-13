@@ -107,22 +107,24 @@ class RepoHistoryTracker:
             return False
         return _parse_date(_today()) < until
 
-    def filter_active(self, repos: List[Dict]) -> Tuple[List[Dict], List[Dict]]:
+    def filter_active(self, repos: List[Dict]) -> Tuple[List[Dict], List[Dict], Dict[str, bool]]:
         """从原始抓取结果中过滤掉仍在冷却期内的存档项目。
 
         Returns:
-            (active_repos, cooled_repos) —— active 用于进入策展管线；
-            cooled 仅用于日志/统计。
+            (active_repos, cooled_repos, first_seen_map) —— active 用于进入策展管线；
+            cooled 仅用于日志/统计；first_seen_map 标记每个 full_name 是否首次出现。
         """
         active: List[Dict] = []
         cooled: List[Dict] = []
+        first_seen_map: Dict[str, bool] = {}
         for r in repos:
             name = r.get("full_name", "")
             if self._cooldown_active(name):
                 cooled.append(r)
             else:
                 active.append(r)
-        return active, cooled
+            first_seen_map[name] = name not in self._history
+        return active, cooled, first_seen_map
 
     # ------------------------------------------------------------------
     # 写入 API

@@ -33,6 +33,14 @@ class DedupConfig(BaseModel):
     history_file: str = "reports/repo_history.json"
     archive_file: str = "reports/high_star_archive.json"
 
+class BucketAllocationConfig(BaseModel):
+    """三桶分配引擎配置：Early Bird / High-Star Hot / Deep Dive 按配额分配。"""
+    enabled: bool = True
+    total_slots: int = 9
+    early_bird: int = 3
+    high_star_hot: int = 3
+    deep_dive: int = 3
+
 class Stage2PreFilterConfig(BaseModel):
     """Stage 2 LLM 批处理前的廉价预筛。
 
@@ -57,6 +65,7 @@ class AppConfig(BaseModel):
     github: GitHubConfig = Field(default_factory=GitHubConfig)
     ai: AIConfig = Field(default_factory=AIConfig)
     dedup: DedupConfig = Field(default_factory=DedupConfig)
+    bucket_allocation: BucketAllocationConfig = Field(default_factory=BucketAllocationConfig)
     stage2_pre_filter: Stage2PreFilterConfig = Field(default_factory=Stage2PreFilterConfig)
     notifications: NotificationConfig = Field(default_factory=NotificationConfig)
 

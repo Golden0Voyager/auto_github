@@ -98,6 +98,29 @@ def _infer_rating_fallback(repo: Dict[str, Any]) -> str:
     return "B"
 
 
+def _infer_tds_fallback(desc: str) -> str:
+    """规则引擎判定 Technical Depth Score (T/E/S)。"""
+    desc_lower = desc.lower()
+    T_KEYWORDS = [
+        "mla", "moe", "attention", "cuda kernel", "kv cache",
+        "compiler", "runtime", "metal", "custom shader",
+        "new language", "database engine", "protocol",
+    ]
+    E_KEYWORDS = [
+        "agent", "rag", "mcp", "inference", "optimiz",
+        "cli", "raycast", "swiftui", "core ml", "mlx",
+        "comfyui", "workflow", "automation", "xcode",
+        "mach-o", "ipa", "window manager",
+    ]
+    for kw in T_KEYWORDS:
+        if kw in desc_lower:
+            return "T"
+    for kw in E_KEYWORDS:
+        if kw in desc_lower:
+            return "E"
+    return "S"
+
+
 MOCK_TRANSLATIONS = {
     "deepseek-ai/DeepSeek-V3": """### 要解决的核心痛点
 
@@ -255,17 +278,127 @@ class CurationPipeline:
         )
 
     def _prefilter_top_n(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """按 stars 降序截断长尾（零 token 成本，作为 bucket 引擎关闭时的回退）。"""
         cfg = self.config.stage2_pre_filter
         if not cfg.enabled or len(repos) <= cfg.max_repos:
             return repos
         sorted_repos = sorted(repos, key=lambda r: r.get("stars", 0), reverse=True)
         kept = sorted_repos[:cfg.max_repos]
-        dropped = len(repos) - len(kept)
         print(
-            f"[Pre-filter] Stage 2 输入预筛: {len(repos)} → {len(kept)} repo "
-            f"(按 stars 降序砍掉 {dropped} 个长尾，max_repos={cfg.max_repos})"
+            f"[Pre-filter] {len(repos)} → {len(kept)} repo "
+            f"(bucket engine 关闭时的星标回退)"
         )
         return kept
+
+    def _bucket_allocate(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """三桶分配引擎：按 Early Bird / High-Star Hot / Deep Dive 配额选出 repo。
+
+        取代旧的 _prefilter_top_n()，在 Stage 2 之前运行。
+        注意：repos 中每个 dict 应已有 'is_first_seen' 字段（由 Stage 1.5 注入）。
+        """
+        cfg = self.config.bucket_allocation
+        if not cfg.enabled:
+            return self._prefilter_top_n(repos)
+
+        if len(repos) <= cfg.total_slots:
+            return repos
+
+        early_bird_pool: List[Dict] = []
+        high_star_pool: List[Dict] = []
+        all_remaining: List[Dict] = []
+
+        for r in repos:
+            name = r.get("full_name", "")
+            stars = r.get("stars", 0) or 0
+            period_stars = r.get("period_stars", "")
+            period_num = 0
+            if period_stars:
+                m = re.search(r"(\d[\d,]*)", period_stars)
+                if m:
+                    try:
+                        period_num = int(m.group(1).replace(",", ""))
+                    except ValueError:
+                        pass
+            is_first_seen = r.get("is_first_seen", False)
+
+            desc = (r.get("description", "") or "").lower()
+            tds = self._infer_tds(desc)
+
+            is_early = stars < 3000 or (stars < 5000 and is_first_seen)
+            is_high = stars >= 10000 or period_num >= 500
+
+            if is_early:
+                early_bird_pool.append(r)
+            elif is_high:
+                high_star_pool.append(r)
+            else:
+                all_remaining.append(r)
+
+            r["tds"] = tds
+            r["_bucket"] = "early_bird" if is_early else ("high_star" if is_high else "deep_dive")
+
+        def take_from(pool, n):
+            pool.sort(key=lambda x: -x.get("stars", 0))
+            return pool[:n], pool[n:]
+
+        result = []
+        eb_taken, eb_rest = take_from(early_bird_pool, cfg.early_bird)
+        hs_taken, hs_rest = take_from(high_star_pool, cfg.high_star_hot)
+
+        leftover = eb_rest + hs_rest + all_remaining
+        tds_order = {"T": 0, "E": 1, "S": 2}
+        leftover.sort(key=lambda x: (tds_order.get(x.get("tds", "S"), 3), -x.get("stars", 0)))
+        dd_taken = leftover[:cfg.deep_dive]
+
+        result = eb_taken + hs_taken + dd_taken
+
+        if len(result) < cfg.total_slots:
+            remaining = leftover[cfg.deep_dive:]
+            remaining.sort(key=lambda x: -x.get("stars", 0))
+            needed = cfg.total_slots - len(result)
+            result.extend(remaining[:needed])
+
+        if len(result) > cfg.total_slots:
+            result.sort(
+                key=lambda x: (
+                    0 if x.get("_bucket") == "early_bird" else
+                    1 if x.get("_bucket") == "high_star" else 2,
+                    tds_order.get(x.get("tds", "S"), 3),
+                    -x.get("stars", 0),
+                )
+            )
+            result = result[:cfg.total_slots]
+
+        dropped = len(repos) - len(result)
+        print(
+            f"[Bucket Alloc] {len(repos)} → {len(result)} repo "
+            f"(早鸟:{len(eb_taken)} 高星:{len(hs_taken)} 深潜:{len(dd_taken)}"
+            f" 淘汰:{dropped})"
+        )
+        return result
+
+    @staticmethod
+    def _infer_tds(desc: str) -> str:
+        """规则引擎判定 Technical Depth Score (T/E/S)。"""
+        desc_lower = desc.lower()
+        T_KEYWORDS = [
+            "mla", "moe", "attention", "cuda kernel", "kv cache",
+            "compiler", "runtime", "metal", "custom shader",
+            "new language", "database engine", "protocol",
+        ]
+        E_KEYWORDS = [
+            "agent", "rag", "mcp", "inference", "optimiz",
+            "cli", "raycast", "swiftui", "core ml", "mlx",
+            "comfyui", "workflow", "automation", "xcode",
+            "mach-o", "ipa", "window manager",
+        ]
+        for kw in T_KEYWORDS:
+            if kw in desc_lower:
+                return "T"
+        for kw in E_KEYWORDS:
+            if kw in desc_lower:
+                return "E"
+        return "S"
 
     def run(self, since: str = "daily", use_mock: bool = False) -> Dict[str, Any]:
         """Runs the entire 6-stage pipeline.
@@ -289,7 +422,9 @@ class CurationPipeline:
             return {}
 
         # --- Stage 1.5: Dedup (高星项目存档过滤) ---
-        active_repos, cooled_repos = self.dedup.filter_active(raw_repos)
+        active_repos, cooled_repos, first_seen_map = self.dedup.filter_active(raw_repos)
+        for r in active_repos:
+            r["is_first_seen"] = first_seen_map.get(r.get("full_name", ""), False)
         if cooled_repos:
             print(
                 f"[Dedup] 过滤掉 {len(cooled_repos)} 个处于 30 天冷却期的高🌟项目:"
@@ -311,10 +446,13 @@ class CurationPipeline:
                 "reports": {},
             }
 
-        # --- Stage 1.75: Pre-filter (按 stars 砍长尾，零 token 成本避免 Stage 2 撞 max_tokens) ---
-        active_repos = self._prefilter_top_n(active_repos)
+        # --- Stage 1.75: Bucket Allocation（取代旧的 Pre-filter）---
+        if self.config.bucket_allocation.enabled:
+            active_repos = self._bucket_allocate(active_repos)
+        else:
+            active_repos = self._prefilter_top_n(active_repos)
         if not active_repos:
-            print("[Pipeline Info] All repos filtered out by pre-filter. Aborting.")
+            print("[Pipeline Info] All repos filtered out by bucket allocation. Aborting.")
             return {
                 "meta": {
                     "timeframe": since,
@@ -448,6 +586,9 @@ class CurationPipeline:
                 rc["rating"] = ratings[i % len(ratings)]
                 rc["tags"] = tags_list[i % len(tags_list)]
                 rc["selection_reason"] = reasons[i % len(reasons)]
+                rc["technical_depth"] = _infer_tds_fallback(rc.get("description", "") or "")
+                rc["tds"] = "E"
+                rc["_bucket"] = "deep_dive"
                 analyzed_repos.append(rc)
             # Sort curated repos primarily by rating (S > A > B > C) and secondarily by star count descending (Plan C)
             rating_order = {"S": 0, "A": 1, "B": 2, "C": 3}
@@ -479,9 +620,14 @@ class CurationPipeline:
             "   - 'A': Highly practical, robust technical value, very relevant to the profile.\n"
             "   - 'B': Interesting utility, good developer ergonomics, solid experiment.\n"
             "   - 'C': Moderate interest but marginally relevant.\n"
-            "4. Tags: Add 2-3 specific technical hashtags (e.g. #Agent, #RAG, #MoE, #MLA, #ComfyUI, #Vibecoding, #Telemetry).\n\n"
-            "Return a strictly valid JSON array of selected objects containing exactly the following keys: "
-            "['index', 'full_name', 'rating', 'tags', 'reason_for_selection']. Do not wrap with text outside the JSON block."
+"4. Tags: Add 2-3 specific technical hashtags (e.g. #Agent, #RAG, #MoE, #MLA, #ComfyUI, #Vibecoding, #Telemetry).\n"
+             "5. Technical Depth (T/E/S): Classify each selected repo's engineering depth:\n"
+             "   - T (Technical): Core architecture innovation, system-level breakthrough, custom CUDA/Metal, novel algorithm, compiler/runtime engineering\n"
+             "   - E (Engineering): Solid tooling, well-crafted framework, practical workflow orchestration, Apple ecosystem tools (Raycast, SwiftUI, MLX, CoreML), dev productivity\n"
+             "   - S (Standard): Configuration, documentation, wrapper, basic tutorial\n"
+             "   If unsure, default to E.\n\n"
+             "Return a strictly valid JSON array of selected objects containing exactly the following keys: "
+             "['index', 'full_name', 'rating', 'tags', 'reason_for_selection', 'technical_depth']. Do not wrap with text outside the JSON block."
         )
         
         user_content = f"Here is the batch of repositories to analyze:\n\n{json.dumps(repos_summary, ensure_ascii=False, indent=2)}"
@@ -507,8 +653,18 @@ class CurationPipeline:
                     orig_repo["rating"] = item.get("rating", "B")
                     orig_repo["tags"] = item.get("tags", [])
                     orig_repo["selection_reason"] = item.get("reason_for_selection", "")
+                    orig_repo["technical_depth"] = item.get("technical_depth", "E")
                     analyzed_repos.append(orig_repo)
-                    
+
+            # TDS 规则引擎覆盖（sanity check on LLM output）
+            for r in analyzed_repos:
+                desc = (r.get("description", "") or "").lower()
+                rule_tds = _infer_tds_fallback(desc)
+                llm_tds = r.get("technical_depth", "E")
+                if rule_tds != llm_tds:
+                    print(f"  [TDS Override] {r['full_name']}: LLM={llm_tds} → Rule={rule_tds}")
+                    r["technical_depth"] = rule_tds
+
             # Sort curated repos primarily by rating (S > A > B > C) and secondarily by star count descending (Plan C)
             rating_order = {"S": 0, "A": 1, "B": 2, "C": 3}
             analyzed_repos.sort(key=lambda x: (rating_order.get(x.get("rating", "B"), 4), -x.get("stars", 0)))
@@ -527,6 +683,7 @@ class CurationPipeline:
                 rc["rating"] = _infer_rating_fallback(r)
                 rc["tags"] = _infer_tags_fallback(r)
                 rc["selection_reason"] = _infer_selection_reason_fallback(r)
+                rc["technical_depth"] = _infer_tds_fallback(r.get("description", "") or "")
                 fallback_repos.append(rc)
             return fallback_repos
 

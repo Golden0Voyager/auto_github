@@ -132,7 +132,7 @@ class TestFilterActive:
         """If no repos are in the archive, all are returned as active."""
         tracker = RepoHistoryTracker(dedup_config_with_custom_paths)
         repos = [_make_repo("owner/repo1"), _make_repo("owner/repo2")]
-        active, cooled = tracker.filter_active(repos)
+        active, cooled, _ = tracker.filter_active(repos)
         assert len(active) == 2
         assert len(cooled) == 0
 
@@ -160,7 +160,7 @@ class TestFilterActive:
         )
         tracker = RepoHistoryTracker(cfg)
         repos = [_make_repo("cooled/repo"), _make_repo("other/repo")]
-        active, cooled = tracker.filter_active(repos)
+        active, cooled, _ = tracker.filter_active(repos)
         assert len(active) == 1
         assert active[0]["full_name"] == "other/repo"
         assert len(cooled) == 1
@@ -187,7 +187,7 @@ class TestFilterActive:
         )
         tracker = RepoHistoryTracker(cfg)
         repos = [_make_repo("expired/repo")]
-        active, cooled = tracker.filter_active(repos)
+        active, cooled, _ = tracker.filter_active(repos)
         assert len(active) == 1
         assert len(cooled) == 0
 
@@ -195,14 +195,14 @@ class TestFilterActive:
         """Repos without full_name are not sent to cooled list."""
         tracker = RepoHistoryTracker(dedup_config_with_custom_paths)
         repos = [{"name": "no-full-name"}]
-        active, cooled = tracker.filter_active(repos)
+        active, cooled, _ = tracker.filter_active(repos)
         assert len(active) == 1
         assert len(cooled) == 0
 
     def test_empty_repo_list(self, dedup_config_with_custom_paths):
         """Empty repos list returns empty active and cooled."""
         tracker = RepoHistoryTracker(dedup_config_with_custom_paths)
-        active, cooled = tracker.filter_active([])
+        active, cooled, _ = tracker.filter_active([])
         assert active == []
         assert cooled == []
 

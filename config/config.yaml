@@ -85,3 +85,11 @@ notifications:
   local_report_dir: "./reports"
   # Save raw crawled data for transparency/debugging
   save_raw_data: true
+
+# 三桶分配引擎配置：Early Bird / High-Star Hot / Deep Dive 按配额分配
+bucket_allocation:
+  enabled: true
+  total_slots: 9
+  early_bird: 3
+  high_star_hot: 3
+  deep_dive: 3

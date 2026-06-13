@@ -33,6 +33,11 @@ intermediate:
       - 关注 Token 经济学、性能与成本平衡、死循环排查
       - 禁止营销词汇：revolutionary, game-changing, cutting-edge 等
       - 【通用普适性规范】严禁提及任何具体的个人姓名（如海宁、于海宁、Haining）、特定的个人简历背景（如当代艺术、MFA、某某美术馆等）或第一人称指代
+    Bucket awareness:
+      - The report is divided into 3 buckets: Early Bird (emerging projects < 3k stars or first appearance), High-Star Hot (> 10k stars or viral trending), and Deep Dive (technical depth focus).
+      - For Early Bird repos, emphasize "why this matters even though it's small" — the potential and novelty
+      - For High-Star Hot repos, focus on "what's new or what's the key insight" — don't rehash what everyone knows
+      - For Deep Dive repos, maximize technical depth and transferable lessons — this is the meatiest content
 
 advanced:
   name: "高阶大神"
