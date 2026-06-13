@@ -1,28 +1,51 @@
 # Target Personas & Prompts for AI Curation
+# Each persona defines a writing style and content focus for the 4-section analysis.
 
 beginner:
   name: "初阶入门者"
   description: "面向新手开发者、技术PM及AI爱好者。语言通俗易懂，重点放在「这个项目能为我提供什么现成工具或开箱即用的能力」，解释技术名词，避免复杂的数学公式或深奥架构。"
   prompt_focus: |
-    - 侧重于项目的实际应用场景（User Case）和快速上手指南。
-    - 过滤高深的技术实现细节，解释关键的 AI 术语（如 RAG、Agent 等）。
-    - 重点关注包含 WebUI、一键安装、简单 API 调用或即插即用功能的项目。
-    - 输出时使用亲切、易懂、鼓舞人心的风格。
+    Writing style: 像科技媒体资深博主由浅入深，用场景和问题开头勾起共鸣。
+    4-section structure for each repo:
+      - Core Pain Point Solved：用大白话讲"为什么你需要关心这个问题"，用生活化的类比降低理解门槛
+      - Design & Architectural Trade-offs：讲设计决策就行，不需要深挖底层原理；重点放在"这比之前的方案好在哪"
+      - Engineering Insights & Transferable Lessons：提炼一个"哦原来可以这样"的通用小技巧，让读者感觉学到了东西
+      - Ecosystem & Related Projects：推荐 2-3 个可以一起用的项目，讲清楚"组合起来能做什么"
+    Content rules:
+      - 解释所有技术术语（如 Agent = 能自主执行任务的 AI 程序）
+      - 强调 WebUI、一键安装、简单 API 调用等即插即用特性
+      - 语言亲切、易懂、鼓舞人心
+      - 【通用普适性规范】严禁提及个人姓名、个人背景或第一人称
 
 intermediate:
   name: "中阶实践者"
   description: "面向系统化 LLM 学习者、提示词工程师与 Vibecoding 极客。热衷于 Agent 工作流、ComfyUI 精细干预、本地 RAG 降噪、MCP 插件开发、以及日常 Telemetry 遥测。关注实用工程落地、API 性能以及如何通过微交互和低认知负荷设计人机协同系统。"
   prompt_focus: |
-    - 侧重于**工程可落地性、Agent 协作拓扑、自定义 RAG 索引分块优化、本地 MCP 服务开发、ComfyUI 流程控制/ControlNet 干预**。
-    - 特别关注开发效率工具（如 Claude Code, antigravity, rtk 等）的更新与优秀实践。
-    - 注重分析项目的**性能与成本平衡 (Token 经济学)**，提示如何避免冗余 Prompt 和死循环计算。
-    - 语言风格：专业极客范，融合“策展思维”（如工作流拓扑即空间动线、上下文控制即展位控制），注重排版美学与微交互。
-    - **【非常重要】通用普适性规范**：撰写内容必须保持客观、中立、普适。在输出时**绝对严禁**提及任何具体的个人姓名（如海宁、于海宁、Haining）、特定的个人简历背景（如当代艺术、MFA、某某美术馆等）或第一人称指代，所有建议、指南与极客落地场景均须面向“广大中阶 LLM 实践者与技术极客”，具有全网普适的工程参考价值。
+    Writing style: 像 Founder Park / 42HOW 的资深作者，开篇用具体问题切入，中间自然过渡到技术内核，不掉书袋但把原理讲透。
+    4-section structure for each repo:
+      - Core Pain Point Solved：揭示读者也踩过的坑——"现有的方案为什么不够好"，建立认知共振
+      - Design & Architectural Trade-offs：聚焦关键设计决策——为什么选 A 不选 B，权衡了什么。用"如果选了另一个方案会怎样"来展现深度
+      - Engineering Insights & Transferable Lessons：提炼跨项目可复用的模式/原则/教训——"这个思路不止适用于这个项目，你在设计 Agent 系统时也能用上"
+      - Ecosystem & Related Projects：推荐 2-3 个关联的高星项目（>5000 stars），说清楚"为什么这几个放一起用效果更好"
+    Content rules:
+      - 具体术语优先于抽象描述（"GQA attention with KV cache rotation" 而不是 "advanced attention mechanism"）
+      - 用比喻降低理解门槛但不幼稚
+      - 关注 Token 经济学、性能与成本平衡、死循环排查
+      - 禁止营销词汇：revolutionary, game-changing, cutting-edge 等
+      - 【通用普适性规范】严禁提及任何具体的个人姓名（如海宁、于海宁、Haining）、特定的个人简历背景（如当代艺术、MFA、某某美术馆等）或第一人称指代
 
 advanced:
   name: "高阶大神"
   description: "面向资深架构师、算法研究员和底层性能极客。专注大模型底层原理、MoE 架构优化、MLA (Multi-head Latent Attention) 技术、强化学习 (RLHF/DPO/PRO)、推理期树搜索 (MCTS/RMaxTS)、以及 CUDA 算力与系统吞吐优化。追求极致的学术硬核度。"
   prompt_focus: |
-    - 侧重于**模型架构底层创新、数学推导、推理计算效率优化（如 FlashAttention、MLA、KV Cache 压缩）、新型训练/微调/对齐算法**。
-    - 关注学术前沿论文的工程化复现（如 DeepSeek-V3/R1、AlphaFold 等）。
-    - 语言风格：严谨、高密度、学术性强。使用规范的算法词汇，深入探讨算力消耗与吞吐效率。
+    Writing style: 学术论文级别的严谨表达，用最小篇幅承载最大信息密度。直接进主题，不需要场景化铺垫。
+    4-section structure for each repo:
+      - Core Pain Point Solved：精确描述问题空间的数学/工程边界——在什么条件下这个问题会出现，传统方法的渐进复杂度是什么
+      - Design & Architectural Trade-offs：以公式/复杂度分析/算力消耗数据支撑设计选择。对比的基线是什么？在什么 trade-off 曲线上选择了这个点
+      - Engineering Insights & Transferable Lessons：提炼可迁移的底层优化范式——这个方案在更通用的意义上揭示了什么系统设计原则
+      - Ecosystem & Related Projects：推荐同领域的 2-3 个关键项目，说清楚它们在技术栈中的位置和互补关系
+    Content rules:
+      - 使用规范的算法词汇
+      - 深入探讨算力消耗与吞吐效率
+      - 严谨、高密度、学术性强
+      - 【通用普适性规范】严禁提及个人姓名、个人背景或第一人称
