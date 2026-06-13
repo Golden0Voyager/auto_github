@@ -18,10 +18,8 @@ on:
       - 'requirements.txt'
       - '.github/workflows/daily_trending.yml'
   schedule:
-    # Run every day at 02:00 UTC (10:00 AM Beijing/Shanghai time)
     - cron: '0 2 * * *'
   workflow_dispatch:
-    # Enable manual triggering from GitHub UI
     inputs:
       since:
         description: 'Timeframe to curate'
@@ -75,6 +73,7 @@ jobs:
           -v
 
   curate-and-notify:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     needs: [test]
     runs-on: ubuntu-latest
     permissions:
@@ -128,11 +127,11 @@ jobs:
           git add reports/
           git commit -m "docs: auto-commit daily github curation report logs [skip ci]"
           
-          # Use rebase and retries to handle push race conditions
+           # Push to auto-docs branch (dedicated branch for generated docs)
           for attempt in 1 2 3; do
-            git pull --rebase -X theirs origin main
-            if git push origin HEAD:main; then
-              echo "Successfully pushed daily reports to GitHub repo."
+            git pull --rebase -X theirs origin auto-docs
+            if git push origin HEAD:auto-docs; then
+              echo "Successfully pushed daily reports to auto-docs branch."
               exit 0
             fi
             echo "Push failed due to branch race; retrying in 5 seconds..."
