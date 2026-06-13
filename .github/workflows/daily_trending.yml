@@ -117,28 +117,38 @@ jobs:
         echo "Running pipeline with timeframe=$TIMEFRAME and persona=$PERSONA..."
         python src/main.py --since "$TIMEFRAME" --persona "$PERSONA"
 
-    - name: Commit and Push Daily Report Logs to auto-docs branch
+    - name: Push reports to auto-docs (orphan branch, no main contamination)
       run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        set -euo pipefail
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
         
         # Check if there are changes in reports/ directory to commit
-        if [ -d "reports" ] && [ -n "$(git status --porcelain reports/)" ]; then
-          git add reports/
-          git commit -m "docs: auto-commit daily github curation report logs [skip ci]"
-          
-          # Push to auto-docs branch (dedicated branch for generated docs)
-          for attempt in 1 2 3; do
-            git pull --rebase -X theirs origin auto-docs || true
-            if git push origin HEAD:auto-docs; then
-              echo "Successfully pushed daily reports to auto-docs branch."
-              exit 0
-            fi
-            echo "Push failed due to branch race; retrying in 5 seconds..."
-            sleep 5
-          done
-          echo "Push failed after 3 attempts."
-          exit 1
-        else
+        if [ ! -d "reports" ] || [ -z "$(git status --porcelain reports/)" ]; then
           echo "No new reports generated or no changes detected."
+          exit 0
         fi
+        
+        # Save report artifacts
+        mkdir -p /tmp/auto-docs-save
+        cp -r reports/ /tmp/auto-docs-save/
+        
+        # Switch to auto-docs orphan branch (preserves only reports/ on push)
+        git fetch origin auto-docs 2>/dev/null || true
+        git checkout -B _docs origin/auto-docs 2>/dev/null || git checkout --orphan _docs
+        
+        # Replace report files
+        rm -rf reports/
+        mkdir -p reports
+        cp -r /tmp/auto-docs-save/reports/* reports/
+        rm -rf /tmp/auto-docs-save
+        
+        git add -A reports/
+        if git diff --cached --quiet; then
+          echo "No changes to commit; skipping."
+          exit 0
+        fi
+        
+        git commit -m "docs: auto-commit daily github curation report logs [skip ci]"
+        git push origin _docs:auto-docs
+        echo "Successfully pushed daily reports to auto-docs (orphan) branch."
