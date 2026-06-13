@@ -141,8 +141,8 @@ class TestTranslateStage:
 
         repo = {"full_name": "test/repo", "refined_summary": "Original English.", "stars": 1000}
         result = pipeline._translate_per_repo(repo)
-        assert "Core Pain Point Solved" in result["chinese_summary"]
-        assert "Open-source engineering project" in result["chinese_summary"]
+        assert "要解决的核心痛点" in result["chinese_summary"]
+        assert "开源工程项目" in result["chinese_summary"]
 
     def test_translate_per_repo_empty_llm_content_uses_stub(self, batch_config):
         """When LLM returns empty content, should use stub instead."""
@@ -153,7 +153,7 @@ class TestTranslateStage:
 
         repo = {"full_name": "test/repo", "refined_summary": "This is a sufficiently long English technical analysis text that exceeds the 50 character minimum threshold for translation LLM calls.", "stars": 1000}
         result = pipeline._translate_per_repo(repo)
-        assert "Core Pain Point Solved" in result["chinese_summary"]
+        assert "要解决的核心痛点" in result["chinese_summary"]
 
     def test_translate_per_repo_empty_llm_content_whitespace_uses_stub(self, batch_config):
         """When LLM returns whitespace-only content, should use stub."""
@@ -164,7 +164,7 @@ class TestTranslateStage:
 
         repo = {"full_name": "test/repo", "refined_summary": "This is a sufficiently long English technical analysis text that exceeds the 50 character minimum threshold for translation LLM calls.", "stars": 1000}
         result = pipeline._translate_per_repo(repo)
-        assert "Core Pain Point Solved" in result["chinese_summary"]
+        assert "要解决的核心痛点" in result["chinese_summary"]
 
     def test_translate_per_repo_exception_uses_refined_summary(self, batch_config):
         """When LLM raises exception, should fall back to refined_summary."""
