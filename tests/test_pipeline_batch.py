@@ -83,30 +83,12 @@ class TestSummarizeReflectBatch:
         for r in result:
             assert "refined_summary" in r
 
-    def test_batch_per_repo_fallback_for_missing(self, batch_config, batch_repos):
-        """When batch response is missing a repo, per-repo fallback should be used."""
-        client = MagicMock()
-        # Make the LLM call return partial results (missing one repo)
-        client.call_llm.return_value = {
-            "content": json.dumps([
-                {"full_name": "deepseek-ai/DeepSeek-V3", "refined_summary": "Batch summary."}
-            ])
-        }
-        pipeline = CurationPipeline(batch_config, client)
-        # Set use_mock=False and ensure client is truthy to trigger LLM path
-        pipeline.use_mock = False
 
-        result = pipeline._summarize_reflect_batch(batch_repos)
-        # The first repo should have the batch summary, second should use per-repo
-        assert result[0]["refined_summary"] == "Batch summary."
-        assert result[1]["refined_summary"] != "Batch summary."
-
-
-class TestTranslateBatch:
-    """Test the batch LLM path for Stage 5."""
+class TestTranslateStage:
+    """Test the Stage 5 translate stage."""
 
     def test_batch_translate_success(self, batch_config, batch_repos):
-        """Successful batch translation should return all repos with translations."""
+        """Per-repo translation should return all repos with translations."""
         client = MagicMock()
         pipeline = CurationPipeline(batch_config, client)
         pipeline.use_mock = True
@@ -115,41 +97,32 @@ class TestTranslateBatch:
         for r in result:
             assert "chinese_summary" in r
 
-    def test_batch_translate_per_repo_fallback(self, batch_config, batch_repos):
-        """When batch response is missing a repo, per-repo fallback should be used."""
+    def test_stage_translate_mock_fallback(self, batch_config, batch_repos):
+        """Stage translate mock path should use MOCK_TRANSLATIONS for known repos."""
+        client = MagicMock()
+        pipeline = CurationPipeline(batch_config, client)
+        pipeline.use_mock = True
+        result = pipeline._stage_translate(batch_repos)
+        assert result[0]["chinese_summary"] == MOCK_TRANSLATIONS["deepseek-ai/DeepSeek-V3"]
+
+    def test_stage_translate_non_mock_calls_per_repo(self, batch_config, batch_repos):
+        """When not mock, should call _translate_per_repo for each repo."""
         client = MagicMock()
         client.call_llm.return_value = {
-            "content": json.dumps([
-                {"full_name": "deepseek-ai/DeepSeek-V3", "chinese_summary": "Batch 翻译."}
-            ])
+            "content": "要解决的核心痛点\nTest translation."
         }
         pipeline = CurationPipeline(batch_config, client)
         pipeline.use_mock = False
-
-        result = pipeline._translate_batch(batch_repos)
-        assert result[0]["chinese_summary"] == "Batch 翻译."
-        # Second one should have per-repo or fallback
-        assert "chinese_summary" in result[1]
-
-    def test_batch_translate_json_parse_failure_falls_back(self, batch_config, batch_repos):
-        """When LLM returns invalid JSON, should fall back to per-repo."""
-        client = MagicMock()
-        # Return invalid JSON
-        client.call_llm.return_value = {
-            "content": "This is not valid JSON"
-        }
-        pipeline = CurationPipeline(batch_config, client)
-        pipeline.use_mock = False
-
-        # This should raise exception in batch, then full method catches it
-        with pytest.raises(Exception):
-            pipeline._translate_batch(batch_repos)
+        result = pipeline._stage_translate(batch_repos)
+        assert len(result) == len(batch_repos)
+        for r in result:
+            assert "chinese_summary" in r
 
     def test_translate_per_repo_success(self, batch_config):
-        """Per-repo translation should work."""
+        """Per-repo translation should work with new 4-section Chinese headers."""
         client = MagicMock()
         client.call_llm.return_value = {
-            "content": "### 核心解决的工程痛点\nTest translation."
+            "content": "要解决的核心痛点\nTest translation."
         }
         pipeline = CurationPipeline(batch_config, client)
         pipeline.use_mock = False
@@ -157,7 +130,7 @@ class TestTranslateBatch:
         repo = {"full_name": "test/repo", "refined_summary": "English.", "stars": 1000}
         result = pipeline._translate_per_repo(repo)
         assert "chinese_summary" in result
-        assert result["chinese_summary"] == "### 核心解决的工程痛点\nTest translation."
+        assert result["chinese_summary"] == "要解决的核心痛点\nTest translation."
 
     def test_translate_per_repo_failure_keeps_english(self, batch_config):
         """When per-repo translation fails, should keep English summary."""
@@ -232,8 +205,8 @@ class TestSummarizeReflectPerRepo:
         pipeline = CurationPipeline(batch_config, client)
         repo = {"full_name": "test/repo", "description": "Test.", "tags": ["#Test"], "stars": 100}
         result = pipeline._summarize_reflect_per_repo(repo)
-        assert "Core Technical Problem" in result["refined_summary"]
-        assert "Implementation" in result["refined_summary"]
+        assert "Core Pain Point Solved" in result["refined_summary"]
+        assert "Design & Architectural Trade-offs" in result["refined_summary"]
 
 
 class TestPipelineRunEdgeCases:
