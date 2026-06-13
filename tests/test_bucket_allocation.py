@@ -266,13 +266,13 @@ class TestBucketAllocateBasic:
         result = bucket_pipeline._bucket_allocate(repos)
         assert len(result) == 9
 
-    def test_under_9_repos_no_extra_fields_set(self, bucket_pipeline):
-        """When repos <= 9, they are returned without tds/_bucket added.
-        Note: this is current behavior; the method only classifies when > total_slots."""
+    def test_under_9_repos_tds_and_bucket_set(self, bucket_pipeline):
+        """When repos <= 9, tds and _bucket are added but no allocation happens."""
         repos = [_make_repo("a/repo")]
         result = bucket_pipeline._bucket_allocate(repos)
-        assert "_bucket" not in result[0]
-        assert "tds" not in result[0]
+        assert "_bucket" in result[0]
+        assert "tds" in result[0]
+        assert result[0]["tds"] == "S"  # no T/E keywords in description
 
 
 # ===================================================================
@@ -340,19 +340,19 @@ class TestBucketAllocateEdgeCases:
         not_first = buckets.get("not-first/repo")
         assert not_first is None or not_first != "early_bird"
 
-    def test_period_stars_and_low_stars_early_bird_takes_precedence(self, bucket_pipeline):
+    def test_period_stars_and_low_stars_high_takes_precedence(self, bucket_pipeline):
         """When a repo satisfies BOTH Early Bird (< 3k) and High-Star (period >= 500),
-        the current code assigns it to Early Bird because is_early is checked first.
-        Note: This may be a bug — see design doc discussion."""
+        High-Star takes precedence because it's checked first."""
         repos = [
             _make_repo("viral/repo", stars=2000, period_stars="1,500 stars today"),
         ]
-        for i in range(12):
+        for i in range(2):
             repos.append(_make_repo(f"big{i}/repo", stars=15000))
+        for i in range(8):
+            repos.append(_make_repo(f"mid{i}/repo", stars=5000))
         result = bucket_pipeline._bucket_allocate(repos)
         buckets = {r["full_name"]: r["_bucket"] for r in result}
-        # Current behavior: is_early (stars < 3000) wins over is_high (period >= 500)
-        assert buckets["viral/repo"] == "early_bird"
+        assert buckets["viral/repo"] == "high_star"
 
     def test_empty_repos_list(self, bucket_pipeline):
         result = bucket_pipeline._bucket_allocate([])
@@ -452,13 +452,13 @@ class TestInferTDSInstance:
         return CurationPipeline(AppConfig(), MagicMock())
 
     def test_t(self, pipeline):
-        assert pipeline._infer_tds("MLA attention mechanism") == "T"
+        assert _infer_tds_fallback("MLA attention mechanism") == "T"
 
     def test_e(self, pipeline):
-        assert pipeline._infer_tds("Agent framework") == "E"
+        assert _infer_tds_fallback("Agent framework") == "E"
 
     def test_s(self, pipeline):
-        assert pipeline._infer_tds("A simple blog engine") == "S"
+        assert _infer_tds_fallback("A simple blog engine") == "S"
 
 
 # ===================================================================

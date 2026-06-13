@@ -301,6 +301,10 @@ class CurationPipeline:
             return self._prefilter_top_n(repos)
 
         if len(repos) <= cfg.total_slots:
+            for r in repos:
+                desc = (r.get("description", "") or "").lower()
+                r["tds"] = _infer_tds_fallback(desc)
+                r["_bucket"] = "deep_dive"
             return repos
 
         early_bird_pool: List[Dict] = []
@@ -321,24 +325,23 @@ class CurationPipeline:
                         pass
             is_first_seen = r.get("is_first_seen", False)
 
-            desc = (r.get("description", "") or "").lower()
-            tds = self._infer_tds(desc)
-
             is_early = stars < 3000 or (stars < 5000 and is_first_seen)
             is_high = stars >= 10000 or period_num >= 500
 
-            if is_early:
-                early_bird_pool.append(r)
-            elif is_high:
+            if is_high:
                 high_star_pool.append(r)
+            elif is_early:
+                early_bird_pool.append(r)
             else:
                 all_remaining.append(r)
 
-            r["tds"] = tds
-            r["_bucket"] = "early_bird" if is_early else ("high_star" if is_high else "deep_dive")
+            desc = (r.get("description", "") or "").lower()
+            td = _infer_tds_fallback(desc)
+            r["tds"] = td
+            r["_bucket"] = "high_star" if is_high else ("early_bird" if is_early else "deep_dive")
 
         def take_from(pool, n):
-            pool.sort(key=lambda x: -x.get("stars", 0))
+            pool.sort(key=lambda x: -(x.get("stars") or 0))
             return pool[:n], pool[n:]
 
         result = []
@@ -347,7 +350,7 @@ class CurationPipeline:
 
         leftover = eb_rest + hs_rest + all_remaining
         tds_order = {"T": 0, "E": 1, "S": 2}
-        leftover.sort(key=lambda x: (tds_order.get(x.get("tds", "S"), 3), -x.get("stars", 0)))
+        leftover.sort(key=lambda x: (tds_order.get(x.get("tds", "S"), 3), -(x.get("stars") or 0)))
         dd_taken = leftover[:cfg.deep_dive]
 
         result = eb_taken + hs_taken + dd_taken
@@ -377,28 +380,7 @@ class CurationPipeline:
         )
         return result
 
-    @staticmethod
-    def _infer_tds(desc: str) -> str:
-        """规则引擎判定 Technical Depth Score (T/E/S)。"""
-        desc_lower = desc.lower()
-        T_KEYWORDS = [
-            "mla", "moe", "attention", "cuda kernel", "kv cache",
-            "compiler", "runtime", "metal", "custom shader",
-            "new language", "database engine", "protocol",
-        ]
-        E_KEYWORDS = [
-            "agent", "rag", "mcp", "inference", "optimiz",
-            "cli", "raycast", "swiftui", "core ml", "mlx",
-            "comfyui", "workflow", "automation", "xcode",
-            "mach-o", "ipa", "window manager",
-        ]
-        for kw in T_KEYWORDS:
-            if kw in desc_lower:
-                return "T"
-        for kw in E_KEYWORDS:
-            if kw in desc_lower:
-                return "E"
-        return "S"
+    # Note: _infer_tds removed — use module-level _infer_tds_fallback() instead.
 
     def run(self, since: str = "daily", use_mock: bool = False) -> Dict[str, Any]:
         """Runs the entire 6-stage pipeline.
@@ -587,8 +569,6 @@ class CurationPipeline:
                 rc["tags"] = tags_list[i % len(tags_list)]
                 rc["selection_reason"] = reasons[i % len(reasons)]
                 rc["technical_depth"] = _infer_tds_fallback(rc.get("description", "") or "")
-                rc["tds"] = "E"
-                rc["_bucket"] = "deep_dive"
                 analyzed_repos.append(rc)
             # Sort curated repos primarily by rating (S > A > B > C) and secondarily by star count descending (Plan C)
             rating_order = {"S": 0, "A": 1, "B": 2, "C": 3}
