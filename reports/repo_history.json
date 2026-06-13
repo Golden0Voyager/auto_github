@@ -34,7 +34,7 @@
   "comfyanonymous/ComfyUI_examples": [
     "2026-06-13"
   ],
-  "meta-llama/PurpleLlama": [
+  "microsoft/agent-governance-toolkit": [
     "2026-06-13"
   ],
   "obra/superpowers": [
@@ -43,7 +43,7 @@
   "NousResearch/hermes-agent": [
     "2026-06-13"
   ],
-  "huggingface/transformers": [
+  "microsoft/vscode": [
     "2026-06-13"
   ],
   "deepseek-ai/FlashMLA": [
