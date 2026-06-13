@@ -834,10 +834,10 @@ class CurationPipeline:
 
     def _translate_per_repo(self, r: Dict[str, Any]) -> Dict[str, Any]:
         rc = r.copy()
-        summary = r.get("refined_summary", "") or ""
-        if len(summary.strip()) < 50:
-            print(f"  [Stage 5 Skip] {r['full_name']}: refined_summary too short ({len(summary.strip())} chars), keeping English")
-            rc["chinese_summary"] = summary
+        summary = (r.get("refined_summary", "") or "").strip()
+        if len(summary) < 50:
+            print(f"  [Stage 5 Skip] {r['full_name']}: refined_summary too short ({len(summary)} chars), using stub")
+            rc["chinese_summary"] = self._summarize_reflect_stub(r)
             return rc
         system_prompt = (
             "You are a senior tech media writer (style: Founder Park / 42HOW).\n"
