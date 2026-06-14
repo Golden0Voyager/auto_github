@@ -748,7 +748,10 @@ class CurationPipeline:
         ]
         try:
             res = self.llm.call_llm(messages, use_reasoning=False, temperature=0.3)
-            rc["refined_summary"] = res["content"]
+            content = (res.get("content") or "").strip()
+            if content:
+                content = _ensure_markdown_spacing(content)
+            rc["refined_summary"] = content or self._chinese_stub(r)
         except Exception as e:
             print(f"[Stage 3+4 Warning] Failed for {r['full_name']}: {e}")
             rc["refined_summary"] = self._chinese_stub(r)

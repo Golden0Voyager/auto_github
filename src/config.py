@@ -17,6 +17,10 @@ class AIConfig(BaseModel):
     default_provider: str = "openrouter"
     model_v3: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
     model_r1: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
+    models: Dict[str, str] = Field(default_factory=lambda: {
+        "classifier": "sensenova-6.7-flash-lite",
+        "writer": "nvidia/nemotron-3-ultra-550b-a55b:free",
+    })
     temperature: float = 0.3
     max_tokens: int = 8192
     rate_limit_delay: float = 4.0

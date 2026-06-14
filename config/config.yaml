@@ -50,11 +50,12 @@ github:
 # AI Settings & Default Model Options
 ai:
   default_provider: openrouter  # Options: sensenova, openai, gemini, openrouter
-  model_v3: nvidia/nemotron-3-ultra-550b-a55b:free
-  model_r1: nvidia/nemotron-3-ultra-550b-a55b:free
+  # 角色→模型映射：可为每个角色指定不同模型（同一 provider 下）
+  models:
+    classifier: sensenova-6.7-flash-lite  # Stage 2：分类评级（快、便宜）
+    writer: nvidia/nemotron-3-ultra-550b-a55b:free  # Stage 3+4：内容生成（强）
   temperature: 0.3
   max_tokens: 8192
-  # Rate limit delay (seconds between API calls to prevent 429 on free tier)
   rate_limit_delay: 4.0
 
 # 高星项目去重配置（节省算力 + 给新兴项目留展位）

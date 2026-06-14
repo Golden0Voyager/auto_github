@@ -49,25 +49,38 @@ class LLMClient:
         """Backward-compat truthy accessor for `pipeline.py` fallback gates."""
         return self._hub if self._hub is not None else self._fallback
 
+    def _resolve_model(self, role: str = "writer") -> str:
+        """Determine the model name for a given role.
+
+        Falls back through: models[role] → model_v3 → default hardcoded.
+        """
+        return self.config.ai.models.get(role) or self.model_v3
+
     def call_llm(
         self,
         messages: List[Dict[str, str]],
+        role: str = "writer",
         use_reasoning: bool = False,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         retries: int = 8,
         backoff_factor: float = 3.0,
     ) -> Dict[str, Any]:
-        """Calls the LLM with fallback support.
+        """Calls the LLM with role-based model selection and fallback support.
 
-        Delegates to auto_hub.llm when available; on hub failure, transparently
-        falls back to the direct OpenAI SDK path so the pipeline never blocks.
+        Args:
+            messages: The conversation messages.
+            role: Which model role to use (classifier, writer, etc.).
+                  Mapped via config.ai.models dict.
+            use_reasoning: Deprecated, kept for backward compat. Superseded by role.
         """
         if self._hub is None and self._fallback is None:
             print("[LLM Error] Cannot call LLM: API key is not configured.")
             return {"content": "Error: LLM API key not configured.", "reasoning": None}
 
-        model = self.model_r1 if use_reasoning else self.model_v3
+        model = self._resolve_model(role)
+        if use_reasoning:
+            model = self.model_r1
         temp = temperature if temperature is not None else self.config.ai.temperature
         max_t = max_tokens if max_tokens is not None else self.config.ai.max_tokens
 
