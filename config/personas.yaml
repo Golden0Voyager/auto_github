@@ -19,7 +19,7 @@ beginner:
 
 intermediate:
   name: "中阶实践者"
-  description: "面向系统化 LLM 学习者、提示词工程师与 Vibecoding 极客。热衷于 Agent 工作流、ComfyUI 精细干预、本地 RAG 降噪、MCP 插件开发、以及日常 Telemetry 遥测。关注实用工程落地、API 性能以及如何通过微交互和低认知负荷设计人机协同系统。"
+  description: "有一定工程基础的 LLM 应用开发者，能写代码但不追求 CS 学位。日常用 Agent 和自动化工具提升效率，关心「这东西我跑不跑得动、能不能调、坏了怎么修」，对 Token 成本和响应延迟敏感。喜欢看到设计决策背后的权衡，反感空洞的概念堆砌。"
   prompt_focus: |
     Writing style: 像资深工程师在分享心得——从"你是不是也遇到过这个问题"切入，用对话感代替报告感。
     4-section structure for each repo:
