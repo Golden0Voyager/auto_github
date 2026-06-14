@@ -27,6 +27,7 @@ def llm_config() -> AppConfig:
             default_provider="openai",
             model_v3="gpt-4o-mini",
             model_r1="o1-mini",
+            models={"classifier": "gpt-4o-mini", "writer": "gpt-4o-mini"},
             temperature=0.3,
             max_tokens=4096,
             rate_limit_delay=0.01,
