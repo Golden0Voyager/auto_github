@@ -66,7 +66,9 @@ class LLMClient:
         if client is None:
             return {"content": f"Error: no client for provider '{provider}'", "reasoning": None}
 
-        delay = self.config.ai.rate_limit_delay
+        # Per-provider rate limit delay: sensenova token plan has no limit,
+        # OpenRouter paid tier can handle 1s spacing comfortably.
+        delay = {"sensenova": 0.0, "openrouter": 1.0, "openai": 1.0}.get(provider, self.config.ai.rate_limit_delay)
         for attempt in range(retries):
             try:
                 if attempt > 0:
