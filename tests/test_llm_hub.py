@@ -9,7 +9,8 @@ from src.llm import LLMClient
 
 
 @pytest.fixture
-def llm_config() -> AppConfig:
+def llm_config(monkeypatch) -> AppConfig:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-key")
     return AppConfig(
         ai=AIConfig(
             roles={
