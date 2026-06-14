@@ -79,6 +79,13 @@ class LLMClient:
                 choice = response.choices[0]
                 content = choice.message.content or ""
 
+                reasoning: Optional[str] = None
+                rc = getattr(choice.message, "reasoning_content", None)
+                if rc is not None:
+                    reasoning = rc
+                elif hasattr(choice.message, "model_extra") and choice.message.model_extra:
+                    reasoning = choice.message.model_extra.get("reasoning_content")
+
                 usage = getattr(response, "usage", None)
                 if usage:
                     self.total_prompt_tokens += getattr(usage, "prompt_tokens", 0) or 0
@@ -86,7 +93,7 @@ class LLMClient:
                 self.call_count += 1
 
                 time.sleep(self.config.ai.rate_limit_delay / 2.0)
-                return {"content": content, "reasoning": None, "model": model}
+                return {"content": content, "reasoning": reasoning, "model": model}
 
             except Exception as e:
                 self.failed_attempt_count += 1
