@@ -482,7 +482,7 @@ class TestStageSummarizeAndReflectMock:
         known_summary = next(r["refined_summary"] for r in result if r["full_name"] == "deepseek-ai/DeepSeek-V3")
         assert "要解决的核心痛点" in known_summary
         unknown_summary = next(r["refined_summary"] for r in result if r["full_name"] == "lowstars/tiny-tool")
-        assert "Core Pain Point Solved" in unknown_summary
+        assert "要解决的核心痛点" in unknown_summary
 
 
 class TestStageTranslateMock:

@@ -119,63 +119,37 @@ class TestTranslateStage:
             assert "chinese_summary" in r
 
     def test_translate_per_repo_success(self, batch_config):
-        """Per-repo translation should work with new 4-section Chinese headers."""
+        """Per-repo translation now passes through refined_summary directly."""
         client = MagicMock()
-        client.call_llm.return_value = {
-            "content": "要解决的核心痛点\nTest translation."
-        }
         pipeline = CurationPipeline(batch_config, client)
         pipeline.use_mock = False
 
-        repo = {"full_name": "test/repo", "refined_summary": "This is a sufficiently long English technical analysis text that exceeds the 50 character minimum threshold for translation LLM calls.", "stars": 1000}
+        long_text = "### 要解决的核心痛点\n这是足够长的一段中文分析文本，肯定超过了五十个字符的最小阈值要求，直通逻辑不会被触发。"
+        repo = {"full_name": "test/repo", "refined_summary": long_text, "stars": 1000}
         result = pipeline._translate_per_repo(repo)
-        assert "chinese_summary" in result
-        assert result["chinese_summary"] == "要解决的核心痛点\nTest translation."
+        assert result["chinese_summary"] == long_text
 
-    def test_translate_per_repo_failure_keeps_english(self, batch_config):
-        """When per-repo translation fails, should keep English summary."""
+    def test_translate_per_repo_failure_uses_chinese_stub(self, batch_config):
+        """When refined_summary is too short, should use Chinese stub."""
         client = MagicMock()
-        client.call_llm.side_effect = RuntimeError("API Error")
         pipeline = CurationPipeline(batch_config, client)
         pipeline.use_mock = False
 
-        repo = {"full_name": "test/repo", "refined_summary": "Original English.", "stars": 1000}
+        repo = {"full_name": "test/repo", "refined_summary": "Short.", "stars": 1000}
         result = pipeline._translate_per_repo(repo)
         assert "要解决的核心痛点" in result["chinese_summary"]
         assert "开源工程项目" in result["chinese_summary"]
 
-    def test_translate_per_repo_empty_llm_content_uses_stub(self, batch_config):
-        """When LLM returns empty content, should use stub instead."""
+    def test_translate_per_repo_long_summary_passes_through(self, batch_config):
+        """Long refined_summary should pass through unchanged."""
         client = MagicMock()
-        client.call_llm.return_value = {"content": ""}
         pipeline = CurationPipeline(batch_config, client)
         pipeline.use_mock = False
 
-        repo = {"full_name": "test/repo", "refined_summary": "This is a sufficiently long English technical analysis text that exceeds the 50 character minimum threshold for translation LLM calls.", "stars": 1000}
+        long_text = "这是超过五十个字符的长文本用来测试翻译阶段的直通逻辑确认中文内容不会被改动。这里是更多字符确保绝对超过五十。"
+        repo = {"full_name": "test/repo", "refined_summary": long_text, "stars": 1000}
         result = pipeline._translate_per_repo(repo)
-        assert "要解决的核心痛点" in result["chinese_summary"]
-
-    def test_translate_per_repo_empty_llm_content_whitespace_uses_stub(self, batch_config):
-        """When LLM returns whitespace-only content, should use stub."""
-        client = MagicMock()
-        client.call_llm.return_value = {"content": "   \n  \n  "}
-        pipeline = CurationPipeline(batch_config, client)
-        pipeline.use_mock = False
-
-        repo = {"full_name": "test/repo", "refined_summary": "This is a sufficiently long English technical analysis text that exceeds the 50 character minimum threshold for translation LLM calls.", "stars": 1000}
-        result = pipeline._translate_per_repo(repo)
-        assert "要解决的核心痛点" in result["chinese_summary"]
-
-    def test_translate_per_repo_exception_uses_refined_summary(self, batch_config):
-        """When LLM raises exception, should fall back to refined_summary."""
-        client = MagicMock()
-        client.call_llm.side_effect = RuntimeError("Translation failed")
-        pipeline = CurationPipeline(batch_config, client)
-        pipeline.use_mock = False
-
-        repo = {"full_name": "test/repo", "refined_summary": "This is a sufficiently long English technical analysis text that exceeds the 50 character minimum threshold for translation LLM calls.", "stars": 1000}
-        result = pipeline._translate_per_repo(repo)
-        assert result["chinese_summary"] == "This is a sufficiently long English technical analysis text that exceeds the 50 character minimum threshold for translation LLM calls."
+        assert result["chinese_summary"] == long_text
 
 
 class TestStage2AnalyzeLLMPath:
@@ -232,15 +206,15 @@ class TestSummarizeReflectPerRepo:
         assert result["refined_summary"] == "### Core Technical Problem\\nTest."
         assert result["reflection_trace"] == ""
 
-    def test_per_repo_failure_uses_static_stub(self, batch_config):
-        """When per-repo fails, should use static stub summary."""
+    def test_per_repo_failure_uses_chinese_stub(self, batch_config):
+        """When per-repo fails, should use Chinese stub summary."""
         client = MagicMock()
         client.call_llm.side_effect = RuntimeError("Failed")
         pipeline = CurationPipeline(batch_config, client)
         repo = {"full_name": "test/repo", "description": "Test.", "tags": ["#Test"], "stars": 100}
         result = pipeline._summarize_reflect_per_repo(repo)
-        assert "Core Pain Point Solved" in result["refined_summary"]
-        assert "Design & Architectural Trade-offs" in result["refined_summary"]
+        assert "要解决的核心痛点" in result["refined_summary"]
+        assert "设计巧思与架构取舍" in result["refined_summary"]
 
 
 class TestPipelineRunEdgeCases:

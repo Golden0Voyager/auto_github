@@ -681,7 +681,7 @@ class CurationPipeline:
                 rc = r.copy()
                 rc["refined_summary"] = MOCK_TRANSLATIONS.get(
                     r["full_name"],
-                    self._summarize_reflect_stub(r)
+                    self._chinese_stub(r)
                 )
                 rc["reflection_trace"] = ""
                 result.append(rc)
@@ -699,44 +699,38 @@ class CurationPipeline:
     def _summarize_reflect_per_repo(self, r: Dict[str, Any]) -> Dict[str, Any]:
         rc = r.copy()
         system_prompt = (
-            "You are a senior technical writer and open-source project analyst.\n\n"
-            "Your task: Based on the given GitHub repository information, write a deep technical analysis in English.\n"
-            "Target reader: Vibecoding practitioners \u2014 technically literate but not necessarily CS-trained.\n"
-            "  They care about: 'Can I run this? Can I tune it? How does this make my Agent hallucinate less?'\n"
-            "  They dislike: abstract theory without practical connection, jargon without explanation.\n\n"
-            "Output format: 4 markdown sections, 3-5 sentences each, fully developed.\n\n"
-            "### Core Pain Point Solved\n"
-            "[Not a description rehash. Show the reader why they should care:\n"
-            "What common pain point exists in this scenario?\n"
-            "Why are existing solutions inadequate?\n"
-            "What key contradiction or tension does this project address?]\n\n"
-            "### Design & Architectural Trade-offs\n"
-            "[Not a feature list. Reveal the reasoning behind key decisions:\n"
-            "Why did the authors choose A over B? What trade-off did they make?\n"
-            "What's interesting about the architecture worth learning from?\n"
-            "Open with a relatable observation, then layer in technical depth.]\n\n"
-            "### Engineering Insights & Transferable Lessons\n"
-            "[The most valuable section. Extract patterns the reader can apply elsewhere:\n"
-            "e.g., its error-handling strategy, module decomposition philosophy,\n"
-            "performance optimization path, or a 'I never thought of doing it that way' insight.]\n\n"
-            "### Ecosystem & Related Projects\n"
-            "[Recommend 2-3 related high-star projects (>5000 stars).\n"
-            "Explain: why are they related? What can you build by chaining them together?\n"
-            "Only recommend projects you are confident exist in your training data.\n"
-            "Better to recommend fewer than to hallucinate.]\n\n"
-            "---\n"
-            "Content rules (MANDATORY):\n"
-            "- NO marketing fluff: revolutionary, game-changing, transformative, cutting-edge, state-of-the-art, powerful\n"
-            "- NO personal names, personal background references, first-person pronouns\n"
-            "- Language must be objective, concrete, information-dense\n"
-            "- Prefer specific terminology over abstract description\n"
-            "  ('GQA attention with KV cache rotation' NOT 'advanced attention mechanism')\n"
-            "- NO one-sentence paragraphs. Each section: 3-5 sentences\n"
-            "- Section 4: only recommend verified famous projects (>5000 stars). Better to skip than hallucinate.\n"
-            "- Open each section with a relatable hook question or scenario, then build up to technical depth\n"
-            "- FORMATTING (CRITICAL): One blank line before and after each ### header. "
-            "One blank line between paragraphs within a section. "
-            "Your output will be rendered as Markdown — missing blank lines make text run together visually."
+            "You are a senior engineer who loves teaching. You write Chinese tech analysis "
+            "that reads like an experienced colleague sharing hard-won insights over tea.\n\n"
+            "Your reader: Can code but may not have CS degree. They build things with LLMs, "
+            "Agents, and automation tools. They respect deep understanding, not buzzwords.\n\n"
+            "写一段关于以下 GitHub 项目的技术分析，用中文。\n\n"
+            "结构要求（保持以下 4 个 ### 标题，顺序不能变）：\n\n"
+            "### 要解决的核心痛点\n"
+            "别复述项目描述。先让读者想起自己也踩过这个坑——\"你是不是也遇到过这种情况：...\"\n"
+            "把'为什么这个问题难'讲清楚，而不是'这个项目做了什么'。\n\n"
+            "### 设计巧思与架构取舍\n"
+            "别列功能清单。聚焦 1-2 个关键设计决策：\n"
+            "- 作者为什么选 A 不选 B？\n"
+            "- 这个取舍带来了什么收益，牺牲了什么？\n"
+            "- 如果团队选了另一条路会怎样？\n"
+            "用具体的技术术语来解释，但要说明白它们为什么重要。\n\n"
+            "### 工程启示与可迁移经验\n"
+            "这是最有价值的部分。提炼一个读者能带走的原则或模式：\n"
+            "- '这个项目处理错误的方式，你在写 Agent 时也能用'\n"
+            "- '它的模块拆分思路，不只适用于这个项目'\n"
+            "不要只重复项目本身的特性，要讲'这对我有什么用'。\n\n"
+            "### 关联生态与延展阅读\n"
+            "推荐 2-3 个相关的知名项目（5000+ stars 的、你确定存在的）。\n"
+            "说明：它们如何互补？搭配使用能解决什么问题？\n"
+            "宁可少推荐一个，也不要胡编。\n\n"
+            "行文指南：\n"
+            "- 像教一个聪明但没时间研究的同事——尊重他的智商，但别浪费他的时间\n"
+            "- 技术术语要用，但要带一句解释（不是定义，是'为什么它在这里重要'）\n"
+            "- 避免堆砌名词。一个段落讲清楚一个点，比一段话塞五个概念好\n"
+            "- 不要用营销腔：revolutionary, game-changing, cutting-edge 等一律禁用\n"
+            "- 不要出现个人姓名、第一人称（我/我们）\n"
+            "- 每个 section 3-5 句，但以自然段为单位，不要刻意凑数\n"
+            "- FORMATTING: ### 标题前后必须有空行，段落之间有空行"
         )
         user_content = (
             f"Repository: {r['full_name']}\n"
@@ -757,7 +751,7 @@ class CurationPipeline:
             rc["refined_summary"] = res["content"]
         except Exception as e:
             print(f"[Stage 3+4 Warning] Failed for {r['full_name']}: {e}")
-            rc["refined_summary"] = self._summarize_reflect_stub(r)
+            rc["refined_summary"] = self._chinese_stub(r)
         rc["reflection_trace"] = ""
         return rc
 
@@ -823,48 +817,7 @@ class CurationPipeline:
             print(f"  [Stage 5 Skip] {r['full_name']}: refined_summary too short ({len(summary)} chars), using stub")
             rc["chinese_summary"] = self._chinese_stub(r)
             return rc
-        system_prompt = (
-            "You are a senior tech media writer (style: Founder Park / 42HOW).\n"
-            "Translate the following GitHub project English analysis into professional Chinese.\n\n"
-            "Style requirements:\n"
-            "1. Write like a seasoned tech blogger: start with a relatable hook or question, "
-            "then build up to technical depth naturally\n"
-            "2. Target audience: Vibecoding practitioners \u2014 "
-            "they can code but may not have CS degrees. They care about 'does it work and can I tune it,' "
-            "not theoretical proofs. Use analogies and end-to-end workflow examples.\n"
-            "3. Keep industry-standard English terms untranslated: RAG, Agent, MoE, RLHF, MCTS, KV Cache, GQA, MLA\n"
-            "4. Keep project names in English (e.g., llama.cpp, vllm)\n"
-            "5. Strict Chinese section header mapping:\n"
-            "   - Core Pain Point Solved \u2192 要解决的核心痛点\n"
-            "   - Design & Architectural Trade-offs \u2192 设计巧思与架构取舍\n"
-            "   - Engineering Insights & Transferable Lessons \u2192 工程启示与可迁移经验\n"
-            "   - Ecosystem & Related Projects \u2192 关联生态与延展阅读\n"
-            "6. For key design decisions, add 'what if they chose the other path' perspective\n"
-            "7. For Section 4, explain why these projects work better together\n"
-             "8. If a technical concept may be unfamiliar to Chinese readers, "
-             "add a parenthetical note (max 20% of original length)\n"
-             "9. Do NOT add information not present in the original text\n"
-             "10. FORMATTING (CRITICAL): One blank line before and after each ### header. "
-             "One blank line between paragraphs within a section. "
-             "Your output will be rendered as Markdown — missing blank lines make text run together visually."
-        )
-        user_content = f"English Technical Analysis:\n\n{r.get('refined_summary', '')}"
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content},
-        ]
-        try:
-            res = self.llm.call_llm(messages, use_reasoning=False, temperature=0.2)
-            content = (res.get("content") or "").strip()
-            if not content:
-                print(f"  [Stage 5 Warning] {r['full_name']}: LLM returned empty content, using stub")
-                rc["chinese_summary"] = self._chinese_stub(r)
-            else:
-                content = _ensure_markdown_spacing(content)
-                rc["chinese_summary"] = content
-        except Exception as e:
-            print(f"[Stage 5 Warning] Translation failed for {r['full_name']}: {e}")
-            rc["chinese_summary"] = r.get("refined_summary", "")
+        rc["chinese_summary"] = summary
         return rc
 
     def _stage_refine_layout(self, repos: List[Dict[str, Any]], since: str, cooled_repos: Optional[List[Dict[str, Any]]] = None, archive_total: int = 0) -> Dict[str, Any]:

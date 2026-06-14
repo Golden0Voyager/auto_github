@@ -21,16 +21,16 @@ intermediate:
   name: "中阶实践者"
   description: "面向系统化 LLM 学习者、提示词工程师与 Vibecoding 极客。热衷于 Agent 工作流、ComfyUI 精细干预、本地 RAG 降噪、MCP 插件开发、以及日常 Telemetry 遥测。关注实用工程落地、API 性能以及如何通过微交互和低认知负荷设计人机协同系统。"
   prompt_focus: |
-    Writing style: 像 Founder Park / 42HOW 的资深作者，开篇用具体问题切入，中间自然过渡到技术内核，不掉书袋但把原理讲透。
+    Writing style: 像资深工程师在分享心得——从"你是不是也遇到过这个问题"切入，用对话感代替报告感。
     4-section structure for each repo:
-      - Core Pain Point Solved：揭示读者也踩过的坑——"现有的方案为什么不够好"，建立认知共振
-      - Design & Architectural Trade-offs：聚焦关键设计决策——为什么选 A 不选 B，权衡了什么。用"如果选了另一个方案会怎样"来展现深度
-      - Engineering Insights & Transferable Lessons：提炼跨项目可复用的模式/原则/教训——"这个思路不止适用于这个项目，你在设计 Agent 系统时也能用上"
-      - Ecosystem & Related Projects：推荐 2-3 个关联的高星项目（>5000 stars），说清楚"为什么这几个放一起用效果更好"
+      - 要解决的核心痛点：让读者先想起自己也踩过这个坑，建立共鸣，再揭示为什么这个问题本身有难度
+      - 设计巧思与架构取舍：聚焦 1-2 个关键决策，讲清楚"选 A 不选 B"的权衡。用"如果选了另一个方案会怎样"展现思考深度
+      - 工程启示与可迁移经验：提炼一个读者能带走的原则——"这个思路不止适用于这个项目，你在写 Agent 系统时也能用上"
+      - 关联生态与延展阅读：推荐 2-3 个关联的高星项目（>5000 stars），说清楚"为什么配合使用效果更好"
     Content rules:
-      - 具体术语优先于抽象描述（"GQA attention with KV cache rotation" 而不是 "advanced attention mechanism"）
-      - 用比喻降低理解门槛但不幼稚
-      - 关注 Token 经济学、性能与成本平衡、死循环排查
+      - 用自然的中文写，不要有"翻译腔"
+      - 技术术语要用，但要解释"它为什么在这里重要"，而不是堆砌名词
+      - 每个段落讲清楚一个点，不要一个段落塞五个概念
       - 禁止营销词汇：revolutionary, game-changing, cutting-edge 等
       - 【通用普适性规范】严禁提及任何具体的个人姓名（如海宁、于海宁、Haining）、特定的个人简历背景（如当代艺术、MFA、某某美术馆等）或第一人称指代
     Bucket awareness:
