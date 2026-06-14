@@ -2,57 +2,57 @@
   "deepseek-ai/DeepSeek-R1": [
     "2026-01-01",
     "2026-01-02",
-    "2026-06-13"
+    "2026-06-14"
   ],
   "deepseek-ai/DeepSeek-V3": [
-    "2026-06-13"
+    "2026-06-14"
   ],
   "lucidrains/MLA-pytorch": [
-    "2026-06-13"
+    "2026-06-14"
   ],
   "openai/whisper": [
-    "2026-06-13"
+    "2026-06-14"
   ],
   "mistralai/mistral-inference": [
-    "2026-06-13"
+    "2026-06-14"
   ],
   "anthropics/claude-code": [
-    "2026-06-13"
+    "2026-06-14"
   ],
   "microsoft/AutoDev": [
-    "2026-06-13"
+    "2026-06-14"
   ],
   "google-research/sima": [
-    "2026-06-13"
+    "2026-06-14"
   ],
   "meta-llama/llama3": [
-    "2026-06-13"
+    "2026-06-14"
+  ],
+  "vllm-project/aibrix": [
+    "2026-06-14"
   ],
   "mistralai/mistral-vibe": [
-    "2026-06-13"
+    "2026-06-14"
   ],
   "comfyanonymous/ComfyUI_examples": [
-    "2026-06-13"
-  ],
-  "microsoft/agent-governance-toolkit": [
-    "2026-06-13"
+    "2026-06-14"
   ],
   "obra/superpowers": [
-    "2026-06-13"
+    "2026-06-14"
   ],
   "NousResearch/hermes-agent": [
-    "2026-06-13"
+    "2026-06-14"
   ],
   "microsoft/vscode": [
-    "2026-06-13"
+    "2026-06-14"
   ],
   "deepseek-ai/FlashMLA": [
-    "2026-06-13"
+    "2026-06-14"
   ],
   "modelcontextprotocol/typescript-sdk": [
-    "2026-06-13"
+    "2026-06-14"
   ],
   "LMCache/LMCache": [
-    "2026-06-13"
+    "2026-06-14"
   ]
 }
