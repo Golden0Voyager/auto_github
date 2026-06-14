@@ -394,6 +394,21 @@ class CurationPipeline:
         )
         return result
 
+    def _stage_scrape(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Scrape README for each repo to provide context to the writer."""
+        print("\n=== Scrape（抓取 README）===")
+        result = []
+        for r in repos:
+            rc = r.copy()
+            readme = self.crawler.scrape_readme(r["full_name"])
+            if readme:
+                print(f"  [Scrape] {r['full_name']}: {len(readme)} chars")
+            rc["scraped_readme"] = readme
+            result.append(rc)
+        print(f"[Scrape Done] {len(result)} repositories.")
+        return result
+
+
     def run(self, since: str = "daily", use_mock: bool = False) -> Dict[str, Any]:
         """Runs the entire 6-stage pipeline.
         
@@ -402,20 +417,20 @@ class CurationPipeline:
             use_mock: If True, uses realistic offline mock data to avoid network/API limits.
         """
         self.use_mock = use_mock
-        print(f"\n[Pipeline] Starting 6-Stage Pipeline (Timeframe: {since}, Persona: {self.current_persona['name']}, Mock: {use_mock})")
+        print("\n[Pipeline] Starting Pipeline (Timeframe: {since}, Persona: {self.current_persona['name']}, Mock: {use_mock})")
 
         # 预清理过期的存档项目（cooldown 已过的项目重新允许进入策展）
         purged = self.dedup.purge_expired_cooldowns()
         if purged:
             print(f"[Dedup] 已清理 {purged} 项过期存档项目，重新允许进入策展")
 
-        # --- Stage 1: Crawl (抓取) ---
+        # --- Crawl ---
         raw_repos = self._stage_crawl(since, use_mock)
         if not raw_repos:
-            print("[Pipeline Error] Stage 1 failed to acquire repositories. Aborting.")
+            print("[Pipeline Error] Crawl failed to acquire repositories. Aborting.")
             return {}
 
-        # --- Stage 1.5: Dedup (高星项目存档过滤) ---
+        # --- Dedup ---
         active_repos, cooled_repos, first_seen_map = self.dedup.filter_active(raw_repos)
         for r in active_repos:
             r["is_first_seen"] = first_seen_map.get(r.get("full_name", ""), False)
@@ -440,7 +455,7 @@ class CurationPipeline:
                 "reports": {},
             }
 
-        # --- Stage 1.75: Bucket Allocation（取代旧的 Pre-filter）---
+        # --- Bucket Allocation ---
         if self.config.bucket_allocation.enabled:
             active_repos = self._bucket_allocate(active_repos)
         else:
@@ -468,19 +483,26 @@ class CurationPipeline:
             print("[Pipeline Info] Stage 2: No repos passed analysis threshold. Aborting.")
             return {}
 
-        # --- Stage 3+4: Summarize & Reflect (合并批处理，1 次 LLM 调用) ---
-        before = self.llm.get_stats()
-        refined_repos = self._stage_summarize_and_reflect(analyzed_repos)
-        self._log_llm_stage("Stage 3+4 Summarize+Reflect", before)
+        # --- Scrape: 抓取 README 提供素材 ---
+        scraped_repos = self._stage_scrape(analyzed_repos)
 
-        # --- Stage 5: Translate (批处理，1 次 LLM 调用) ---
+        # --- Write: 生成中文 4-section 分析 ---
         before = self.llm.get_stats()
-        translated_repos = self._stage_translate(refined_repos)
-        self._log_llm_stage("Stage 5 Translate", before)
+        refined_repos = self._stage_summarize_and_reflect(scraped_repos)
+        self._log_llm_stage("Write", before)
 
-        # --- Stage 6: Refine Layout (精修排版与多端打包) ---
+        # --- Review: 质量检查，短内容用 stub 兜底 ---
+        for r in refined_repos:
+            summary = (r.get("refined_summary", "") or "").strip()
+            if len(summary) < 50:
+                print(f"  [Review] {r['full_name']}: content too short, using stub")
+                r["chinese_summary"] = self._chinese_stub(r)
+            else:
+                r["chinese_summary"] = summary
+
+        # --- Layout: 排版 & 输出 ---
         reports = self._stage_refine_layout(
-            translated_repos,
+            refined_repos,
             since,
             cooled_repos=cooled_repos,
             archive_total=self.dedup.archive_count,
@@ -494,25 +516,25 @@ class CurationPipeline:
                 f" {', '.join(newly_archived)}"
             )
 
-        print("[Pipeline] All 6 Stages completed successfully!")
+        print("[Pipeline] All stages completed successfully!")
         return {
             "meta": {
                 "timeframe": since,
                 "persona": self.current_persona["name"],
                 "total_input_repos": len(raw_repos),
-                "total_curated_repos": len(translated_repos),
+                "total_curated_repos": len(refined_repos),
                 "cooled_repos": [r["full_name"] for r in cooled_repos],
                 "newly_archived": newly_archived,
                 "archive_total": self.dedup.archive_count,
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             },
-            "repos": translated_repos,
+            "repos": refined_repos,
             "reports": reports,
         }
 
     def _stage_crawl(self, since: str, use_mock: bool) -> List[Dict[str, Any]]:
-        """Stage 1: Fetch raw repository data from GitHub Trending and Orgs."""
-        print("\n=== Stage 1: Crawl (数据抓取) ===")
+        """Stage: Fetch raw repository data from GitHub Trending and Orgs."""
+        print("\n=== Crawl (数据抓取) ===")
         if use_mock:
             repos = self.crawler.get_mock_data()
         else:
@@ -546,15 +568,15 @@ class CurationPipeline:
             
             repos = list(dedup.values())
             
-        print(f"[Stage 1 Done] Retrieved {len(repos)} unique repositories.")
+        print(f"[Crawl Done] Retrieved {len(repos)} unique repositories.")
         return repos
 
     def _stage_analyze(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Stage 2: Filter and classify repositories using LLM."""
-        print("\n=== Stage 2: Analyze (项目分析与智能筛选) ===")
+        """Stage: Filter and classify repositories using LLM."""
+        print("\n=== Classify (项目分析与智能筛选) ===")
         
         if self.use_mock or not self.llm.client:
-            print("[Stage 2 Fallback] Bypassing LLM API. Selecting and rating all crawled repos offline.")
+            print("[Classify Fallback] Bypassing LLM API. Selecting and rating all crawled repos offline.")
             analyzed_repos = []
             ratings = ["S", "S", "A", "B", "A", "B", "C"]
             tags_list = [
@@ -649,14 +671,14 @@ class CurationPipeline:
             # Sort curated repos primarily by rating (S > A > B > C) and secondarily by star count descending
             analyzed_repos.sort(key=lambda x: (RATING_ORDER.get(x.get("rating", "B"), 4), -x.get("stars", 0)))
             
-            print(f"[Stage 2 Done] Selected {len(analyzed_repos)}/{len(repos)} repositories based on persona filtering.")
+            print(f"[Classify Done] Selected {len(analyzed_repos)}/{len(repos)} repositories based on persona filtering.")
             for r in analyzed_repos:
                 print(f" - [{r['rating']}] {r['full_name']} | Tags: {r['tags']}")
             return analyzed_repos
             
         except Exception as e:
-            print(f"[Stage 2 Error] Failed to analyze repositories: {e}")
-            print("[Stage 2 Fallback] Retaining top repositories with rule-based tag inference.")
+            print(f"[Classify Error] Failed to analyze repositories: {e}")
+            print("[Classify Fallback] Retaining top repositories with rule-based tag inference.")
             fallback_repos = []
             for r in repos[:6]:
                 rc = r.copy()
@@ -668,14 +690,14 @@ class CurationPipeline:
             return fallback_repos
 
     def _stage_summarize_and_reflect(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Stage 3+4: Per-repo summarization with the new 4-section + vibecoding style.
+        """Per-repo summarization with the new 4-section + vibecoding style.
 
         One LLM call per repo. Falls back to static stub on failure.
         """
-        print("\n=== Stage 3+4: Summarize & Reflect (逐仓库深度分析) ===")
+        print("\n=== Write & Reflect (逐仓库深度分析) ===")
 
         if self.use_mock or not self.llm.client:
-            print("[Stage 3+4 Fallback] Bypassing LLM. Generating mock summaries offline.")
+            print("[Write Fallback] Bypassing LLM. Generating mock summaries offline.")
             result = []
             for r in repos:
                 rc = r.copy()
@@ -693,7 +715,7 @@ class CurationPipeline:
             rc = self._summarize_reflect_per_repo(r)
             result.append(rc)
 
-        print(f"[Stage 3+4 Done] Analyzed {len(result)} repositories.")
+        print(f"[Write Done] Analyzed {len(result)} repositories.")
         return result
 
     def _summarize_reflect_per_repo(self, r: Dict[str, Any]) -> Dict[str, Any]:
@@ -750,7 +772,7 @@ class CurationPipeline:
             res = self.llm.call_llm(messages, use_reasoning=False, temperature=0.3)
             rc["refined_summary"] = res["content"]
         except Exception as e:
-            print(f"[Stage 3+4 Warning] Failed for {r['full_name']}: {e}")
+            print(f"[Write Warning] Failed for {r['full_name']}: {e}")
             rc["refined_summary"] = self._chinese_stub(r)
         rc["reflection_trace"] = ""
         return rc
@@ -770,7 +792,7 @@ class CurationPipeline:
         )
 
     def _chinese_stub(self, r: Dict[str, Any]) -> str:
-        """Chinese fallback stub used when Stage 5 translation fails."""
+        """Chinese fallback stub used when Review fails."""
         desc = r.get("description", "开源工程项目") or "开源工程项目"
         return (
             f"### 要解决的核心痛点\n{desc}\n\n"
@@ -782,47 +804,9 @@ class CurationPipeline:
             f"通过依赖关系图和 GitHub Topics 页面探索相关生态项目。"
         )
 
-    def _stage_translate(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Stage 5: Per-repo high-fidelity translation to Chinese.
-
-        One LLM call per repo. Falls back to English text on failure.
-        """
-        print("\n=== Stage 5: Translate (逐仓库专业中文润色) ===")
-
-        if self.use_mock or not self.llm.client:
-            print("[Stage 5 Fallback] Bypassing LLM. Using mock translations.")
-            result = []
-            for r in repos:
-                rc = r.copy()
-                rc["chinese_summary"] = MOCK_TRANSLATIONS.get(
-                    r["full_name"],
-                    r.get("refined_summary", ""),
-                )
-                result.append(rc)
-            return result
-
-        result = []
-        for r in repos:
-            print(f"  [{r['full_name']}] Translating...")
-            rc = self._translate_per_repo(r)
-            result.append(rc)
-
-        print(f"[Stage 5 Done] Translated {len(result)} repositories.")
-        return result
-
-    def _translate_per_repo(self, r: Dict[str, Any]) -> Dict[str, Any]:
-        rc = r.copy()
-        summary = (r.get("refined_summary", "") or "").strip()
-        if len(summary) < 50:
-            print(f"  [Stage 5 Skip] {r['full_name']}: refined_summary too short ({len(summary)} chars), using stub")
-            rc["chinese_summary"] = self._chinese_stub(r)
-            return rc
-        rc["chinese_summary"] = summary
-        return rc
-
     def _stage_refine_layout(self, repos: List[Dict[str, Any]], since: str, cooled_repos: Optional[List[Dict[str, Any]]] = None, archive_total: int = 0) -> Dict[str, Any]:
-        """Stage 6: Refine layout to construct aesthetic Markdown and Feishu interactive card payloads."""
-        print("\n=== Stage 6: Refine Layout (精修排版与多端打包) ===")
+        """Layout: render reports in multiple formats."""
+        print("\n=== Layout（渲染报告）===")
         from src.formatter import ReportFormatter
         
         formatter = ReportFormatter(self.config, self.current_persona, since)
@@ -832,7 +816,7 @@ class CurationPipeline:
             archive_total=archive_total,
         )
         
-        print("[Stage 6 Done] Generated reports in multiple formats.")
+        print("[Layout Done] Generated reports in multiple formats.")
         return reports
 
     def _parse_json_from_response(self, text: str) -> List[Dict[str, Any]]:
