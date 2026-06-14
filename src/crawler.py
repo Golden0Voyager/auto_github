@@ -139,6 +139,18 @@ class GitHubCrawler:
             print(f"[Crawl Error] Exception during scraping trending: {e}")
             return []
 
+    def scrape_readme(self, full_name: str) -> str:
+        """Fetch README.md from raw.githubusercontent.com. Returns empty string on failure."""
+        for branch in ("main", "master"):
+            url = f"https://raw.githubusercontent.com/{full_name}/{branch}/README.md"
+            try:
+                resp = requests.get(url, headers=self.headers, timeout=8)
+                if resp.status_code == 200 and len(resp.text) > 50:
+                    return resp.text[:4000]
+            except requests.RequestException:
+                continue
+        return ""
+
     def fetch_giant_repos(self) -> List[Dict[str, Any]]:
         """Fetches active repos of LLM giants and key individuals via GitHub API."""
         orgs = self.config.github.monitored_orgs
