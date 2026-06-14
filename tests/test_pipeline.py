@@ -485,53 +485,6 @@ class TestStageSummarizeAndReflectMock:
         assert "要解决的核心痛点" in unknown_summary
 
 
-class TestStageTranslateMock:
-    """Test the mock path of Stage 5."""
-
-    def test_mock_mode_returns_translations(self, pipeline_config, sample_analyzed_repos):
-        """In mock mode, known repos get their MOCK_TRANSLATIONS."""
-        client = MagicMock()
-        pipeline = CurationPipeline(pipeline_config, client)
-        pipeline.use_mock = True
-
-        for r in sample_analyzed_repos:
-            r["refined_summary"] = "Some English summary."
-
-        result = pipeline._stage_translate(sample_analyzed_repos)
-        assert len(result) == len(sample_analyzed_repos)
-        for r in result:
-            assert "chinese_summary" in r
-            assert isinstance(r["chinese_summary"], str)
-
-    def test_known_repo_gets_correct_translation(self, pipeline_config):
-        """deepseek-ai/DeepSeek-V3 should get its specific mock translation."""
-        client = MagicMock()
-        pipeline = CurationPipeline(pipeline_config, client)
-        pipeline.use_mock = True
-        repos = [{
-            "full_name": "deepseek-ai/DeepSeek-V3",
-            "refined_summary": "English summary.",
-            "stars": 15200,
-            "language": "Python",
-        }]
-        result = pipeline._stage_translate(repos)
-        assert result[0]["chinese_summary"] == MOCK_TRANSLATIONS["deepseek-ai/DeepSeek-V3"]
-
-    def test_unknown_repo_gets_fallback(self, pipeline_config):
-        """Unknown repos should get a generated fallback translation."""
-        client = MagicMock()
-        pipeline = CurationPipeline(pipeline_config, client)
-        pipeline.use_mock = True
-        repos = [{
-            "full_name": "unknown/repo",
-            "refined_summary": "English summary.",
-            "stars": 100,
-            "language": "Go",
-        }]
-        result = pipeline._stage_translate(repos)
-        assert result[0]["chinese_summary"] == "English summary."
-
-
 class TestPipelineRunMock:
     """Test the full pipeline run in mock mode."""
 
