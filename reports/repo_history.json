@@ -43,7 +43,7 @@
   "NousResearch/hermes-agent": [
     "2026-06-14"
   ],
-  "microsoft/vscode": [
+  "huggingface/transformers": [
     "2026-06-14"
   ],
   "deepseek-ai/FlashMLA": [
