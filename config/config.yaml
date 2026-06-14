@@ -64,10 +64,10 @@ ai:
       model: sensenova-6.7-flash-lite
       provider: sensenova
     translator_b:
-      model: qwen/qwen3-next-80b-a3b-instruct:free
+      model: nex-agi/nex-n2-pro:free
       provider: openrouter
     reviewer:
-      model: google/gemma-4-31b-it:free
+      model: openai/gpt-oss-120b:free
       provider: openrouter
 
 # 高星项目去重配置（节省算力 + 给新兴项目留展位）

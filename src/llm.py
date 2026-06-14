@@ -50,8 +50,8 @@ class LLMClient:
         role: str = "writer",
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        retries: int = 8,
-        backoff_factor: float = 3.0,
+        retries: int = 3,
+        backoff_factor: float = 2.0,
     ) -> Dict[str, Any]:
         role_cfg = self.config.ai.roles.get(role)
         if not role_cfg:
@@ -69,6 +69,7 @@ class LLMClient:
         # Per-provider rate limit delay: sensenova token plan has no limit,
         # OpenRouter paid tier can handle 1s spacing comfortably.
         delay = {"sensenova": 0.0, "openrouter": 1.0, "openai": 1.0}.get(provider, self.config.ai.rate_limit_delay)
+        timeout = {"sensenova": 30, "openrouter": 45, "openai": 30}.get(provider, 30)
         for attempt in range(retries):
             try:
                 if attempt > 0:
@@ -76,7 +77,7 @@ class LLMClient:
                 print(f"[LLM] {provider}/{model} (role={role}, attempt {attempt + 1}/{retries})")
 
                 response = client.chat.completions.create(
-                    model=model, messages=messages, max_tokens=max_t, temperature=temp,
+                    model=model, messages=messages, max_tokens=max_t, temperature=temp, timeout=timeout,
                 )
                 choice = response.choices[0]
                 content = choice.message.content or ""

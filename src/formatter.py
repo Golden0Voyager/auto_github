@@ -154,7 +154,7 @@ class ReportFormatter:
         elements.append({"tag": "hr"})
         elements.append({
             "tag": "markdown",
-            "content": "🤖 Multi-model curation via OpenRouter. 5-stage pipeline: Crawl → Classify → Write → Translate → Review.",
+            "content": "🤖 Multi-model curation (OpenRouter + SenseNova). 5-stage pipeline: Crawl → Classify → Write → Translate → Review.",
         })
 
         return {

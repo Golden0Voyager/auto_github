@@ -31,8 +31,8 @@ class AIConfig(BaseModel):
         "classifier": RoleConfig(model="sensenova-6.7-flash-lite", provider="sensenova"),
         "writer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter"),
         "translator_a": RoleConfig(model="sensenova-6.7-flash-lite", provider="sensenova"),
-        "translator_b": RoleConfig(model="qwen/qwen3-next-80b-a3b-instruct:free", provider="openrouter"),
-        "reviewer": RoleConfig(model="google/gemma-4-31b-it:free", provider="openrouter"),
+        "translator_b": RoleConfig(model="nex-agi/nex-n2-pro:free", provider="openrouter"),
+        "reviewer": RoleConfig(model="openai/gpt-oss-120b:free", provider="openrouter"),
     })
     model_v3: Optional[str] = Field(default=None, exclude=True)
     model_r1: Optional[str] = Field(default=None, exclude=True)

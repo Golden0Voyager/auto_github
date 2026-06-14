@@ -501,7 +501,7 @@ class CurationPipeline:
                     continue
                 try:
                     res_a = self.llm.call_llm(
-                        [{"role": "user", "content": f"Translate the following English technical analysis into natural Chinese. Output only the translation, no explanations.\n\n{summary}"}],
+                        [{"role": "user", "content": f"Translate the following English technical analysis into natural Chinese. Preserve all paragraph breaks and markdown formatting. Output only the translation, no explanations.\n\n{summary}"}],
                         role="translator_a", temperature=0.2,
                     )
                     r["translation_a"] = (res_a.get("content") or "").strip()
@@ -509,7 +509,7 @@ class CurationPipeline:
                     r["translation_a"] = ""
                 try:
                     res_b = self.llm.call_llm(
-                        [{"role": "user", "content": f"Translate the following English technical analysis into natural Chinese. Output only the translation, no explanations.\n\n{summary}"}],
+                        [{"role": "user", "content": f"Translate the following English technical analysis into natural Chinese. Preserve all paragraph breaks and markdown formatting. Output only the translation, no explanations.\n\n{summary}"}],
                         role="translator_b", temperature=0.2,
                     )
                     r["translation_b"] = (res_b.get("content") or "").strip()
@@ -547,6 +547,9 @@ class CurationPipeline:
             # Mock mode: use refined_summary (already Chinese from mock data)
             for r in refined_repos:
                 r["chinese_summary"] = r.get("refined_summary", "")
+
+        for r in refined_repos:
+            r["chinese_summary"] = _ensure_markdown_spacing(r["chinese_summary"])
 
         # --- Layout ---
         reports = self._stage_refine_layout(
@@ -791,7 +794,8 @@ class CurationPipeline:
             "- One clear point per paragraph. Don't cram five concepts into one paragraph.\n"
             "- No marketing fluff: revolutionary, game-changing, cutting-edge are banned\n"
             "- No personal names or first-person pronouns\n"
-            "- FORMATTING: blank line before and after each ### header"
+            "- FORMATTING: blank line before and after each ### header\n"
+            "- FORMATTING: blank line between paragraphs (double newline \\n\\n)"
         )
         user_content = (
             f"Repository: {r['full_name']}\n"
@@ -808,7 +812,7 @@ class CurationPipeline:
             {"role": "user", "content": user_content},
         ]
         try:
-            res = self.llm.call_llm(messages, use_reasoning=False, temperature=0.3)
+            res = self.llm.call_llm(messages, temperature=0.3)
             rc["refined_summary"] = res["content"]
         except Exception as e:
             print(f"[Write Warning] Failed for {r['full_name']}: {e}")

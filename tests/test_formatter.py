@@ -282,6 +282,7 @@ class TestEdgeCases:
             "stars": 100,
             "rating": "B",
             "tags": [],
+            "_bucket": "early_bird",
             "chinese_summary": "summary",
             "refined_summary": "summary",
         }
