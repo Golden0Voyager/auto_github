@@ -28,22 +28,22 @@
   "meta-llama/llama3": [
     "2026-06-14"
   ],
-  "vllm-project/aibrix": [
-    "2026-06-14"
-  ],
   "mistralai/mistral-vibe": [
     "2026-06-14"
   ],
   "comfyanonymous/ComfyUI_examples": [
     "2026-06-14"
   ],
-  "obra/superpowers": [
+  "meta-llama/PurpleLlama": [
+    "2026-06-14"
+  ],
+  "freeCodeCamp/freeCodeCamp": [
     "2026-06-14"
   ],
   "NousResearch/hermes-agent": [
     "2026-06-14"
   ],
-  "microsoft/vscode": [
+  "microsoft/PowerToys": [
     "2026-06-14"
   ],
   "deepseek-ai/FlashMLA": [
@@ -52,7 +52,7 @@
   "modelcontextprotocol/typescript-sdk": [
     "2026-06-14"
   ],
-  "LMCache/LMCache": [
+  "modelcontextprotocol/modelcontextprotocol": [
     "2026-06-14"
   ]
 }
