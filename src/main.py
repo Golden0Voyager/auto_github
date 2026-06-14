@@ -73,8 +73,9 @@ def main():
         config.notifications.discord_webhook_url = args.discord
         
     print(f"[Init] Configuration loaded successfully.")
-    print(f"[Init] LLM Provider: {config.ai.default_provider.upper()} (API: {'Configured' if config.ai.api_key else 'Missing'})")
-    print(f"[Init] Model V3: {config.ai.model_v3} | Model R1: {config.ai.model_r1}")
+    print(f"[Init] LLM Provider: {config.ai.default_provider.upper()} (API: {'Configured' if any(os.getenv(f'{p.upper()}_API_KEY') for p in ('openrouter', 'sensenova', 'openai')) else 'Missing'})")
+    roles = getattr(config.ai, "roles", {})
+    print(f"[Init] Classifier: {roles.get('classifier',{}).model if hasattr(roles.get('classifier'),'model') else '?'} | Writer: {roles.get('writer',{}).model if hasattr(roles.get('writer'),'model') else '?'}")
     print(f"[Init] Notification Webhooks: "
           f"Feishu={'Configured' if config.notifications.feishu_webhook_url else 'None'}, "
           f"Slack={'Configured' if config.notifications.slack_webhook_url else 'None'}, "

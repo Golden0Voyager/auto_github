@@ -48,8 +48,8 @@ class TestAppConfigDefaults:
     def test_ai_defaults(self):
         cfg = AppConfig()
         assert cfg.ai.default_provider == "openrouter"
-        assert cfg.ai.model_v3 == "nvidia/nemotron-3-ultra-550b-a55b:free"
-        assert cfg.ai.model_r1 == "nvidia/nemotron-3-ultra-550b-a55b:free"
+        assert cfg.ai.roles["writer"].model == "nvidia/nemotron-3-ultra-550b-a55b:free"
+        assert cfg.ai.roles["reviewer"].model == "google/gemma-4-31b-it:free"
         assert cfg.ai.temperature == 0.3
         assert cfg.ai.max_tokens == 8192
         assert cfg.ai.rate_limit_delay == 4.0
@@ -107,35 +107,30 @@ class TestLoadConfig:
         assert isinstance(config, AppConfig)
         assert config.ai.default_provider == "openrouter"
 
-    def test_openrouter_api_key_from_env(self, monkeypatch):
-        """OpenRouter reads OPENROUTER_API_KEY env var."""
+    def test_resolve_api_key_from_env(self, monkeypatch):
+        """resolve_api_key reads from the right env var."""
+        from src.config import resolve_api_key
         monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test")
-        monkeypatch.setenv("SENSENOVA_API_KEY", "sk-sensenova-test")
-        config = load_config()
-        # openrouter provider should prefer OPENROUTER_API_KEY
-        assert config.ai.api_key == "sk-or-test"
+        assert resolve_api_key("openrouter") == "sk-or-test"
 
-    def test_openrouter_base_url_default(self, monkeypatch):
-        """OpenRouter provider defaults base_url to openrouter.ai."""
+    def test_resolve_api_key_missing_returns_none(self):
+        from src.config import resolve_api_key
+        assert resolve_api_key("nonexistent") is None
+
+    def test_resolve_base_url_default(self, monkeypatch):
+        monkeypatch.delenv("SENSENOVA_BASE_URL", raising=False)
+        from src.config import resolve_base_url
         monkeypatch.delenv("OPENROUTER_BASE_URL", raising=False)
-        monkeypatch.setenv("OPENROUTER_API_KEY", "sk-test")
-        config = load_config()
-        assert config.ai.base_url == "https://openrouter.ai/api/v1"
-
-    def test_openrouter_falls_back_to_openai_key(self, monkeypatch):
-        """OpenRouter should use OPENAI_API_KEY when OPENROUTER_API_KEY is not set."""
-        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-        monkeypatch.setenv("OPENAI_API_KEY", "sk-openai-fallback")
-        config = load_config()
-        assert config.ai.api_key == "sk-openai-fallback"
+        assert resolve_base_url("openrouter") == "https://openrouter.ai/api/v1"
+        assert resolve_base_url("sensenova") == "https://token.sensenova.cn/v1"
 
     def test_sensenova_still_works_with_explicit_config(self, monkeypatch):
-        """SensoNova provider should still work when explicitly configured."""
+        """SensoNova role should still work when explicitly configured."""
         monkeypatch.setenv("SENSENOVA_API_KEY", "sk-sensenova-test")
         cfg = AppConfig()
-        cfg.ai.default_provider = "sensenova"
-        cfg.ai.api_key = "sk-test"
-        assert cfg.ai.api_key == "sk-test"
+        cfg.ai.roles["classifier"] = cfg.ai.roles["classifier"]  # default is sensenova
+        assert cfg.ai.roles["classifier"].model == "sensenova-6.7-flash-lite"
+        assert cfg.ai.roles["classifier"].provider == "sensenova"
 
     def test_webhook_overrides_from_env(self, monkeypatch):
         """Webhook URLs from env should override config file values."""
@@ -151,7 +146,7 @@ class TestLoadConfig:
         """When no API key is set, the config still works with defaults."""
         config = load_config()
         assert isinstance(config, AppConfig)
-        assert config.ai.model_v3 == "nvidia/nemotron-3-ultra-550b-a55b:free"
+        assert config.ai.roles["writer"].model == "nvidia/nemotron-3-ultra-550b-a55b:free"
 
 
 class TestModelValidation:
