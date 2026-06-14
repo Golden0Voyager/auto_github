@@ -11,105 +11,69 @@
 > [!TIP]
 > 点击下方各类别即可展开/收起项目列表看板。星标数与热度已实现标准化对齐。
 
-{% set daily_repos = [] %}
-{% set weekly_repos = [] %}
-{% set monthly_repos = [] %}
-{% set giant_repos = [] %}
+{% macro repo_card(repo) %}
+| {{ '**`'+repo.rating+'`**' if repo.rating else '' }} | [{{ repo.full_name }}]({{ repo.url }}) | `{{ repo.language }}` | ⭐️ {{ "{:,}".format(repo.stars) }} ({{ repo.period_stars }}) | {% for t in repo.tags %}`{{ t }}` {% endfor %} | {{ repo.description_short }} |
+{% endmacro %}
 
-{% for r in repos %}
-  {% if r.source == 'llm_giant' %}
-    {% set _ = giant_repos.append(r) %}
-  {% elif r.timeframe == 'daily' %}
-    {% set _ = daily_repos.append(r) %}
-  {% elif r.timeframe == 'weekly' %}
-    {% set _ = weekly_repos.append(r) %}
-  {% elif r.timeframe == 'monthly' %}
-    {% set _ = monthly_repos.append(r) %}
-  {% else %}
-    {% set _ = daily_repos.append(r) %}
-  {% endif %}
-{% endfor %}
-
+{% set buckets = repos | groupby('_bucket') %}
+{% for bucket_key in ['early_bird', 'high_star', 'deep_dive'] %}
+{% set bucket_repos = repos | selectattr('_bucket', 'equalto', bucket_key) | list %}
+{% if bucket_key == 'early_bird' %}
 <details open>
-  <summary><b>📅 每日热门趋势 (Daily Trending) [共计 {{ daily_repos | length }} 个项目]</b></summary>
+  <summary><b>📅 每日热门趋势 (Daily Trending) [共计 {{ bucket_repos | length }} 个项目]</b></summary>
   <br>
 
-{% if daily_repos | length > 0 %}
 | 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
 | :---: | :--- | :---: | :---: | :--- | :--- |
-{% for r in daily_repos -%}
-| **`{{ r.rating }}`** | [{{ r.full_name }}]({{ r.url }}) | `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} ({{ r.period_stars }}) | {% for t in r.tags %}`{{ t }}` {% endfor %} | {{ r.description_short }} |
+{% for r in bucket_repos %}{{ repo_card(r) }}
 {% endfor %}
-{% else %}
-*暂无数据。可通过运行 `--since daily` 触发每日热门趋势抓取。*
-{% endif %}
   <br>
 </details>
-
+{% elif bucket_key == 'high_star' %}
 <details>
-  <summary><b>📅 每周热门趋势 (Weekly Trending) [共计 {{ weekly_repos | length }} 个项目]</b></summary>
+  <summary><b>📅 每周热门趋势 (Weekly Trending) [共计 {{ bucket_repos | length }} 个项目]</b></summary>
   <br>
 
-{% if weekly_repos | length > 0 %}
 | 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
 | :---: | :--- | :---: | :---: | :--- | :--- |
-{% for r in weekly_repos -%}
-| **`{{ r.rating }}`** | [{{ r.full_name }}]({{ r.url }}) | `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} ({{ r.period_stars }}) | {% for t in r.tags %}`{{ t }}` {% endfor %} | {{ r.description_short }} |
+{% for r in bucket_repos %}{{ repo_card(r) }}
 {% endfor %}
-{% else %}
-*暂无数据。可通过运行 `--since weekly` 触发每周热门趋势抓取。*
-{% endif %}
   <br>
 </details>
-
+{% elif bucket_key == 'deep_dive' %}
 <details>
-  <summary><b>📅 每月热门趋势 (Monthly Trending) [共计 {{ monthly_repos | length }} 个项目]</b></summary>
+  <summary><b>📅 每月热门趋势 (Monthly Trending) [共计 {{ bucket_repos | length }} 个项目]</b></summary>
   <br>
 
-{% if monthly_repos | length > 0 %}
 | 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
 | :---: | :--- | :---: | :---: | :--- | :--- |
-{% for r in monthly_repos -%}
-| **`{{ r.rating }}`** | [{{ r.full_name }}]({{ r.url }}) | `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} ({{ r.period_stars }}) | {% for t in r.tags %}`{{ t }}` {% endfor %} | {{ r.description_short }} |
+{% for r in bucket_repos %}{{ repo_card(r) }}
 {% endfor %}
-{% else %}
-*暂无数据。可通过运行 `--since monthly` 触发每月热门趋势抓取。*
-{% endif %}
   <br>
 </details>
-
-<details open>
-  <summary><b>🏢 大厂活跃动态 (LLM Giant Activity) [共计 {{ giant_repos | length }} 个项目]</b></summary>
-  <br>
-
-{% if giant_repos | length > 0 %}
-| 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
-| :---: | :--- | :---: | :---: | :--- | :--- |
-{% for r in giant_repos -%}
-| **`{{ r.rating }}`** | [{{ r.full_name }}]({{ r.url }}) | `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} (大厂活跃) | {% for t in r.tags %}`{{ t }}` {% endfor %} | {{ r.description_short }} |
-{% endfor %}
-{% else %}
-*暂无数据。*
 {% endif %}
-  <br>
-</details>
+{% endfor %}
 
 ---
 
 ## 🔍 深度项目解析
 
 {% for r in repos %}
-### {% if r.rating == 'S' %}👑{% elif r.rating == 'A' %}🔥{% else %}🔹{% endif %} [{{ r.rating }}] {{ r.full_name }}
+### {% if r.rating == 'S' %}👑 {% elif r.rating == 'A' %}🔥 {% else %}🔹 {% endif %}[{{ r.rating }}] {{ r.full_name }}
 - **项目地址**: [{{ r.url }}]({{ r.url }})
-- **基本数据**: `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} ({% if r.source == 'llm_giant' %}大厂活跃{% else %}{{ r.period_stars }}{% endif %}) | **来源**: `{{ r.source }}`
+- **基本数据**: `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} ({{ r.period_stars }}) | **来源**: `{{ r.source }}`
 - **入选理由**: *{{ r.selection_reason }}*
 
 {{ r.chinese_summary }}
 
 ---
+
 {% endfor %}
 
-> **提示词经济学与上下文控制 (Token Economics)**:  
-> 本次报告由 **SenseNova** (`{{ model_v3 }}` & `{{ model_r1 }}`) 驱动，经过 **抓取 ➜ 分析 ➜ 总结 ➜ 反思 ➜ 翻译 ➜ 排版** 6 阶段智能体管线。反思阶段通过 Native Reasoning 压缩了冗余的 “AI 废话”，为您精简了 85% 的上下文噪音。
+> **Token Economics**: multi-model curation pipeline via OpenRouter.
 
 *Designed with ❤️ by Antigravity Curation System.*
+
+---
+
+🤖 LLM 调用: {{ llm_stats.call_count }} 次成功 / {{ llm_stats.failed_count }} 重试失败 · {{ llm_stats.tokens }} tokens ({{ llm_stats.prompt_tokens }} in / {{ llm_stats.completion_tokens }} out)

@@ -2,31 +2,34 @@
 
 Covers:
 - LLMClient initialization with/without API key
-- call_llm with hub and fallback paths
+- call_llm with role-based model selection
 - Stats tracking (get_stats, reset_stats)
 - Rate limiting / retry behavior (via mock)
-- Edge cases: missing API key, hub import failure
+- Edge cases: missing API key, unknown role
 """
 
-from typing import Any, Dict, Optional
-from unittest.mock import MagicMock, PropertyMock, patch
+from typing import Any, Dict
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.config import AppConfig, AIConfig
-
-from unittest.mock import MagicMock, patch
-
+from src.config import AppConfig, AIConfig, RoleConfig
 from src.llm import LLMClient
 
 
 @pytest.fixture
-def llm_config() -> AppConfig:
+def llm_config(monkeypatch) -> AppConfig:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-key")
     return AppConfig(
         ai=AIConfig(
             default_provider="openai",
-            model_v3="gpt-4o-mini",
-            model_r1="o1-mini",
+            roles={
+                "classifier": RoleConfig(model="gpt-4o-mini", provider="openai"),
+                "writer": RoleConfig(model="gpt-4o-mini", provider="openai"),
+                "translator_a": RoleConfig(model="gpt-4o-mini", provider="openai"),
+                "translator_b": RoleConfig(model="gpt-4o-mini", provider="openai"),
+                "reviewer": RoleConfig(model="gpt-4o-mini", provider="openai"),
+            },
             temperature=0.3,
             max_tokens=4096,
             rate_limit_delay=0.01,
@@ -37,46 +40,44 @@ def llm_config() -> AppConfig:
 
 
 @pytest.fixture
-def no_key_config() -> AppConfig:
-    """Config with no API key set."""
-    return AppConfig(
-        ai=AIConfig(api_key=None)
-    )
+def no_key_config(monkeypatch) -> AppConfig:
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.delenv("SENSENOVA_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    return AppConfig()
+
+
+@pytest.fixture
+def mock_openai():
+    """Mock OpenAI client so _init_clients gets a mock."""
+    with patch("openai.OpenAI") as mock_cls:
+        mock_instance = MagicMock()
+        mock_cls.return_value = mock_instance
+        yield mock_cls
 
 
 class TestLLMClientInit:
     """Test initialization behavior."""
 
-    def test_init_with_api_key(self, llm_config):
-        """With API key, hub should be attempted, and fallback should exist."""
+    def test_init_with_api_key(self, llm_config, mock_openai):
+        """With API key, a client should be created."""
         client = LLMClient(llm_config)
-        assert client.provider == "openai"
-        assert client.model_v3 == "gpt-4o-mini"
-        assert client.model_r1 == "o1-mini"
-        # Hub may or may not be importable; fallback should be set since key exists
-        if client._hub is None:
-            assert client._fallback is not None
+        assert client.client is not None
+        stats = client.get_stats()
+        assert stats["call_count"] == 0
 
-    def test_init_without_api_key_warns(self, no_key_config):
-        """Without API key, both hub and fallback should be None."""
+    def test_init_without_api_key_has_no_client(self, no_key_config):
+        """Without API key, client should be None."""
         client = LLMClient(no_key_config)
-        assert client._hub is None
-        assert client._fallback is None
+        assert client.client is None
 
-    def test_init_stats_start_at_zero(self, llm_config):
+    def test_init_stats_start_at_zero(self, llm_config, mock_openai):
         client = LLMClient(llm_config)
         stats = client.get_stats()
         assert stats["call_count"] == 0
         assert stats["failed_attempt_count"] == 0
         assert stats["total_prompt_tokens"] == 0
         assert stats["total_completion_tokens"] == 0
-        assert stats["total_tokens"] == 0
-
-    def test_client_property_truthy_when_hub(self, llm_config):
-        client = LLMClient(llm_config)
-        # The client property should be truthy if hub or fallback exists
-        if client._hub is not None:
-            assert client.client is not None
 
     def test_client_property_none_without_key(self, no_key_config):
         client = LLMClient(no_key_config)
@@ -87,25 +88,25 @@ class TestCallLLMNoKey:
     """Test behavior when no API key is configured."""
 
     def test_call_llm_no_key_returns_error_dict(self, no_key_config):
-        """Without API key, call_llm should return an error dict, not crash."""
+        """Without API key, call_llm should return an error dict."""
         client = LLMClient(no_key_config)
         result = client.call_llm([{"role": "user", "content": "Hi"}])
         assert isinstance(result, dict)
-        assert "Error:" in result["content"]
-        assert result["reasoning"] is None
+        assert "Error:" in result.get("content", "")
+
+    def test_call_llm_unknown_role_returns_error(self, llm_config):
+        """An unknown role should return an error dict."""
+        client = LLMClient(llm_config)
+        result = client.call_llm([{"role": "user", "content": "Hi"}], role="nonexistent")
+        assert "Error:" in result.get("content", "")
 
 
-@patch("openai.OpenAI")
-class TestCallLLMFallback:
-    """Test the fallback OpenAI SDK path (when hub is not available)."""
+class TestCallLLM:
+    """Test the fallback OpenAI SDK path."""
 
-    def test_successful_call(self, mock_openai_cls, llm_config):
+    def test_successful_call(self, llm_config, mock_openai):
         """A successful call returns content and updates stats."""
-        # Mock the OpenAI client
-        mock_openai = MagicMock()
-        mock_openai_cls.return_value = mock_openai
-
-        # Mock the chat completion response
+        mock_client = mock_openai.return_value
         mock_choice = MagicMock()
         mock_choice.message.content = "Hello, world!"
         mock_choice.message.reasoning_content = None
@@ -119,13 +120,13 @@ class TestCallLLMFallback:
         mock_response.choices = [mock_choice]
         mock_response.usage = mock_usage
 
-        mock_openai.chat.completions.create.return_value = mock_response
+        mock_client.chat.completions.create.return_value = mock_response
 
         client = LLMClient(llm_config)
-        result = client.call_llm([{"role": "user", "content": "Hi"}])
+        result = client.call_llm([{"role": "user", "content": "Hi"}], role="writer")
 
         assert result["content"] == "Hello, world!"
-        assert result["model"] == llm_config.ai.model_v3
+        assert result["model"] == "gpt-4o-mini"
 
         stats = client.get_stats()
         assert stats["call_count"] == 1
@@ -133,95 +134,66 @@ class TestCallLLMFallback:
         assert stats["total_completion_tokens"] == 20
         assert stats["total_tokens"] == 70
 
-    def test_use_reasoning_model(self, mock_openai_cls, llm_config):
-        """When use_reasoning=True, the r1 model should be used."""
-        mock_openai = MagicMock()
-        mock_openai_cls.return_value = mock_openai
-
+    def test_role_maps_to_correct_model(self, llm_config, mock_openai):
+        """Each role should use its configured model."""
+        mock_client = mock_openai.return_value
         mock_choice = MagicMock()
-        mock_choice.message.content = "Thinking..."
+        mock_choice.message.content = "result"
         mock_choice.message.reasoning_content = None
         mock_choice.message.model_extra = None
-
-        mock_usage = MagicMock()
-        mock_usage.prompt_tokens = 50
-        mock_usage.completion_tokens = 20
-
-        mock_response = MagicMock()
-        mock_response.choices = [mock_choice]
-        mock_response.usage = mock_usage
-
-        mock_openai.chat.completions.create.return_value = mock_response
+        mock_client.chat.completions.create.return_value = MagicMock(
+            choices=[mock_choice],
+            usage=MagicMock(prompt_tokens=1, completion_tokens=1),
+        )
 
         client = LLMClient(llm_config)
-        result = client.call_llm([{"role": "user", "content": "Reason"}], use_reasoning=True)
+        result = client.call_llm([{"role": "user", "content": "Classify"}], role="classifier")
+        assert result["content"] == "result"
 
-        # The model should be the R1 model
-        call_kwargs = mock_openai.chat.completions.create.call_args[1]
-        assert call_kwargs["model"] == llm_config.ai.model_r1
-
-    def test_reasoning_content_extracted(self, mock_openai_cls, llm_config):
+    def test_reasoning_content_extracted(self, llm_config, mock_openai):
         """reasoning_content from response should be extracted."""
-        mock_openai = MagicMock()
-        mock_openai_cls.return_value = mock_openai
-
+        mock_client = mock_openai.return_value
         mock_choice = MagicMock()
         mock_choice.message.content = "Final answer"
         mock_choice.message.reasoning_content = "Step 1: ..."
         mock_choice.message.model_extra = None
 
-        mock_usage = MagicMock()
-        mock_usage.prompt_tokens = 50
-        mock_usage.completion_tokens = 20
-
         mock_response = MagicMock()
         mock_response.choices = [mock_choice]
-        mock_response.usage = mock_usage
+        mock_response.usage = MagicMock(prompt_tokens=1, completion_tokens=1)
 
-        mock_openai.chat.completions.create.return_value = mock_response
+        mock_client.chat.completions.create.return_value = mock_response
 
         client = LLMClient(llm_config)
-        result = client.call_llm([{"role": "user", "content": "Think"}], use_reasoning=True)
+        result = client.call_llm([{"role": "user", "content": "Think"}], role="writer")
         assert result["reasoning"] == "Step 1: ..."
 
-    def test_model_extra_reasoning_extracted(self, mock_openai_cls, llm_config):
+    def test_model_extra_reasoning_extracted(self, llm_config, mock_openai):
         """When reasoning_content is in model_extra, it should be extracted."""
-        mock_openai = MagicMock()
-        mock_openai_cls.return_value = mock_openai
-
+        mock_client = mock_openai.return_value
         mock_choice = MagicMock()
         mock_choice.message.content = "Final answer"
-        # Remove reasoning_content so hasattr falls through to model_extra
-        del mock_choice.message.reasoning_content
-        # Use configure_mock to set model_extra properly
-        mock_choice.message.configure_mock(model_extra={"reasoning_content": "Extra thinking..."})
-
-        mock_usage = MagicMock()
-        mock_usage.prompt_tokens = 50
-        mock_usage.completion_tokens = 20
+        mock_choice.message.reasoning_content = None
+        mock_choice.message.model_extra = {"reasoning_content": "Extra thinking..."}
 
         mock_response = MagicMock()
         mock_response.choices = [mock_choice]
-        mock_response.usage = mock_usage
+        mock_response.usage = MagicMock(prompt_tokens=1, completion_tokens=1)
 
-        mock_openai.chat.completions.create.return_value = mock_response
+        mock_client.chat.completions.create.return_value = mock_response
 
         client = LLMClient(llm_config)
-        result = client.call_llm([{"role": "user", "content": "Think"}], use_reasoning=True)
+        result = client.call_llm([{"role": "user", "content": "Think"}], role="writer")
         assert result["reasoning"] == "Extra thinking..."
 
 
-@patch("openai.OpenAI")
-class TestCallLLMFallbackErrors:
-    """Test error handling in the fallback path."""
+class TestCallLLMErrors:
+    """Test error handling."""
 
-    def test_retry_on_rate_limit(self, mock_openai_cls, llm_config):
+    def test_retry_on_rate_limit(self, llm_config, mock_openai):
         """Rate limit errors should trigger retries."""
-        mock_openai = MagicMock()
-        mock_openai_cls.return_value = mock_openai
-
-        # First two calls fail with rate limit, third succeeds
-        mock_openai.chat.completions.create.side_effect = [
+        mock_client = mock_openai.return_value
+        mock_client.chat.completions.create.side_effect = [
             Exception("429 Too Many Requests"),
             Exception("429 rate limit exceeded"),
             MagicMock(
@@ -233,26 +205,23 @@ class TestCallLLMFallbackErrors:
         ]
 
         client = LLMClient(llm_config)
-        result = client.call_llm([{"role": "user", "content": "Hi"}], retries=3, backoff_factor=1.0)
-
+        result = client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=3, backoff_factor=1.0)
         assert result["content"] == "Success"
-        assert mock_openai.chat.completions.create.call_count == 3
+        assert mock_client.chat.completions.create.call_count == 3
 
-    def test_all_retries_fail_raises(self, mock_openai_cls, llm_config):
+    def test_all_retries_fail_raises(self, llm_config, mock_openai):
         """When all retries fail, should raise RuntimeError."""
-        mock_openai = MagicMock()
-        mock_openai_cls.return_value = mock_openai
-        mock_openai.chat.completions.create.side_effect = Exception("429 rate limit")
+        mock_client = mock_openai.return_value
+        mock_client.chat.completions.create.side_effect = Exception("429 rate limit")
 
         client = LLMClient(llm_config)
         with pytest.raises(RuntimeError, match="maximum retries"):
-            client.call_llm([{"role": "user", "content": "Hi"}], retries=2, backoff_factor=1.0)
+            client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=2, backoff_factor=1.0)
 
-    def test_non_rate_limit_errors_retry(self, mock_openai_cls, llm_config):
-        """Non-rate-limit errors should also trigger retries with shorter delay."""
-        mock_openai = MagicMock()
-        mock_openai_cls.return_value = mock_openai
-        mock_openai.chat.completions.create.side_effect = [
+    def test_non_rate_limit_errors_retry(self, llm_config, mock_openai):
+        """Non-rate-limit errors should also trigger retries."""
+        mock_client = mock_openai.return_value
+        mock_client.chat.completions.create.side_effect = [
             Exception("Internal server error"),
             MagicMock(
                 choices=[MagicMock(
@@ -263,14 +232,13 @@ class TestCallLLMFallbackErrors:
         ]
 
         client = LLMClient(llm_config)
-        result = client.call_llm([{"role": "user", "content": "Hi"}], retries=2, backoff_factor=1.0)
+        result = client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=2, backoff_factor=1.0)
         assert result["content"] == "Success"
 
-    def test_failed_attempt_tracking(self, mock_openai_cls, llm_config):
+    def test_failed_attempt_tracking(self, llm_config, mock_openai):
         """Failed attempts should be tracked in stats."""
-        mock_openai = MagicMock()
-        mock_openai_cls.return_value = mock_openai
-        mock_openai.chat.completions.create.side_effect = [
+        mock_client = mock_openai.return_value
+        mock_client.chat.completions.create.side_effect = [
             Exception("429 rate limit"),
             Exception("429 rate limit"),
             MagicMock(
@@ -282,8 +250,7 @@ class TestCallLLMFallbackErrors:
         ]
 
         client = LLMClient(llm_config)
-        result = client.call_llm([{"role": "user", "content": "Hi"}], retries=3, backoff_factor=1.0)
-
+        result = client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=3, backoff_factor=1.0)
         stats = client.get_stats()
         assert stats["failed_attempt_count"] == 2
 
@@ -292,9 +259,7 @@ class TestGetStatsAndReset:
     """Test stats tracking."""
 
     def test_get_stats_summary_field(self, llm_config):
-        """get_stats should include a total_tokens field."""
         client = LLMClient(llm_config)
-        # Manually set some stats
         client.call_count = 5
         client.failed_attempt_count = 2
         client.total_prompt_tokens = 1000
@@ -308,7 +273,6 @@ class TestGetStatsAndReset:
         assert stats["total_tokens"] == 1500
 
     def test_reset_stats_clears_counters(self, llm_config):
-        """reset_stats should zero out all counters."""
         client = LLMClient(llm_config)
         client.call_count = 5
         client.failed_attempt_count = 2

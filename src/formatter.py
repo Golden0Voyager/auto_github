@@ -58,8 +58,6 @@ class ReportFormatter:
             "timeframe": self.timeframe,
             "timestamp": self.timestamp,
             "total_input": total_input,
-            "model_v3": self.config.ai.model_v3,
-            "model_r1": self.config.ai.model_r1,
             "cooled_repos": cooled_repos,
             "archive_total": archive_total,
         }
@@ -156,7 +154,7 @@ class ReportFormatter:
         elements.append({"tag": "hr"})
         elements.append({
             "tag": "markdown",
-            "content": f"⚡ Powered by SenseNova ({self.config.ai.model_v3} & {self.config.ai.model_r1}). Compressed 85% noise.",
+            "content": "🤖 Multi-model curation via OpenRouter. 5-stage pipeline: Crawl → Classify → Write → Translate → Review.",
         })
 
         return {

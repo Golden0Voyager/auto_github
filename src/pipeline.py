@@ -483,24 +483,72 @@ class CurationPipeline:
             print("[Pipeline Info] Stage 2: No repos passed analysis threshold. Aborting.")
             return {}
 
-        # --- Scrape: 抓取 README 提供素材 ---
+        # --- Scrape ---
         scraped_repos = self._stage_scrape(analyzed_repos)
 
-        # --- Write: 生成中文 4-section 分析 ---
+        # --- Write (English) ---
         before = self.llm.get_stats()
         refined_repos = self._stage_summarize_and_reflect(scraped_repos)
         self._log_llm_stage("Write", before)
 
-        # --- Review: 质量检查，短内容用 stub 兜底 ---
-        for r in refined_repos:
-            summary = (r.get("refined_summary", "") or "").strip()
-            if len(summary) < 50:
-                print(f"  [Review] {r['full_name']}: content too short, using stub")
-                r["chinese_summary"] = self._chinese_stub(r)
-            else:
-                r["chinese_summary"] = summary
+# --- Translate A + Translate B ---
+        if not self.use_mock:
+            before = self.llm.get_stats()
+            for r in refined_repos:
+                summary = (r.get("refined_summary", "") or "").strip()
+                if len(summary) < 50:
+                    r["translation_a"] = r["translation_b"] = ""
+                    continue
+                try:
+                    res_a = self.llm.call_llm(
+                        [{"role": "user", "content": f"Translate the following English technical analysis into natural Chinese. Output only the translation, no explanations.\n\n{summary}"}],
+                        role="translator_a", temperature=0.2,
+                    )
+                    r["translation_a"] = (res_a.get("content") or "").strip()
+                except Exception:
+                    r["translation_a"] = ""
+                try:
+                    res_b = self.llm.call_llm(
+                        [{"role": "user", "content": f"Translate the following English technical analysis into natural Chinese. Output only the translation, no explanations.\n\n{summary}"}],
+                        role="translator_b", temperature=0.2,
+                    )
+                    r["translation_b"] = (res_b.get("content") or "").strip()
+                except Exception:
+                    r["translation_b"] = ""
+            self._log_llm_stage("Translate", before)
 
-        # --- Layout: 排版 & 输出 ---
+        # --- Reviewer: pick best translation ---
+        if not self.use_mock:
+            before = self.llm.get_stats()
+            for r in refined_repos:
+                ta, tb = r.get("translation_a", ""), r.get("translation_b", "")
+                if not ta and not tb:
+                    r["chinese_summary"] = self._chinese_stub(r)
+                    continue
+                if not ta:
+                    r["chinese_summary"] = tb; continue
+                if not tb:
+                    r["chinese_summary"] = ta; continue
+                try:
+                    res = self.llm.call_llm(
+                        [{"role": "user", "content":
+                            f"Compare these two Chinese translations of the same English text. "
+                            f"Pick the one that is more accurate, natural, and readable.\n"
+                            f"Output ONLY \"A\" or \"B\".\n\n"
+                            f"--- Translation A ---\n{ta}\n\n--- Translation B ---\n{tb}"}],
+                        role="reviewer", temperature=0.1, max_tokens=10,
+                    )
+                    choice = (res.get("content") or "").strip().upper()
+                    r["chinese_summary"] = ta if choice.startswith("A") else tb
+                except Exception:
+                    r["chinese_summary"] = ta
+            self._log_llm_stage("Review", before)
+        else:
+            # Mock mode: use refined_summary (already Chinese from mock data)
+            for r in refined_repos:
+                r["chinese_summary"] = r.get("refined_summary", "")
+
+        # --- Layout ---
         reports = self._stage_refine_layout(
             refined_repos,
             since,
@@ -652,7 +700,7 @@ class CurationPipeline:
         
         try:
             # Stage 2 uses DeepSeek-V3-1 (non-reasoning) for batch classification
-            response = self.llm.call_llm(messages, use_reasoning=False, temperature=0.2)
+            response = self.llm.call_llm(messages, role="classifier", temperature=0.2)
             raw_content = response["content"]
             
             # Robust JSON extraction
@@ -721,38 +769,29 @@ class CurationPipeline:
     def _summarize_reflect_per_repo(self, r: Dict[str, Any]) -> Dict[str, Any]:
         rc = r.copy()
         system_prompt = (
-            "You are a senior engineer who loves teaching. You write Chinese tech analysis "
-            "that reads like an experienced colleague sharing hard-won insights over tea.\n\n"
+            "You are a senior engineer who loves teaching. Write English tech analysis "
+            "that reads like an experienced colleague sharing hard-won insights.\n\n"
             "Your reader: Can code but may not have CS degree. They build things with LLMs, "
             "Agents, and automation tools. They respect deep understanding, not buzzwords.\n\n"
-            "写一段关于以下 GitHub 项目的技术分析，用中文。\n\n"
-            "结构要求（保持以下 4 个 ### 标题，顺序不能变）：\n\n"
-            "### 要解决的核心痛点\n"
-            "别复述项目描述。先让读者想起自己也踩过这个坑——\"你是不是也遇到过这种情况：...\"\n"
-            "把'为什么这个问题难'讲清楚，而不是'这个项目做了什么'。\n\n"
-            "### 设计巧思与架构取舍\n"
-            "别列功能清单。聚焦 1-2 个关键设计决策：\n"
-            "- 作者为什么选 A 不选 B？\n"
-            "- 这个取舍带来了什么收益，牺牲了什么？\n"
-            "- 如果团队选了另一条路会怎样？\n"
-            "用具体的技术术语来解释，但要说明白它们为什么重要。\n\n"
-            "### 工程启示与可迁移经验\n"
-            "这是最有价值的部分。提炼一个读者能带走的原则或模式：\n"
-            "- '这个项目处理错误的方式，你在写 Agent 时也能用'\n"
-            "- '它的模块拆分思路，不只适用于这个项目'\n"
-            "不要只重复项目本身的特性，要讲'这对我有什么用'。\n\n"
-            "### 关联生态与延展阅读\n"
-            "推荐 2-3 个相关的知名项目（5000+ stars 的、你确定存在的）。\n"
-            "说明：它们如何互补？搭配使用能解决什么问题？\n"
-            "宁可少推荐一个，也不要胡编。\n\n"
-            "行文指南：\n"
-            "- 像教一个聪明但没时间研究的同事——尊重他的智商，但别浪费他的时间\n"
-            "- 技术术语要用，但要带一句解释（不是定义，是'为什么它在这里重要'）\n"
-            "- 避免堆砌名词。一个段落讲清楚一个点，比一段话塞五个概念好\n"
-            "- 不要用营销腔：revolutionary, game-changing, cutting-edge 等一律禁用\n"
-            "- 不要出现个人姓名、第一人称（我/我们）\n"
-            "- 每个 section 3-5 句，但以自然段为单位，不要刻意凑数\n"
-            "- FORMATTING: ### 标题前后必须有空行，段落之间有空行"
+            "Write a technical analysis of the following GitHub project in English. "
+            "Use this 4-section structure (keep the ### headers exactly as shown):\n\n"
+            "### Core Pain Point Solved\n"
+            "Make the reader recall a problem they've faced. Show why it's hard.\n\n"
+            "### Design & Architectural Trade-offs\n"
+            "Focus on 1-2 key design decisions. Why A over B? What was gained, what was sacrificed?\n"
+            "Use specific technical terms but explain why they matter.\n\n"
+            "### Engineering Insights & Transferable Lessons\n"
+            "The most valuable section. Extract a pattern or principle the reader can apply elsewhere.\n\n"
+            "### Ecosystem & Related Projects\n"
+            "Recommend 2-3 well-known related projects (5000+ stars, must exist). "
+            "Explain how they complement each other.\n\n"
+            "Guidelines:\n"
+            "- Write like you're teaching a smart colleague who's short on time\n"
+            "- Use technical terms but explain why they're important here\n"
+            "- One clear point per paragraph. Don't cram five concepts into one paragraph.\n"
+            "- No marketing fluff: revolutionary, game-changing, cutting-edge are banned\n"
+            "- No personal names or first-person pronouns\n"
+            "- FORMATTING: blank line before and after each ### header"
         )
         user_content = (
             f"Repository: {r['full_name']}\n"
