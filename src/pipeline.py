@@ -394,9 +394,31 @@ class CurationPipeline:
         )
         return result
 
+    def _stage_scrape(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Stage 2.5: Scrape README for each repo to provide rich context to the writer.
+        Pure HTTP fetch, no LLM calls. Falls back to empty string on failure.
+        """
+        print("\n=== Stage 2.5: Scrape（抓取 README 为 writer 提供素材）===")
+        result = []
+        for r in repos:
+            rc = r.copy()
+            if self.use_mock:
+                desc = r.get("description", "") or ""
+                rc["scraped_readme"] = f"# {r['full_name']}\n\n{desc}\n\n## Installation\npip install\n\n## Usage\nSee documentation.\n\n## Architecture\nStandard implementation with modular design."
+            else:
+                readme = self.crawler.scrape_readme(r["full_name"])
+                if readme:
+                    print(f"  [Scrape] {r['full_name']}: {len(readme)} chars")
+                else:
+                    print(f"  [Scrape] {r['full_name']}: no README found")
+                rc["scraped_readme"] = readme
+            result.append(rc)
+        print(f"[Stage 2.5 Done] Scraped {len(result)} repositories.")
+        return result
+
     def run(self, since: str = "daily", use_mock: bool = False) -> Dict[str, Any]:
         """Runs the entire 6-stage pipeline.
-        
+
         Args:
             since: 'daily', 'weekly', or 'monthly'
             use_mock: If True, uses realistic offline mock data to avoid network/API limits.
@@ -468,12 +490,15 @@ class CurationPipeline:
             print("[Pipeline Info] Stage 2: No repos passed analysis threshold. Aborting.")
             return {}
 
-        # --- Stage 3+4: Summarize & Reflect (合并批处理，1 次 LLM 调用) ---
+        # --- Stage 2.5: Scrape README（为 writer 提供素材） ---
+        scraped_repos = self._stage_scrape(analyzed_repos)
+
+        # --- Stage 3+4: Summarize & Reflect ---
         before = self.llm.get_stats()
-        refined_repos = self._stage_summarize_and_reflect(analyzed_repos)
+        refined_repos = self._stage_summarize_and_reflect(scraped_repos)
         self._log_llm_stage("Stage 3+4 Summarize+Reflect", before)
 
-        # --- Stage 5: Translate (批处理，1 次 LLM 调用) ---
+        # --- Stage 5: Translate（直通层，保留兼容） ---
         before = self.llm.get_stats()
         translated_repos = self._stage_translate(refined_repos)
         self._log_llm_stage("Stage 5 Translate", before)
@@ -740,7 +765,8 @@ class CurationPipeline:
             f"Description: {r.get('description', '')}\n"
             f"Tags: {', '.join(r.get('tags', []))}\n"
             f"Rating: {r.get('rating', 'B')}\n"
-            f"Selection Reason: {r.get('selection_reason', '')}"
+            f"Selection Reason: {r.get('selection_reason', '')}\n\n"
+            f"README Content:\n{r.get('scraped_readme', '(no README available)')[:3000]}"
         )
         messages = [
             {"role": "system", "content": system_prompt},
@@ -757,20 +783,6 @@ class CurationPipeline:
             rc["refined_summary"] = self._chinese_stub(r)
         rc["reflection_trace"] = ""
         return rc
-
-    def _summarize_reflect_stub(self, r: Dict[str, Any]) -> str:
-        """Static fallback stub when LLM is unavailable for summarization."""
-        desc = r.get("description", "Open-source engineering project") or "Open-source engineering project"
-        return (
-            f"### Core Pain Point Solved\n{desc}\n\n"
-            f"### Design & Architectural Trade-offs\n"
-            f"Standard implementation with community-driven design decisions. "
-            f"Deeper LLM analysis pending for this cycle.\n\n"
-            f"### Engineering Insights & Transferable Lessons\n"
-            f"Refer to the project README and issue tracker for engineering discussions.\n\n"
-            f"### Ecosystem & Related Projects\n"
-            f"Explore related repositories via the project's dependency graph and GitHub Topics page."
-        )
 
     def _chinese_stub(self, r: Dict[str, Any]) -> str:
         """Chinese fallback stub used when Stage 5 translation fails."""

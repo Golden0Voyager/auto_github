@@ -1,7 +1,7 @@
 import os
 import yaml
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel, Field
 
 # Base Directory of the Project
