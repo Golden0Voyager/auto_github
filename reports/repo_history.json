@@ -28,10 +28,10 @@
   "meta-llama/llama3": [
     "2026-06-14"
   ],
-  "vllm-project/aibrix": [
+  "mistralai/mistral-vibe": [
     "2026-06-15"
   ],
-  "mistralai/mistral-vibe": [
+  "microsoft/agent-governance-toolkit": [
     "2026-06-15"
   ],
   "comfyanonymous/ComfyUI_examples": [
