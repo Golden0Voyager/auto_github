@@ -28,13 +28,13 @@
   "meta-llama/llama3": [
     "2026-06-14"
   ],
+  "vllm-project/aibrix": [
+    "2026-06-15"
+  ],
   "mistralai/mistral-vibe": [
     "2026-06-15"
   ],
-  "vllm-project/semantic-router": [
-    "2026-06-15"
-  ],
-  "comfyanonymous/ComfyUI_examples": [
+  "microsoft/agent-governance-toolkit": [
     "2026-06-15"
   ],
   "freeCodeCamp/freeCodeCamp": [
