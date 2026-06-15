@@ -31,7 +31,7 @@
   "mistralai/mistral-vibe": [
     "2026-06-15"
   ],
-  "microsoft/agent-governance-toolkit": [
+  "modelcontextprotocol/csharp-sdk": [
     "2026-06-15"
   ],
   "comfyanonymous/ComfyUI_examples": [
@@ -49,10 +49,10 @@
   "modelcontextprotocol/typescript-sdk": [
     "2026-06-15"
   ],
-  "modelcontextprotocol/modelcontextprotocol": [
+  "modelcontextprotocol/ruby-sdk": [
     "2026-06-15"
   ],
-  "modelcontextprotocol/ruby-sdk": [
+  "lucidrains/BS-RoFormer": [
     "2026-06-15"
   ]
 }
