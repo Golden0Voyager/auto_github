@@ -28,13 +28,13 @@
   "meta-llama/llama3": [
     "2026-06-14"
   ],
+  "modelcontextprotocol/go-sdk": [
+    "2026-06-15"
+  ],
   "mistralai/mistral-vibe": [
     "2026-06-15"
   ],
   "modelcontextprotocol/csharp-sdk": [
-    "2026-06-15"
-  ],
-  "comfyanonymous/ComfyUI_examples": [
     "2026-06-15"
   ],
   "freeCodeCamp/freeCodeCamp": [
@@ -43,13 +43,13 @@
   "NousResearch/hermes-agent": [
     "2026-06-15"
   ],
-  "huggingface/transformers": [
+  "microsoft/vscode": [
     "2026-06-15"
   ],
   "modelcontextprotocol/typescript-sdk": [
     "2026-06-15"
   ],
-  "modelcontextprotocol/ruby-sdk": [
+  "modelcontextprotocol/kotlin-sdk": [
     "2026-06-15"
   ],
   "lucidrains/BS-RoFormer": [
