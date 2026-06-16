@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-14"
   ],
-  "modelcontextprotocol/go-sdk": [
-    "2026-06-15"
+  "microsoft/fluentui-blazor": [
+    "2026-06-16"
   ],
   "mistralai/mistral-vibe": [
-    "2026-06-15"
+    "2026-06-16"
   ],
-  "modelcontextprotocol/csharp-sdk": [
-    "2026-06-15"
+  "vllm-project/semantic-router": [
+    "2026-06-16"
   ],
   "freeCodeCamp/freeCodeCamp": [
-    "2026-06-15"
+    "2026-06-16"
+  ],
+  "jwasham/coding-interview-university": [
+    "2026-06-16"
   ],
   "NousResearch/hermes-agent": [
-    "2026-06-15"
+    "2026-06-16"
   ],
-  "microsoft/vscode": [
-    "2026-06-15"
+  "deepseek-ai/FlashMLA": [
+    "2026-06-16"
   ],
   "modelcontextprotocol/typescript-sdk": [
-    "2026-06-15"
+    "2026-06-16"
   ],
-  "modelcontextprotocol/kotlin-sdk": [
-    "2026-06-15"
-  ],
-  "lucidrains/BS-RoFormer": [
-    "2026-06-15"
+  "lucidrains/x-transformers": [
+    "2026-06-16"
   ]
 }
