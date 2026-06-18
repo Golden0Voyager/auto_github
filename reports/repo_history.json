@@ -29,30 +29,30 @@
     "2026-06-14"
   ],
   "modelcontextprotocol/csharp-sdk": [
-    "2026-06-17"
+    "2026-06-18"
   ],
   "comfyanonymous/ComfyUI_examples": [
-    "2026-06-17"
+    "2026-06-18"
   ],
   "meta-llama/PurpleLlama": [
-    "2026-06-17"
+    "2026-06-18"
   ],
-  "freeCodeCamp/freeCodeCamp": [
-    "2026-06-17"
+  "obra/superpowers": [
+    "2026-06-18"
   ],
   "NousResearch/hermes-agent": [
-    "2026-06-17"
+    "2026-06-18"
   ],
-  "huggingface/transformers": [
-    "2026-06-17"
-  ],
-  "modelcontextprotocol/servers": [
-    "2026-06-17"
-  ],
-  "deepseek-ai/FlashMLA": [
-    "2026-06-17"
+  "microsoft/markitdown": [
+    "2026-06-18"
   ],
   "modelcontextprotocol/typescript-sdk": [
-    "2026-06-17"
+    "2026-06-18"
+  ],
+  "modelcontextprotocol/registry": [
+    "2026-06-18"
+  ],
+  "lucidrains/x-transformers": [
+    "2026-06-18"
   ]
 }
