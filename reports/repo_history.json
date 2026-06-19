@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-14"
   ],
+  "vllm-project/semantic-router": [
+    "2026-06-19"
+  ],
+  "microsoft/agent-governance-toolkit": [
+    "2026-06-19"
+  ],
   "modelcontextprotocol/csharp-sdk": [
-    "2026-06-18"
+    "2026-06-19"
   ],
-  "comfyanonymous/ComfyUI_examples": [
-    "2026-06-18"
-  ],
-  "meta-llama/PurpleLlama": [
-    "2026-06-18"
+  "freeCodeCamp/freeCodeCamp": [
+    "2026-06-19"
   ],
   "obra/superpowers": [
-    "2026-06-18"
+    "2026-06-19"
   ],
   "NousResearch/hermes-agent": [
-    "2026-06-18"
+    "2026-06-19"
   ],
-  "microsoft/markitdown": [
-    "2026-06-18"
+  "deepseek-ai/FlashMLA": [
+    "2026-06-19"
   ],
   "modelcontextprotocol/typescript-sdk": [
-    "2026-06-18"
+    "2026-06-19"
   ],
-  "modelcontextprotocol/registry": [
-    "2026-06-18"
-  ],
-  "lucidrains/x-transformers": [
-    "2026-06-18"
+  "modelcontextprotocol/modelcontextprotocol": [
+    "2026-06-19"
   ]
 }
