@@ -1,0 +1,29 @@
+[project]
+name = "auto-github"
+version = "0.1.0"
+description = "Daily GitHub Curation & Trend Observer"
+requires-python = ">=3.12"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.5.0",
+    "mypy>=1.10.0",
+]
+
+[tool.ruff]
+extend = "~/.config/ruff/ruff.toml"
+
+[tool.mypy]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
