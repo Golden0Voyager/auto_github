@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.config import AppConfig, AIConfig, RoleConfig
+from src.config import AIConfig, AppConfig, RoleConfig
 from src.llm import LLMClient
 
 

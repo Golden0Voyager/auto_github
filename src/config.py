@@ -1,16 +1,15 @@
 import os
-import yaml
 from pathlib import Path
-from typing import Dict, List, Optional
-from pydantic import BaseModel, Field
 
+import yaml
+from pydantic import BaseModel, Field
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class GitHubConfig(BaseModel):
-    monitored_orgs: List[str] = Field(default_factory=list)
-    monitored_users: List[str] = Field(default_factory=list)
+    monitored_orgs: list[str] = Field(default_factory=list)
+    monitored_users: list[str] = Field(default_factory=list)
     max_trending_repos: int = 15
     max_org_repos: int = 5
 
@@ -25,17 +24,17 @@ class AIConfig(BaseModel):
     temperature: float = 0.3
     max_tokens: int = 8192
     rate_limit_delay: float = 4.0
-    api_key: Optional[str] = None
-    base_url: Optional[str] = None
-    roles: Dict[str, RoleConfig] = Field(default_factory=lambda: {
+    api_key: str | None = None
+    base_url: str | None = None
+    roles: dict[str, RoleConfig] = Field(default_factory=lambda: {
         "classifier": RoleConfig(model="sensenova-6.7-flash-lite", provider="sensenova"),
         "writer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter"),
         "translator_a": RoleConfig(model="sensenova-6.7-flash-lite", provider="sensenova"),
         "translator_b": RoleConfig(model="nex-agi/nex-n2-pro:free", provider="openrouter"),
         "reviewer": RoleConfig(model="openai/gpt-oss-120b:free", provider="openrouter"),
     })
-    model_v3: Optional[str] = Field(default=None, exclude=True)
-    model_r1: Optional[str] = Field(default=None, exclude=True)
+    model_v3: str | None = Field(default=None, exclude=True)
+    model_r1: str | None = Field(default=None, exclude=True)
 
 
 _PROVIDER_ENV = {
@@ -67,9 +66,9 @@ class Stage2PreFilterConfig(BaseModel):
 
 
 class NotificationConfig(BaseModel):
-    feishu_webhook_url: Optional[str] = None
-    slack_webhook_url: Optional[str] = None
-    discord_webhook_url: Optional[str] = None
+    feishu_webhook_url: str | None = None
+    slack_webhook_url: str | None = None
+    discord_webhook_url: str | None = None
     local_report_dir: str = "./reports"
     save_raw_data: bool = True
 
@@ -83,12 +82,12 @@ class AppConfig(BaseModel):
     notifications: NotificationConfig = Field(default_factory=NotificationConfig)
 
 
-def resolve_api_key(provider: str) -> Optional[str]:
+def resolve_api_key(provider: str) -> str | None:
     entry = _PROVIDER_ENV.get(provider)
     return os.getenv(entry[0]) if entry else None
 
 
-def resolve_base_url(provider: str) -> Optional[str]:
+def resolve_base_url(provider: str) -> str | None:
     entry = _PROVIDER_ENV.get(provider)
     return os.getenv(entry[1], entry[2]) if entry else None
 
@@ -96,7 +95,7 @@ def resolve_base_url(provider: str) -> Optional[str]:
 def load_config() -> AppConfig:
     yaml_path = BASE_DIR / "config" / "config.yaml"
     if yaml_path.exists():
-        with open(yaml_path, "r", encoding="utf-8") as f:
+        with open(yaml_path, encoding="utf-8") as f:
             yaml_data = yaml.safe_load(f) or {}
     else:
         yaml_data = {}

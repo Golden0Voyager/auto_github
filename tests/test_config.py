@@ -7,25 +7,15 @@ Covers:
 - YAML loading from config/config.yaml
 """
 
-import os
-import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
-from unittest.mock import patch
-
-import pytest
-import yaml
 
 # Project root is already added by conftest
 from src.config import (
-    AppConfig,
-    GitHubConfig,
     AIConfig,
+    AppConfig,
     DedupConfig,
-    Stage2PreFilterConfig,
-    NotificationConfig,
+    GitHubConfig,
     load_config,
-    BASE_DIR,
 )
 
 

@@ -8,7 +8,6 @@ Covers:
 """
 
 import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -112,7 +111,7 @@ class TestMainFunction:
         test_args = ["prog", "--mock"]
         with patch.object(sys, "argv", test_args):
             main_mod.main()
-        
+
         mock_pipeline.run.assert_called_once_with(since="daily", use_mock=True)
         mock_notifier.notify_all.assert_called_once()
 
@@ -136,9 +135,8 @@ class TestMainFunction:
         mock_pipeline_cls.return_value = mock_pipeline
 
         test_args = ["prog", "--mock"]
-        with patch.object(sys, "argv", test_args):
-            with pytest.raises(SystemExit) as exc_info:
-                main_mod.main()
+        with patch.object(sys, "argv", test_args), pytest.raises(SystemExit) as exc_info:
+            main_mod.main()
         assert exc_info.value.code == 1
 
     @patch("src.main.CurationPipeline")
@@ -161,9 +159,8 @@ class TestMainFunction:
         mock_pipeline_cls.return_value = mock_pipeline
 
         test_args = ["prog", "--mock"]
-        with patch.object(sys, "argv", test_args):
-            with pytest.raises(SystemExit) as exc_info:
-                main_mod.main()
+        with patch.object(sys, "argv", test_args), pytest.raises(SystemExit) as exc_info:
+            main_mod.main()
         assert exc_info.value.code == 1
 
     @patch("src.main.CurationPipeline")

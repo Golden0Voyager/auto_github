@@ -10,16 +10,13 @@ Covers:
 """
 
 import json
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List
 
 import pytest
 
-from src.dedup import RepoHistoryTracker, _today, _parse_date
 from src.config import AppConfig, DedupConfig
-
+from src.dedup import RepoHistoryTracker, _parse_date, _today
 
 # ---------------------------------------------------------------------------
 # Helper

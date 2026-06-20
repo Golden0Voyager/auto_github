@@ -8,8 +8,6 @@ Covers:
 - _get_user_or_org_repos() edge cases
 """
 
-import os
-from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -174,7 +172,6 @@ class TestCrawlTrending:
     @patch("src.crawler.requests.get")
     def test_since_param_mapping(self, mock_get, crawler_config):
         """The since parameter should map correctly to GitHub's URL param."""
-        from unittest.mock import ANY
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.text = "<html><body></body></html>"

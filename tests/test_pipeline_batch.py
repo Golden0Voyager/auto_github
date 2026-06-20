@@ -9,16 +9,14 @@ Covers the remaining uncovered lines in src/pipeline.py:
 """
 
 import json
-from pathlib import Path
-from typing import Any, Dict, List
-from unittest.mock import MagicMock, patch
+from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
-from src.config import AppConfig, AIConfig, GitHubConfig, Stage2PreFilterConfig
+from src.config import AIConfig, AppConfig, GitHubConfig, Stage2PreFilterConfig
 from src.pipeline import (
     CurationPipeline,
-    MOCK_TRANSLATIONS,
 )
 
 
@@ -39,7 +37,7 @@ def batch_config() -> AppConfig:
 
 
 @pytest.fixture
-def batch_repos() -> List[Dict[str, Any]]:
+def batch_repos() -> list[dict[str, Any]]:
     return [
         {
             "full_name": "deepseek-ai/DeepSeek-V3",

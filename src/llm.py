@@ -1,6 +1,6 @@
-import os
+import contextlib
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from src.config import AppConfig, resolve_api_key, resolve_base_url
 
@@ -19,7 +19,7 @@ class LLMClient:
         self.failed_attempt_count: int = 0
         self.total_prompt_tokens: int = 0
         self.total_completion_tokens: int = 0
-        self._clients: Dict[str, Any] = {}
+        self._clients: dict[str, Any] = {}
         self._init_clients()
 
         if not self._clients:
@@ -32,10 +32,8 @@ class LLMClient:
             if not key:
                 continue
             url = resolve_base_url(provider)
-            try:
+            with contextlib.suppress(Exception):
                 self._clients[provider] = OpenAI(api_key=key, base_url=url)
-            except Exception:
-                pass
 
     def _get_client(self, provider: str):
         return self._clients.get(provider)
@@ -46,13 +44,13 @@ class LLMClient:
 
     def call_llm(
         self,
-        messages: List[Dict[str, str]],
+        messages: list[dict[str, str]],
         role: str = "writer",
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
         retries: int = 3,
         backoff_factor: float = 2.0,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         role_cfg = self.config.ai.roles.get(role)
         if not role_cfg:
             return {"content": f"Error: unknown role '{role}'", "reasoning": None}
@@ -82,7 +80,7 @@ class LLMClient:
                 choice = response.choices[0]
                 content = choice.message.content or ""
 
-                reasoning: Optional[str] = None
+                reasoning: str | None = None
                 rc = getattr(choice.message, "reasoning_content", None)
                 if rc is not None:
                     reasoning = rc
@@ -109,7 +107,7 @@ class LLMClient:
 
         raise RuntimeError("LLM request failed after maximum retries.")
 
-    def get_stats(self) -> Dict[str, int]:
+    def get_stats(self) -> dict[str, int]:
         return {
             "call_count": self.call_count,
             "failed_attempt_count": self.failed_attempt_count,

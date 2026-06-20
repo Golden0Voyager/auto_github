@@ -1,21 +1,15 @@
 """Shared fixtures and test utilities for auto_github tests."""
 
-import json
-import time
-import os
-import tempfile
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-import pytest
-from pydantic import BaseModel
-
 # Ensure the project root is on sys.path (same as main.py does)
 import sys
+from pathlib import Path
+from typing import Any
+
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.config import AppConfig, load_config, GitHubConfig, AIConfig, DedupConfig, Stage2PreFilterConfig, NotificationConfig
-
+from src.config import AIConfig, AppConfig, DedupConfig, GitHubConfig, NotificationConfig, Stage2PreFilterConfig
 
 # ---------------------------------------------------------------------------
 # Fixtures: Config
@@ -28,7 +22,7 @@ def base_config() -> AppConfig:
 
 
 @pytest.fixture
-def sample_repos() -> List[Dict[str, Any]]:
+def sample_repos() -> list[dict[str, Any]]:
     """A diverse list of mock repository dicts used across many tests."""
     return [
         {
@@ -128,7 +122,7 @@ def dedup_config_with_custom_paths(tmp_path: Path) -> AppConfig:
 
 
 @pytest.fixture
-def sample_analyzed_repos() -> List[Dict[str, Any]]:
+def sample_analyzed_repos() -> list[dict[str, Any]]:
     """Repos after Stage 2 analysis (have rating, tags, selection_reason)."""
     return [
         {
@@ -207,7 +201,7 @@ def notifier_config(tmp_path: Path) -> AppConfig:
 
 
 @pytest.fixture
-def mock_llm_stats() -> Dict[str, int]:
+def mock_llm_stats() -> dict[str, int]:
     return {
         "call_count": 3,
         "failed_attempt_count": 1,

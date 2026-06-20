@@ -8,7 +8,7 @@ Covers:
 - Edge cases: under-fill, over-fill, all-in-one-bucket, disabled config, missing fields
 """
 
-from typing import Any, Dict, List
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -18,7 +18,6 @@ from src.pipeline import (
     CurationPipeline,
     _infer_tds_fallback,
 )
-
 
 # ===================================================================
 # _infer_tds_fallback
@@ -182,7 +181,7 @@ def _make_repo(
     description: str = "A test repo.",
     is_first_seen: bool = False,
     period_stars: str = "",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return {
         "full_name": full_name,
         "stars": stars,

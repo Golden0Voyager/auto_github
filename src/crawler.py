@@ -1,21 +1,24 @@
+import contextlib
 import os
-import re
 import time
+from typing import Any
+
 import requests
 from bs4 import BeautifulSoup
-from typing import List, Dict, Any, Optional
+
 from src.config import AppConfig
+
 
 class GitHubCrawler:
     """Crawls GitHub Trending and fetches recent activity of target organizations/users."""
-    
+
     def __init__(self, config: AppConfig):
         self.config = config
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
         }
-        
+
         # Use GITHUB_TOKEN if available in env to avoid rate limits
         self.github_token = os.getenv("GITHUB_TOKEN")
         self.api_headers = {
@@ -25,9 +28,9 @@ class GitHubCrawler:
         if self.github_token:
             self.api_headers["Authorization"] = f"token {self.github_token}"
 
-    def crawl_trending(self, since: str = "daily") -> List[Dict[str, Any]]:
+    def crawl_trending(self, since: str = "daily") -> list[dict[str, Any]]:
         """Scrapes the GitHub Trending page.
-        
+
         Args:
             since: 'daily', 'weekly', or 'monthly'
         """
@@ -36,31 +39,31 @@ class GitHubCrawler:
             since_param = "weekly"
         elif since == "monthly":
             since_param = "monthly"
-            
+
         url = f"https://github.com/trending?since={since_param}"
         print(f"[Crawl] Fetching GitHub Trending ({since_param}) from {url}...")
-        
+
         try:
             response = requests.get(url, headers=self.headers, timeout=15)
             if response.status_code != 200:
                 print(f"[Crawl Warning] Failed to scrape trending, status code: {response.status_code}")
                 return []
-                
+
             soup = BeautifulSoup(response.text, "html.parser")
             articles = soup.find_all("article", class_="Box-row")
-            
+
             trending_repos = []
             max_repos = self.config.github.max_trending_repos
-            
+
             for article in articles[:max_repos]:
                 # 1. Parse repository title (owner and repo name)
                 title_tag = article.find("h2", class_=lambda x: x and "lh-condensed" in x) or article.find("h1")
                 if not title_tag:
                     title_tag = article.find("h2")
-                
+
                 if not title_tag or not title_tag.find("a"):
                     continue
-                    
+
                 a_tag = title_tag.find("a")
                 href = a_tag["href"].strip()
                 # href is usually "/owner/repo"
@@ -69,39 +72,35 @@ class GitHubCrawler:
                     continue
                 owner, repo_name = parts[0], parts[1]
                 repo_url = f"https://github.com/{owner}/{repo_name}"
-                
+
                 # 2. Parse description
                 desc_tag = article.find("p", class_=lambda x: x and "color-fg-muted" in x)
                 desc = desc_tag.text.strip() if desc_tag else ""
-                
+
                 # 3. Parse language
                 lang_tag = article.find(itemprop="programmingLanguage")
                 lang = lang_tag.text.strip() if lang_tag else "Unknown"
-                
+
                 # 4. Parse stars & forks
                 # Stars and forks are usually in links inside a specific div
                 meta_div = article.find("div", class_="f6")
                 stars = 0
                 forks = 0
                 added_stars = ""
-                
+
                 if meta_div:
                     links = meta_div.find_all("a", class_="Link--muted")
                     for link in links:
                         link_href = link.get("href", "")
                         if "stargazers" in link_href:
                             stars_text = link.text.strip().replace(",", "")
-                            try:
+                            with contextlib.suppress(ValueError):
                                 stars = int(stars_text)
-                            except ValueError:
-                                pass
                         elif "forks" in link_href or "network/members" in link_href:
                             forks_text = link.text.strip().replace(",", "")
-                            try:
+                            with contextlib.suppress(ValueError):
                                 forks = int(forks_text)
-                            except ValueError:
-                                pass
-                                
+
                     # Period stars (e.g. "123 stars today" / "123 stars this week")
                     # Find all span elements with d-inline-block and check which one contains "stars"
                     spans = meta_div.find_all("span", class_="d-inline-block")
@@ -109,7 +108,7 @@ class GitHubCrawler:
                         if "stars" in span.text.lower():
                             added_stars = span.text.strip()
                             break
-                    
+
                     # If not found via spans, fallback to float-sm-right span or last child
                     if not added_stars:
                         added_stars_float = meta_div.find("span", class_=lambda x: x and "float" in x)
@@ -117,7 +116,7 @@ class GitHubCrawler:
                             added_stars = added_stars_float.text.strip()
                         else:
                             added_stars = meta_div.text.strip().split("\n")[-1].strip()
-                
+
                 trending_repos.append({
                     "owner": owner,
                     "name": repo_name,
@@ -131,10 +130,10 @@ class GitHubCrawler:
                     "source": "trending",
                     "timeframe": since
                 })
-                
+
             print(f"[Crawl] Successfully scraped {len(trending_repos)} trending repositories.")
             return trending_repos
-            
+
         except Exception as e:
             print(f"[Crawl Error] Exception during scraping trending: {e}")
             return []
@@ -151,59 +150,59 @@ class GitHubCrawler:
                 continue
         return ""
 
-    def fetch_giant_repos(self) -> List[Dict[str, Any]]:
+    def fetch_giant_repos(self) -> list[dict[str, Any]]:
         """Fetches active repos of LLM giants and key individuals via GitHub API."""
         orgs = self.config.github.monitored_orgs
         users = self.config.github.monitored_users
         max_repos = self.config.github.max_org_repos
-        
+
         all_giant_repos = []
-        
+
         # 1. Fetch Organizations
         for org in orgs:
             repos = self._get_user_or_org_repos(org, is_org=True, limit=max_repos)
             all_giant_repos.extend(repos)
             time.sleep(1) # Prevent aggressive requests
-            
+
         # 2. Fetch Individual Users
         for user in users:
             repos = self._get_user_or_org_repos(user, is_org=False, limit=max_repos)
             all_giant_repos.extend(repos)
             time.sleep(1)
-            
+
         print(f"[Crawl] Successfully fetched {len(all_giant_repos)} total repos from LLM giants & key users.")
         return all_giant_repos
 
-    def _get_user_or_org_repos(self, name: str, is_org: bool = True, limit: int = 5) -> List[Dict[str, Any]]:
+    def _get_user_or_org_repos(self, name: str, is_org: bool = True, limit: int = 5) -> list[dict[str, Any]]:
         """Helper to fetch repositories for a user/org from GitHub API."""
         entity_type = "orgs" if is_org else "users"
         url = f"https://api.github.com/{entity_type}/{name}/repos?sort=updated&direction=desc&per_page=20"
-        
+
         print(f"[Crawl] Fetching active repos for {entity_type[:-1]} '{name}' from API...")
-        
+
         try:
             response = requests.get(url, headers=self.api_headers, timeout=15)
             if response.status_code == 403 and "rate limit" in response.text.lower():
                 print(f"[Crawl API Warning] Rate limit hit for {name}. Skipping...")
                 return []
-                
+
             if response.status_code != 200:
                 print(f"[Crawl API Warning] Failed to fetch {name} repos, status: {response.status_code}")
                 return []
-                
+
             repos_data = response.json()
             repos = []
-            
+
             # Sort by pushed_at to find truly active repos, exclude forks unless heavily starred
             active_repos = []
             for r in repos_data:
                 if r.get("fork") and r.get("stargazers_count", 0) < 100:
                     continue # Ignore small forks to reduce noise
                 active_repos.append(r)
-                
+
             # Sort active repos by updated_at or pushed_at (descending)
             active_repos.sort(key=lambda x: x.get("pushed_at", x.get("updated_at", "")), reverse=True)
-            
+
             for repo in active_repos[:limit]:
                 repos.append({
                     "owner": name,
@@ -223,8 +222,8 @@ class GitHubCrawler:
         except Exception as e:
             print(f"[Crawl API Error] Exception fetching {name} repos: {e}")
             return []
-            
-    def get_mock_data(self) -> List[Dict[str, Any]]:
+
+    def get_mock_data(self) -> list[dict[str, Any]]:
         """Generates realistic mock data for local testing and offline verification."""
         print("[Crawl] Generating high-fidelity mock data for verification...")
         return [
