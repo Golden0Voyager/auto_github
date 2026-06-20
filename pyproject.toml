@@ -3,6 +3,12 @@ name = "auto-github"
 version = "0.1.0"
 description = "Daily GitHub Curation & Trend Observer"
 requires-python = ">=3.12"
+dependencies = [
+    "pyyaml>=6.0",
+    "pydantic>=2.0",
+    "requests>=2.31",
+    "beautifulsoup4>=4.12",
+]
 
 [dependency-groups]
 dev = [
