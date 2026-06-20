@@ -102,21 +102,21 @@ def _infer_rating_fallback(repo: dict[str, Any]) -> str:
 def _infer_tds_fallback(desc: str) -> str:
     """规则引擎判定 Technical Depth Score (T/E/S)。"""
     desc_lower = desc.lower()
-    T_KEYWORDS = [
+    t_keywords = [
         "mla", "moe", "attention", "cuda kernel", "kv cache",
         "compiler", "runtime", "metal", "custom shader",
         "new language", "database engine", "protocol",
     ]
-    E_KEYWORDS = [
+    e_keywords = [
         "agent", "rag", "mcp", "inference", "optimiz",
         "cli", "raycast", "swiftui", "core ml", "mlx",
         "comfyui", "workflow", "automation", "xcode",
         "mach-o", "ipa", "window manager",
     ]
-    for kw in T_KEYWORDS:
+    for kw in t_keywords:
         if kw in desc_lower:
             return "T"
-    for kw in E_KEYWORDS:
+    for kw in e_keywords:
         if kw in desc_lower:
             return "E"
     return "S"
@@ -528,9 +528,11 @@ class CurationPipeline:
                     r["chinese_summary"] = self._chinese_stub(r)
                     continue
                 if not ta:
-                    r["chinese_summary"] = tb; continue
+                    r["chinese_summary"] = tb
+                    continue
                 if not tb:
-                    r["chinese_summary"] = ta; continue
+                    r["chinese_summary"] = ta
+                    continue
                 try:
                     res = self.llm.call_llm(
                         [{"role": "user", "content":

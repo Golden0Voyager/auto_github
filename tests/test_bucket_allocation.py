@@ -239,8 +239,6 @@ class TestBucketAllocateBasic:
             assert r["_bucket"] in ("early_bird", "high_star", "deep_dive")
 
     def test_tds_reflects_description_keywords(self, bucket_pipeline):
-        """TDS should match the description content."""
-    def test_tds_reflects_description_keywords(self, bucket_pipeline):
         """TDS should match the description content for repos that make the cut."""
         repos = [
             _make_repo("tech/a", stars=5000, description="Custom CUDA kernel optimization"),

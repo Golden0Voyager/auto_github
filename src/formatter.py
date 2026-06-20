@@ -289,4 +289,4 @@ class ReportFormatter:
         return {"blocks": blocks}
 
 # Ensure json is imported
-import json
+import json  # noqa: E402

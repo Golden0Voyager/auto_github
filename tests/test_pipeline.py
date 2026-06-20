@@ -14,6 +14,7 @@ Covers:
 - _stage_translate() mock path
 """
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -328,7 +329,7 @@ class TestParseJsonFromResponse:
 
     def test_invalid_json_raises(self, parser):
         text = "This is not JSON at all."
-        with pytest.raises(Exception):
+        with pytest.raises((ValueError, json.JSONDecodeError)):
             parser(text)
 
     def test_empty_json_array(self, parser):
@@ -338,7 +339,7 @@ class TestParseJsonFromResponse:
     def test_json_with_extra_text_not_valid(self, parser):
         """When extra text surrounds JSON but no triple-backtick, it's not valid JSON."""
         text = 'Some prefix text [{"full_name": "x/y"}] and suffix text'
-        with pytest.raises(Exception):
+        with pytest.raises((ValueError, json.JSONDecodeError)):
             parser(text)
 
     def test_json_with_escaped_newlines(self, parser):
