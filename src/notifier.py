@@ -1,24 +1,26 @@
-import os
 import time
-import requests
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
+
+import requests
+
 from src.config import AppConfig
+
 
 class ReportNotifier:
     """Delivers reports to configured channels (Feishu, Slack, Discord, Local Files)."""
-    
+
     def __init__(self, config: AppConfig):
         self.config = config
         self.feishu_url = config.notifications.feishu_webhook_url
         self.slack_url = config.notifications.slack_webhook_url
         self.discord_url = config.notifications.discord_webhook_url
-        
+
         # Ensure local report output directory exists
         self.report_dir = Path(config.notifications.local_report_dir)
         self.report_dir.mkdir(parents=True, exist_ok=True)
 
-    def notify_all(self, reports: Dict[str, Any], timeframe: str, llm_stats: Optional[Dict[str, int]] = None) -> Dict[str, bool]:
+    def notify_all(self, reports: dict[str, Any], timeframe: str, llm_stats: dict[str, int] | None = None) -> dict[str, bool]:
         """Pushes reports to all active channels and logs the outcomes.
 
         Args:
@@ -56,7 +58,7 @@ class ReportNotifier:
 
         return results
 
-    def _llm_footer_text(self, stats: Dict[str, int], locale: str) -> str:
+    def _llm_footer_text(self, stats: dict[str, int], locale: str) -> str:
         if locale == "en":
             return (
                 f"🤖 LLM: {stats['call_count']} calls · "
@@ -70,7 +72,7 @@ class ReportNotifier:
             f"({stats['total_prompt_tokens']:,} in / {stats['total_completion_tokens']:,} out)"
         )
 
-    def save_locally(self, markdown_content: str, timeframe: str, llm_stats: Optional[Dict[str, int]] = None) -> bool:
+    def save_locally(self, markdown_content: str, timeframe: str, llm_stats: dict[str, int] | None = None) -> bool:
         """Saves the markdown report into the local reports folder."""
         date_str = time.strftime("%Y-%m-%d_%H%M")
         filename = f"{timeframe}_{date_str}.md"
@@ -95,7 +97,7 @@ class ReportNotifier:
             print(f"[Notify Error] Failed to write local report: {e}")
             return False
 
-    def send_feishu(self, payload: Dict[str, Any], llm_stats: Optional[Dict[str, int]] = None) -> bool:
+    def send_feishu(self, payload: dict[str, Any], llm_stats: dict[str, int] | None = None) -> bool:
         """Sends interactive card to Feishu webhook."""
         if llm_stats:
             payload = {
@@ -132,7 +134,7 @@ class ReportNotifier:
             print(f"[Notify Error] Exception sending to Feishu: {e}")
             return False
 
-    def send_slack(self, payload: Dict[str, Any], llm_stats: Optional[Dict[str, int]] = None) -> bool:
+    def send_slack(self, payload: dict[str, Any], llm_stats: dict[str, int] | None = None) -> bool:
         """Sends Block Kit message to Slack webhook."""
         if llm_stats:
             payload = {
@@ -159,7 +161,7 @@ class ReportNotifier:
             print(f"[Notify Error] Exception sending to Slack: {e}")
             return False
 
-    def send_discord(self, markdown_content: str, llm_stats: Optional[Dict[str, int]] = None) -> bool:
+    def send_discord(self, markdown_content: str, llm_stats: dict[str, int] | None = None) -> bool:
         """Sends markdown message to Discord webhook."""
         print("[Notify] Sending markdown report to Discord Webhook...")
         if llm_stats:
@@ -169,11 +171,11 @@ class ReportNotifier:
         content = markdown_content
         if len(content) > 1950:
             content = content[:1900] + "\n\n...(Truncated due to Discord character limits. See local reports for full text.)"
-            
+
         payload = {
             "content": content
         }
-        
+
         try:
             response = requests.post(self.discord_url, json=payload, headers={"Content-Type": "application/json"}, timeout=10)
             if response.status_code in (200, 201, 204):

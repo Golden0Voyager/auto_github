@@ -11,14 +11,12 @@ Covers:
 - Dedup status display in reports
 """
 
-import json
-from pathlib import Path
-from typing import Any, Dict, List
-from unittest.mock import MagicMock, patch
+from typing import Any
+from unittest.mock import patch
 
 import pytest
 
-from src.config import AppConfig, AIConfig, NotificationConfig
+from src.config import AIConfig, AppConfig, NotificationConfig
 from src.formatter import ReportFormatter
 
 
@@ -46,7 +44,7 @@ def formatter(formatter_config) -> ReportFormatter:
 
 
 @pytest.fixture
-def sample_formatted_repos() -> List[Dict[str, Any]]:
+def sample_formatted_repos() -> list[dict[str, Any]]:
     return [
         {
             "full_name": "deepseek-ai/DeepSeek-V3",

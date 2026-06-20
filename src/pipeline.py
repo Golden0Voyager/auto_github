@@ -1,13 +1,15 @@
-import re
 import json
-import yaml
+import re
 import time
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any
+
+import yaml
+
 from src.config import AppConfig
 from src.crawler import GitHubCrawler
-from src.llm import LLMClient
 from src.dedup import RepoHistoryTracker
+from src.llm import LLMClient
 
 # Base Directory
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -42,11 +44,11 @@ LANGUAGE_TAGS = {
 }
 
 
-def _infer_tags_fallback(repo: Dict[str, Any]) -> List[str]:
+def _infer_tags_fallback(repo: dict[str, Any]) -> list[str]:
     desc_lower = (repo.get("description", "") or "").lower()
     name_lower = repo.get("full_name", "").lower()
     text = f"{desc_lower} {name_lower}"
-    tags: List[str] = []
+    tags: list[str] = []
     for tag, keywords in TAG_KEYWORDS.items():
         if any(kw in text for kw in keywords):
             tags.append(tag)
@@ -62,12 +64,12 @@ def _infer_tags_fallback(repo: Dict[str, Any]) -> List[str]:
     return tags[:3]
 
 
-def _infer_selection_reason_fallback(repo: Dict[str, Any]) -> str:
+def _infer_selection_reason_fallback(repo: dict[str, Any]) -> str:
     desc = (repo.get("description", "") or "").strip()
     lang = repo.get("language", "") or "未知"
     stars = repo.get("stars", 0) or 0
     period = repo.get("period_stars", "")
-    parts: List[str] = []
+    parts: list[str] = []
     if period:
         parts.append(f"今日 {period}")
     if lang != "未知":
@@ -82,7 +84,7 @@ def _infer_selection_reason_fallback(repo: Dict[str, Any]) -> str:
     return " · ".join(parts)
 
 
-def _infer_rating_fallback(repo: Dict[str, Any]) -> str:
+def _infer_rating_fallback(repo: dict[str, Any]) -> str:
     stars = repo.get("stars", 0) or 0
     period = repo.get("period_stars", "")
     period_num = 0
@@ -100,21 +102,21 @@ def _infer_rating_fallback(repo: Dict[str, Any]) -> str:
 def _infer_tds_fallback(desc: str) -> str:
     """规则引擎判定 Technical Depth Score (T/E/S)。"""
     desc_lower = desc.lower()
-    T_KEYWORDS = [
+    t_keywords = [
         "mla", "moe", "attention", "cuda kernel", "kv cache",
         "compiler", "runtime", "metal", "custom shader",
         "new language", "database engine", "protocol",
     ]
-    E_KEYWORDS = [
+    e_keywords = [
         "agent", "rag", "mcp", "inference", "optimiz",
         "cli", "raycast", "swiftui", "core ml", "mlx",
         "comfyui", "workflow", "automation", "xcode",
         "mach-o", "ipa", "window manager",
     ]
-    for kw in T_KEYWORDS:
+    for kw in t_keywords:
         if kw in desc_lower:
             return "T"
-    for kw in E_KEYWORDS:
+    for kw in e_keywords:
         if kw in desc_lower:
             return "E"
     return "S"
@@ -255,7 +257,7 @@ ComfyUI 是 Stable Diffusion 工作流编排的核心工具。如果把 ComfyUI 
 
 class CurationPipeline:
     """Manages the 6-stage GitHub Trend & LLM Giant Curation Pipeline."""
-    
+
     def __init__(self, config: AppConfig, llm_client: LLMClient, persona_key: str = "intermediate"):
         self.config = config
         self.llm = llm_client
@@ -263,15 +265,15 @@ class CurationPipeline:
         self.persona_key = persona_key
         # 高星项目去重追踪器（节省 LLM 算力 + 给新兴项目留展位）
         self.dedup = RepoHistoryTracker(config)
-        
+
         # Load Personas Prompt
         personas_path = BASE_DIR / "config" / "personas.yaml"
         if personas_path.exists():
-            with open(personas_path, "r", encoding="utf-8") as f:
+            with open(personas_path, encoding="utf-8") as f:
                 self.personas = yaml.safe_load(f) or {}
         else:
             self.personas = {}
-            
+
         self.current_persona = self.personas.get(persona_key, {
             "name": "中阶实践者",
             "description": "默认开发者画像",
@@ -280,7 +282,7 @@ class CurationPipeline:
         # 初始化 mock 标志，在 run() 中覆盖
         self.use_mock = False
 
-    def _log_llm_stage(self, stage_name: str, before: Dict[str, int]) -> None:
+    def _log_llm_stage(self, stage_name: str, before: dict[str, int]) -> None:
         after = self.llm.get_stats()
         d_calls = after["call_count"] - before["call_count"]
         d_fail = after["failed_attempt_count"] - before["failed_attempt_count"]
@@ -294,7 +296,7 @@ class CurationPipeline:
             f"累计: {after['call_count']} 次 / {total_tokens:,} tokens"
         )
 
-    def _prefilter_top_n(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _prefilter_top_n(self, repos: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """按 stars 降序截断长尾（零 token 成本，作为 bucket 引擎关闭时的回退）。"""
         cfg = self.config.stage2_pre_filter
         if not cfg.enabled or len(repos) <= cfg.max_repos:
@@ -307,7 +309,7 @@ class CurationPipeline:
         )
         return kept
 
-    def _bucket_allocate(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _bucket_allocate(self, repos: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """三桶分配引擎：按 Early Bird / High-Star Hot / Deep Dive 配额选出 repo。
 
         取代旧的 _prefilter_top_n()，在 Stage 2 之前运行。
@@ -324,12 +326,12 @@ class CurationPipeline:
                 r["_bucket"] = "deep_dive"
             return repos
 
-        early_bird_pool: List[Dict] = []
-        high_star_pool: List[Dict] = []
-        all_remaining: List[Dict] = []
+        early_bird_pool: list[dict] = []
+        high_star_pool: list[dict] = []
+        all_remaining: list[dict] = []
 
         for r in repos:
-            name = r.get("full_name", "")
+            r.get("full_name", "")
             stars = r.get("stars", 0) or 0
             period_stars = r.get("period_stars", "")
             period_num = 0
@@ -394,7 +396,7 @@ class CurationPipeline:
         )
         return result
 
-    def _stage_scrape(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _stage_scrape(self, repos: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Scrape README for each repo to provide context to the writer."""
         print("\n=== Scrape（抓取 README）===")
         result = []
@@ -409,9 +411,9 @@ class CurationPipeline:
         return result
 
 
-    def run(self, since: str = "daily", use_mock: bool = False) -> Dict[str, Any]:
+    def run(self, since: str = "daily", use_mock: bool = False) -> dict[str, Any]:
         """Runs the entire 6-stage pipeline.
-        
+
         Args:
             since: 'daily', 'weekly', or 'monthly'
             use_mock: If True, uses realistic offline mock data to avoid network/API limits.
@@ -526,9 +528,11 @@ class CurationPipeline:
                     r["chinese_summary"] = self._chinese_stub(r)
                     continue
                 if not ta:
-                    r["chinese_summary"] = tb; continue
+                    r["chinese_summary"] = tb
+                    continue
                 if not tb:
-                    r["chinese_summary"] = ta; continue
+                    r["chinese_summary"] = ta
+                    continue
                 try:
                     res = self.llm.call_llm(
                         [{"role": "user", "content":
@@ -583,7 +587,7 @@ class CurationPipeline:
             "reports": reports,
         }
 
-    def _stage_crawl(self, since: str, use_mock: bool) -> List[Dict[str, Any]]:
+    def _stage_crawl(self, since: str, use_mock: bool) -> list[dict[str, Any]]:
         """Stage: Fetch raw repository data from GitHub Trending and Orgs."""
         print("\n=== Crawl (数据抓取) ===")
         if use_mock:
@@ -593,18 +597,18 @@ class CurationPipeline:
             # Limit to top 10 for each to keep Stage 2 LLM analysis batch optimized
             orig_max = self.config.github.max_trending_repos
             self.config.github.max_trending_repos = 10
-            
+
             print("[Crawl] Pulling all three timeframes (daily, weekly, monthly) to build a unified trend board...")
             t_daily = self.crawler.crawl_trending("daily")
             t_weekly = self.crawler.crawl_trending("weekly")
             t_monthly = self.crawler.crawl_trending("monthly")
-            
+
             # Reset config
             self.config.github.max_trending_repos = orig_max
-            
+
             trending = t_daily + t_weekly + t_monthly
             giants = self.crawler.fetch_giant_repos()
-            
+
             # Deduplicate by full_name, prioritizing trending data if available
             dedup = {}
             for repo in trending + giants:
@@ -616,16 +620,16 @@ class CurationPipeline:
                     if repo.get("period_stars") and not dedup[name].get("period_stars"):
                         dedup[name]["period_stars"] = repo["period_stars"]
                         dedup[name]["source"] = "trending & llm_giant"
-            
+
             repos = list(dedup.values())
-            
+
         print(f"[Crawl Done] Retrieved {len(repos)} unique repositories.")
         return repos
 
-    def _stage_analyze(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _stage_analyze(self, repos: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Stage: Filter and classify repositories using LLM."""
         print("\n=== Classify (项目分析与智能筛选) ===")
-        
+
         if self.use_mock or not self.llm.client:
             print("[Classify Fallback] Bypassing LLM API. Selecting and rating all crawled repos offline.")
             analyzed_repos = []
@@ -670,7 +674,7 @@ class CurationPipeline:
                 "stars": r["stars"],
                 "source": r["source"]
             })
-            
+
         system_prompt = (
             "You are an expert GitHub Open-Source Analyst and Research Assistant. "
             "Your task is to analyze a batch of GitHub repositories, rate each one, and assign tags. "
@@ -693,22 +697,22 @@ class CurationPipeline:
             "['index', 'full_name', 'rating', 'tags', 'reason_for_selection']. "
             "Do not wrap with text outside the JSON block."
         )
-        
+
         user_content = f"Here is the batch of repositories to analyze:\n\n{json.dumps(repos_summary, ensure_ascii=False, indent=2)}"
-        
+
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content}
         ]
-        
+
         try:
             # Stage 2 uses DeepSeek-V3-1 (non-reasoning) for batch classification
             response = self.llm.call_llm(messages, role="classifier", temperature=0.2)
             raw_content = response["content"]
-            
+
             # Robust JSON extraction
             selected_items = self._parse_json_from_response(raw_content)
-            
+
             analyzed_repos = []
             for item in selected_items:
                 idx = item.get("index")
@@ -721,12 +725,12 @@ class CurationPipeline:
 
             # Sort curated repos primarily by rating (S > A > B > C) and secondarily by star count descending
             analyzed_repos.sort(key=lambda x: (RATING_ORDER.get(x.get("rating", "B"), 4), -x.get("stars", 0)))
-            
+
             print(f"[Classify Done] Selected {len(analyzed_repos)}/{len(repos)} repositories based on persona filtering.")
             for r in analyzed_repos:
                 print(f" - [{r['rating']}] {r['full_name']} | Tags: {r['tags']}")
             return analyzed_repos
-            
+
         except Exception as e:
             print(f"[Classify Error] Failed to analyze repositories: {e}")
             print("[Classify Fallback] Retaining top repositories with rule-based tag inference.")
@@ -740,7 +744,7 @@ class CurationPipeline:
                 fallback_repos.append(rc)
             return fallback_repos
 
-    def _stage_summarize_and_reflect(self, repos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _stage_summarize_and_reflect(self, repos: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Per-repo summarization with the new 4-section + vibecoding style.
 
         One LLM call per repo. Falls back to static stub on failure.
@@ -769,7 +773,7 @@ class CurationPipeline:
         print(f"[Write Done] Analyzed {len(result)} repositories.")
         return result
 
-    def _summarize_reflect_per_repo(self, r: Dict[str, Any]) -> Dict[str, Any]:
+    def _summarize_reflect_per_repo(self, r: dict[str, Any]) -> dict[str, Any]:
         rc = r.copy()
         system_prompt = (
             "You are a senior engineer who loves teaching. Write English tech analysis "
@@ -820,7 +824,7 @@ class CurationPipeline:
         rc["reflection_trace"] = ""
         return rc
 
-    def _summarize_reflect_stub(self, r: Dict[str, Any]) -> str:
+    def _summarize_reflect_stub(self, r: dict[str, Any]) -> str:
         """Static fallback stub when LLM is unavailable for summarization."""
         desc = r.get("description", "Open-source engineering project") or "Open-source engineering project"
         return (
@@ -834,7 +838,7 @@ class CurationPipeline:
             f"Explore related repositories via the project's dependency graph and GitHub Topics page."
         )
 
-    def _chinese_stub(self, r: Dict[str, Any]) -> str:
+    def _chinese_stub(self, r: dict[str, Any]) -> str:
         """Chinese fallback stub used when Review fails."""
         desc = r.get("description", "开源工程项目") or "开源工程项目"
         return (
@@ -847,30 +851,27 @@ class CurationPipeline:
             f"通过依赖关系图和 GitHub Topics 页面探索相关生态项目。"
         )
 
-    def _stage_refine_layout(self, repos: List[Dict[str, Any]], since: str, cooled_repos: Optional[List[Dict[str, Any]]] = None, archive_total: int = 0) -> Dict[str, Any]:
+    def _stage_refine_layout(self, repos: list[dict[str, Any]], since: str, cooled_repos: list[dict[str, Any]] | None = None, archive_total: int = 0) -> dict[str, Any]:
         """Layout: render reports in multiple formats."""
         print("\n=== Layout（渲染报告）===")
         from src.formatter import ReportFormatter
-        
+
         formatter = ReportFormatter(self.config, self.current_persona, since)
         reports = formatter.generate_all(
             repos,
             cooled_repos=cooled_repos or [],
             archive_total=archive_total,
         )
-        
+
         print("[Layout Done] Generated reports in multiple formats.")
         return reports
 
-    def _parse_json_from_response(self, text: str) -> List[Dict[str, Any]]:
+    def _parse_json_from_response(self, text: str) -> list[dict[str, Any]]:
         """Helper to parse a JSON list from LLM response content (supports markdown block wrapper)."""
         # Try to find JSON block in ```json ... ```
         match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
-        if match:
-            json_str = match.group(1).strip()
-        else:
-            json_str = text.strip()
-            
+        json_str = match.group(1).strip() if match else text.strip()
+
         try:
             data = json.loads(json_str)
             if isinstance(data, list):

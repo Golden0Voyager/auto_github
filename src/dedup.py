@@ -29,10 +29,8 @@
 """
 
 import json
-import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
 
 from src.config import AppConfig
 
@@ -66,8 +64,8 @@ class RepoHistoryTracker:
         from src.config import BASE_DIR
         self.history_path = BASE_DIR / config.dedup.history_file
         self.archive_path = BASE_DIR / config.dedup.archive_file
-        self._history: Dict[str, List[str]] = self._load_json(self.history_path, default={})
-        self._archive: Dict[str, Dict] = self._load_json(self.archive_path, default={})
+        self._history: dict[str, list[str]] = self._load_json(self.history_path, default={})
+        self._archive: dict[str, dict] = self._load_json(self.archive_path, default={})
 
     @staticmethod
     def _load_json(path: Path, default):
@@ -107,16 +105,16 @@ class RepoHistoryTracker:
             return False
         return _parse_date(_today()) < until
 
-    def filter_active(self, repos: List[Dict]) -> Tuple[List[Dict], List[Dict], Dict[str, bool]]:
+    def filter_active(self, repos: list[dict]) -> tuple[list[dict], list[dict], dict[str, bool]]:
         """从原始抓取结果中过滤掉仍在冷却期内的存档项目。
 
         Returns:
             (active_repos, cooled_repos, first_seen_map) —— active 用于进入策展管线；
             cooled 仅用于日志/统计；first_seen_map 标记每个 full_name 是否首次出现。
         """
-        active: List[Dict] = []
-        cooled: List[Dict] = []
-        first_seen_map: Dict[str, bool] = {}
+        active: list[dict] = []
+        cooled: list[dict] = []
+        first_seen_map: dict[str, bool] = {}
         for r in repos:
             name = r.get("full_name", "")
             if self._cooldown_active(name):
@@ -130,14 +128,14 @@ class RepoHistoryTracker:
     # 写入 API
     # ------------------------------------------------------------------
 
-    def record_occurrences(self, repos: List[Dict]) -> List[str]:
+    def record_occurrences(self, repos: list[dict]) -> list[str]:
         """记录本次抓取中所有项目的出现日期，并晋升满足条件的高星项目到存档。
 
         Returns:
             本次新进入存档的项目名（full_name）列表。
         """
         today = _today()
-        newly_archived: List[str] = []
+        newly_archived: list[str] = []
 
         for r in repos:
             name = r.get("full_name", "")
@@ -213,6 +211,6 @@ class RepoHistoryTracker:
     def history_count(self) -> int:
         return len(self._history)
 
-    def active_archived_repos(self) -> List[str]:
+    def active_archived_repos(self) -> list[str]:
         """返回当前所有仍在冷却期内的项目名（用于报告状态输出）。"""
         return [n for n in self._archive if self._cooldown_active(n)]

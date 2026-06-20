@@ -8,12 +8,11 @@ Covers:
 - Edge cases: missing API key, unknown role
 """
 
-from typing import Any, Dict
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.config import AppConfig, AIConfig, RoleConfig
+from src.config import AIConfig, AppConfig, RoleConfig
 from src.llm import LLMClient
 
 
@@ -250,7 +249,7 @@ class TestCallLLMErrors:
         ]
 
         client = LLMClient(llm_config)
-        result = client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=3, backoff_factor=1.0)
+        client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=3, backoff_factor=1.0)
         stats = client.get_stats()
         assert stats["failed_attempt_count"] == 2
 

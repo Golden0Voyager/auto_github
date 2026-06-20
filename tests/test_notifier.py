@@ -10,10 +10,8 @@ Covers:
 - _llm_footer_text() generation
 """
 
-import json
-import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -40,7 +38,7 @@ def notifier(notifier_config) -> ReportNotifier:
 
 
 @pytest.fixture
-def sample_reports() -> Dict[str, Any]:
+def sample_reports() -> dict[str, Any]:
     return {
         "markdown": "# Test Report\n\nThis is a test report.",
         "feishu": {"msg_type": "interactive", "card": {"body": {"elements": []}}},
@@ -68,7 +66,7 @@ class TestReportNotifierInit:
         cfg = AppConfig(
             notifications=NotificationConfig(local_report_dir=str(tmp_path / "new_reports"))
         )
-        notifier = ReportNotifier(cfg)
+        ReportNotifier(cfg)
         assert (tmp_path / "new_reports").exists()
 
     def test_init_no_webhooks(self, tmp_path):
@@ -377,7 +375,7 @@ class TestEdgeCases:
             send_slack=MagicMock(return_value=True),
             send_discord=MagicMock(return_value=True),
         ):
-            results = notifier.notify_all(sample_reports, "daily", llm_stats=mock_llm_stats)
+            notifier.notify_all(sample_reports, "daily", llm_stats=mock_llm_stats)
             assert notifier.send_feishu.call_count == 1
             assert notifier.send_slack.call_count == 1
             assert notifier.send_discord.call_count == 1

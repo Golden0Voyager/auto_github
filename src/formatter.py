@@ -1,7 +1,9 @@
 import time
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any
+
 from jinja2 import Environment, FileSystemLoader
+
 from src.config import AppConfig
 
 # Base Directory
@@ -9,13 +11,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 class ReportFormatter:
     """Renders analyzed repositories into aesthetic Markdown, Feishu, and Slack reports."""
-    
-    def __init__(self, config: AppConfig, persona: Dict[str, Any], timeframe: str):
+
+    def __init__(self, config: AppConfig, persona: dict[str, Any], timeframe: str):
         self.config = config
         self.persona = persona
         self.timeframe = timeframe
         self.timestamp = time.strftime("%Y-%m-%d %H:%M")
-        
+
         # Initialize Jinja2 environment
         template_dir = BASE_DIR / "templates"
         if template_dir.exists():
@@ -24,7 +26,7 @@ class ReportFormatter:
             self.env = None
             print("[Formatter Warning] Templates directory not found. Using fallbacks.")
 
-    def generate_all(self, repos: List[Dict[str, Any]], cooled_repos: List[Dict[str, Any]] = None, archive_total: int = 0) -> Dict[str, Any]:
+    def generate_all(self, repos: list[dict[str, Any]], cooled_repos: list[dict[str, Any]] = None, archive_total: int = 0) -> dict[str, Any]:
         """Generates all report formats.
 
         Args:
@@ -72,7 +74,7 @@ class ReportFormatter:
             "slack": slack_payload
         }
 
-    def _build_feishu_collapsible_payload(self, repos: List[Dict[str, Any]], cooled_repos: List[Dict[str, Any]] = None, archive_total: int = 0) -> Dict[str, Any]:
+    def _build_feishu_collapsible_payload(self, repos: list[dict[str, Any]], cooled_repos: list[dict[str, Any]] = None, archive_total: int = 0) -> dict[str, Any]:
         """Build Feishu Card JSON 2.0 with collapsible panels for each repo."""
         cooled_repos = cooled_repos or []
         color = "purple" if self.timeframe == "monthly" else "orange" if self.timeframe == "weekly" else "blue"
@@ -82,7 +84,7 @@ class ReportFormatter:
             f"已从 {self.config.github.max_trending_repos} 个热门候选项目中智能甄选 **{len(repos)}** 个最值得关注的项目。\n\n"
             "👇 点击下方项目面板即可在飞书内展开阅读全文。"
         )
-        elements: List[Dict[str, Any]] = [{"tag": "markdown", "content": overview}]
+        elements: list[dict[str, Any]] = [{"tag": "markdown", "content": overview}]
 
         # 高🌟项目存档状态（透明披露本次过滤与累计存档数）
         if cooled_repos or archive_total:
@@ -125,7 +127,7 @@ class ReportFormatter:
             ]
             content = "\n".join(line for line in content_lines if line is not None)
 
-            panel: Dict[str, Any] = {
+            panel: dict[str, Any] = {
                 "tag": "collapsible_panel",
                 "expanded": False,
                 "header": {
@@ -179,11 +181,11 @@ class ReportFormatter:
             },
         }
 
-    def _render_template(self, template_name: str, context: Dict[str, Any], fallback: str) -> str:
+    def _render_template(self, template_name: str, context: dict[str, Any], fallback: str) -> str:
         """Renders a Jinja2 template with fallback support."""
         if not self.env:
             return fallback
-            
+
         try:
             template = self.env.get_template(template_name)
             return template.render(**context)
@@ -191,11 +193,11 @@ class ReportFormatter:
             print(f"[Formatter Warning] Failed to render {template_name}: {e}. Using fallback.")
             return fallback
 
-    def _render_json_template(self, template_name: str, context: Dict[str, Any], fallback: Dict[str, Any]) -> Dict[str, Any]:
+    def _render_json_template(self, template_name: str, context: dict[str, Any], fallback: dict[str, Any]) -> dict[str, Any]:
         """Renders a Jinja2 template and parses it as a JSON object, with fallback support."""
         if not self.env:
             return fallback
-            
+
         try:
             template = self.env.get_template(template_name)
             rendered = template.render(**context)
@@ -206,15 +208,15 @@ class ReportFormatter:
             print(f"[Formatter Warning] Failed to render or parse JSON {template_name}: {e}. Using fallback.")
             return fallback
 
-    def _fallback_markdown(self, repos: List[Dict[str, Any]]) -> str:
+    def _fallback_markdown(self, repos: list[dict[str, Any]]) -> str:
         """Generates a simple, robust fallback markdown string if Jinja rendering fails."""
         lines = [
-            f"# 🌌 GitHub 开源趋势 & LLM 大厂动态周报 (Fallback)",
+            "# 🌌 GitHub 开源趋势 & LLM 大厂动态周报 (Fallback)",
             f"> **画像**: {self.persona['name']} | **时间**: {self.timestamp}\n",
             "---",
             "## 📊 精选列表\n"
         ]
-        
+
         for r in repos:
             lines.append(f"### [{r.get('rating', 'B')}] {r['full_name']}")
             lines.append(f"- **URL**: {r['url']}")
@@ -222,11 +224,11 @@ class ReportFormatter:
             lines.append(f"- **Description**: {(r.get('description') or '')[:200]}\n")
             lines.append(r.get('chinese_summary', r.get('refined_summary', '')))
             lines.append("\n---\n")
-            
+
         lines.append("\n*Generated by auto_github fallback system.*")
         return "\n".join(lines)
 
-    def _fallback_feishu(self, repos: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _fallback_feishu(self, repos: list[dict[str, Any]]) -> dict[str, Any]:
         """Generates a basic fallback Feishu Interactive Card message."""
         elements = [
             {
@@ -235,7 +237,7 @@ class ReportFormatter:
             },
             {"tag": "hr"}
         ]
-        
+
         for r in repos[:5]: # Top 5 to fit Feishu card limits
             elements.append({
                 "tag": "div",
@@ -251,7 +253,7 @@ class ReportFormatter:
                 }
             })
             elements.append({"tag": "hr"})
-            
+
         return {
             "msg_type": "interactive",
             "card": {
@@ -264,7 +266,7 @@ class ReportFormatter:
             }
         }
 
-    def _fallback_slack(self, repos: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _fallback_slack(self, repos: list[dict[str, Any]]) -> dict[str, Any]:
         """Generates a basic fallback Slack message payload."""
         blocks = [
             {
@@ -287,4 +289,4 @@ class ReportFormatter:
         return {"blocks": blocks}
 
 # Ensure json is imported
-import json
+import json  # noqa: E402

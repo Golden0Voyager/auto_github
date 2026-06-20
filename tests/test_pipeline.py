@@ -16,23 +16,20 @@ Covers:
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from src.config import AppConfig, AIConfig, GitHubConfig, Stage2PreFilterConfig
 from src.pipeline import (
-    CurationPipeline,
-    _infer_tags_fallback,
-    _infer_selection_reason_fallback,
-    _infer_rating_fallback,
-    _ensure_markdown_spacing,
+    LANGUAGE_TAGS,
     MOCK_TRANSLATIONS,
     TAG_KEYWORDS,
-    LANGUAGE_TAGS,
+    CurationPipeline,
+    _ensure_markdown_spacing,
+    _infer_rating_fallback,
+    _infer_selection_reason_fallback,
+    _infer_tags_fallback,
 )
-
 
 # ===================================================================
 # TAG_KEYWORDS & LANGUAGE_TAGS
@@ -49,7 +46,7 @@ class TestTagKeywords:
         assert len(TAG_KEYWORDS) >= 15
 
     def test_each_tag_has_keywords(self):
-        for tag, keywords in TAG_KEYWORDS.items():
+        for _tag, keywords in TAG_KEYWORDS.items():
             assert len(keywords) >= 1
 
     def test_language_tags_includes_major_languages(self):
@@ -278,7 +275,7 @@ class TestMockTranslations:
         assert "lucidrains/MLA-pytorch" in MOCK_TRANSLATIONS
 
     def test_translation_has_required_sections(self):
-        for name, translation in MOCK_TRANSLATIONS.items():
+        for _name, translation in MOCK_TRANSLATIONS.items():
             assert "### 要解决的核心痛点" in translation
             assert "### 设计巧思与架构取舍" in translation
             assert "### 工程启示与可迁移经验" in translation
@@ -332,7 +329,7 @@ class TestParseJsonFromResponse:
 
     def test_invalid_json_raises(self, parser):
         text = "This is not JSON at all."
-        with pytest.raises(Exception):
+        with pytest.raises((ValueError, json.JSONDecodeError)):
             parser(text)
 
     def test_empty_json_array(self, parser):
@@ -342,7 +339,7 @@ class TestParseJsonFromResponse:
     def test_json_with_extra_text_not_valid(self, parser):
         """When extra text surrounds JSON but no triple-backtick, it's not valid JSON."""
         text = 'Some prefix text [{"full_name": "x/y"}] and suffix text'
-        with pytest.raises(Exception):
+        with pytest.raises((ValueError, json.JSONDecodeError)):
             parser(text)
 
     def test_json_with_escaped_newlines(self, parser):
