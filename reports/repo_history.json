@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-20"
   ],
-  "vllm-project/aibrix": [
-    "2026-06-21"
+  "modelcontextprotocol/go-sdk": [
+    "2026-06-22"
   ],
   "mistralai/mistral-vibe": [
-    "2026-06-21"
+    "2026-06-22"
   ],
-  "comfyanonymous/ComfyUI_examples": [
-    "2026-06-21"
+  "modelcontextprotocol/csharp-sdk": [
+    "2026-06-22"
   ],
   "NousResearch/hermes-agent": [
-    "2026-06-21"
+    "2026-06-22"
   ],
-  "microsoft/markitdown": [
-    "2026-06-21"
+  "microsoft/vscode": [
+    "2026-06-22"
   ],
-  "microsoft/PowerToys": [
-    "2026-06-21"
-  ],
-  "modelcontextprotocol/python-sdk": [
-    "2026-06-21"
+  "huggingface/transformers": [
+    "2026-06-22"
   ],
   "deepseek-ai/FlashMLA": [
-    "2026-06-21"
+    "2026-06-22"
   ],
   "modelcontextprotocol/typescript-sdk": [
-    "2026-06-21"
+    "2026-06-22"
+  ],
+  "modelcontextprotocol/registry": [
+    "2026-06-22"
   ]
 }
