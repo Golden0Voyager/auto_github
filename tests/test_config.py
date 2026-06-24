@@ -39,7 +39,8 @@ class TestAppConfigDefaults:
         cfg = AppConfig()
         assert cfg.ai.default_provider == "openrouter"
         assert cfg.ai.roles["writer"].model == "nvidia/nemotron-3-ultra-550b-a55b:free"
-        assert cfg.ai.roles["reviewer"].model == "openai/gpt-oss-120b:free"
+        assert cfg.ai.roles["reviewer"].model == "nvidia/nemotron-3-ultra-550b-a55b:free"
+        assert cfg.ai.roles["reviewer"].fallback_model == "nvidia/nemotron-3-super-120b-a12b:free"
         assert cfg.ai.temperature == 0.3
         assert cfg.ai.max_tokens == 8192
         assert cfg.ai.rate_limit_delay == 4.0

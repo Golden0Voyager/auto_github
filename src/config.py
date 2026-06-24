@@ -17,6 +17,8 @@ class GitHubConfig(BaseModel):
 class RoleConfig(BaseModel):
     model: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
     provider: str = "openrouter"
+    fallback_model: str | None = None
+    fallback_provider: str | None = None
 
 
 class AIConfig(BaseModel):
@@ -31,7 +33,8 @@ class AIConfig(BaseModel):
         "writer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter"),
         "translator_a": RoleConfig(model="sensenova-6.7-flash-lite", provider="sensenova"),
         "translator_b": RoleConfig(model="nex-agi/nex-n2-pro:free", provider="openrouter"),
-        "reviewer": RoleConfig(model="openai/gpt-oss-120b:free", provider="openrouter"),
+        "reviewer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter",
+                               fallback_model="nvidia/nemotron-3-super-120b-a12b:free", fallback_provider="openrouter"),
     })
     model_v3: str | None = Field(default=None, exclude=True)
     model_r1: str | None = Field(default=None, exclude=True)

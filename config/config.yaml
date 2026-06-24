@@ -64,11 +64,13 @@ ai:
       model: sensenova-6.7-flash-lite
       provider: sensenova
     translator_b:
-      model: nex-agi/nex-n2-pro:free
+      model: qwen/qwen3-coder:free
       provider: openrouter
     reviewer:
-      model: openai/gpt-oss-120b:free
+      model: nvidia/nemotron-3-ultra-550b-a55b:free
       provider: openrouter
+      fallback_model: nvidia/nemotron-3-super-120b-a12b:free
+      fallback_provider: openrouter
 
 # 高星项目去重配置（节省算力 + 给新兴项目留展位）
 dedup:

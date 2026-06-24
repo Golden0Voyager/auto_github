@@ -42,40 +42,32 @@ class LLMClient:
     def client(self) -> Any:
         return next(iter(self._clients.values()), None)
 
-    def call_llm(
+    def _try_model(
         self,
         messages: list[dict[str, str]],
-        role: str = "writer",
-        temperature: float | None = None,
-        max_tokens: int | None = None,
-        retries: int = 3,
-        backoff_factor: float = 2.0,
-    ) -> dict[str, Any]:
-        role_cfg = self.config.ai.roles.get(role)
-        if not role_cfg:
-            return {"content": f"Error: unknown role '{role}'", "reasoning": None}
-
-        provider = role_cfg.provider or self.config.ai.default_provider
-        model = role_cfg.model
-        temp = temperature if temperature is not None else self.config.ai.temperature
-        max_t = max_tokens if max_tokens is not None else self.config.ai.max_tokens
-
+        role: str,
+        provider: str,
+        model: str,
+        temperature: float,
+        max_tokens: int,
+        retries: int,
+        backoff_factor: float,
+        tag: str = "primary",
+    ) -> dict[str, Any] | None:
         client = self._get_client(provider)
         if client is None:
-            return {"content": f"Error: no client for provider '{provider}'", "reasoning": None}
+            return None
 
-        # Per-provider rate limit delay: sensenova token plan has no limit,
-        # OpenRouter paid tier can handle 1s spacing comfortably.
         delay = {"sensenova": 0.0, "openrouter": 1.0, "openai": 1.0}.get(provider, self.config.ai.rate_limit_delay)
         timeout = {"sensenova": 30, "openrouter": 45, "openai": 30}.get(provider, 30)
         for attempt in range(retries):
             try:
                 if attempt > 0:
                     time.sleep(delay * (backoff_factor ** (attempt - 1)))
-                print(f"[LLM] {provider}/{model} (role={role}, attempt {attempt + 1}/{retries})")
+                print(f"[LLM] {provider}/{model} (role={role}, {tag}, attempt {attempt + 1}/{retries})")
 
                 response = client.chat.completions.create(
-                    model=model, messages=messages, max_tokens=max_t, temperature=temp, timeout=timeout,
+                    model=model, messages=messages, max_tokens=max_tokens, temperature=temperature, timeout=timeout,
                 )
                 choice = response.choices[0]
                 content = choice.message.content or ""
@@ -102,10 +94,61 @@ class LLMClient:
                 if "429" in str(e).lower() or "rate limit" in str(e).lower():
                     continue
                 if attempt == retries - 1:
-                    raise e
+                    return None
                 time.sleep(2)
 
-        raise RuntimeError("LLM request failed after maximum retries.")
+        return None
+
+    def call_llm(
+        self,
+        messages: list[dict[str, str]],
+        role: str = "writer",
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+        retries: int = 3,
+        backoff_factor: float = 2.0,
+    ) -> dict[str, Any]:
+        role_cfg = self.config.ai.roles.get(role)
+        if not role_cfg:
+            return {"content": f"Error: unknown role '{role}'", "reasoning": None}
+
+        provider = role_cfg.provider or self.config.ai.default_provider
+        fb_provider = role_cfg.fallback_provider or provider
+        primary_ok = self._get_client(provider) is not None
+        fb_ok = self._get_client(fb_provider) is not None if role_cfg.fallback_model else False
+
+        if not primary_ok and not fb_ok:
+            return {"content": f"Error: no client for provider '{provider}'", "reasoning": None}
+
+        temp = temperature if temperature is not None else self.config.ai.temperature
+        max_t = max_tokens if max_tokens is not None else self.config.ai.max_tokens
+
+        if primary_ok:
+            result = self._try_model(
+                messages=messages, role=role,
+                provider=provider,
+                model=role_cfg.model,
+                temperature=temp, max_tokens=max_t,
+                retries=retries, backoff_factor=backoff_factor,
+                tag="primary",
+            )
+            if result is not None:
+                return result
+
+        if role_cfg.fallback_model and fb_ok:
+            print(f"[LLM] Primary failed, switching to fallback model: {fb_provider}/{role_cfg.fallback_model}")
+            result = self._try_model(
+                messages=messages, role=role,
+                provider=fb_provider,
+                model=role_cfg.fallback_model,
+                temperature=temp, max_tokens=max_t,
+                retries=retries, backoff_factor=backoff_factor,
+                tag="fallback",
+            )
+            if result is not None:
+                return result
+
+        raise RuntimeError("LLM request failed after maximum retries (including fallback).")
 
     def get_stats(self) -> dict[str, int]:
         return {
