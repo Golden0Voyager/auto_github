@@ -40,19 +40,19 @@
   "NousResearch/hermes-agent": [
     "2026-06-24"
   ],
-  "microsoft/vscode": [
+  "huggingface/transformers": [
     "2026-06-24"
   ],
-  "huggingface/transformers": [
+  "microsoft/markitdown": [
+    "2026-06-24"
+  ],
+  "microsoft/onnxruntime": [
     "2026-06-24"
   ],
   "modelcontextprotocol/typescript-sdk": [
     "2026-06-24"
   ],
   "deepseek-ai/FlashMLA": [
-    "2026-06-24"
-  ],
-  "modelcontextprotocol/modelcontextprotocol": [
     "2026-06-24"
   ]
 }
