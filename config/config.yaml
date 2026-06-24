@@ -64,8 +64,10 @@ ai:
       model: sensenova-6.7-flash-lite
       provider: sensenova
     translator_b:
-      model: qwen/qwen3-coder:free
+      model: google/gemma-4-31b-it:free
       provider: openrouter
+      fallback_model: nvidia/nemotron-3-ultra-550b-a55b:free
+      fallback_provider: openrouter
     reviewer:
       model: nvidia/nemotron-3-ultra-550b-a55b:free
       provider: openrouter

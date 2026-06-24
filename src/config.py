@@ -32,7 +32,8 @@ class AIConfig(BaseModel):
         "classifier": RoleConfig(model="sensenova-6.7-flash-lite", provider="sensenova"),
         "writer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter"),
         "translator_a": RoleConfig(model="sensenova-6.7-flash-lite", provider="sensenova"),
-        "translator_b": RoleConfig(model="nex-agi/nex-n2-pro:free", provider="openrouter"),
+        "translator_b": RoleConfig(model="google/gemma-4-31b-it:free", provider="openrouter",
+                                   fallback_model="nvidia/nemotron-3-ultra-550b-a55b:free", fallback_provider="openrouter"),
         "reviewer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter",
                                fallback_model="nvidia/nemotron-3-super-120b-a12b:free", fallback_provider="openrouter"),
     })
