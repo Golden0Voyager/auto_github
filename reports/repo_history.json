@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-20"
   ],
-  "mistralai/mistral-vibe": [
-    "2026-06-24"
+  "microsoft/agent-governance-toolkit": [
+    "2026-06-25"
   ],
-  "modelcontextprotocol/csharp-sdk": [
-    "2026-06-24"
+  "NousResearch/hermes-agent-self-evolution": [
+    "2026-06-25"
   ],
   "comfyanonymous/ComfyUI_examples": [
-    "2026-06-24"
+    "2026-06-25"
   ],
   "NousResearch/hermes-agent": [
-    "2026-06-24"
+    "2026-06-25"
+  ],
+  "flutter/flutter": [
+    "2026-06-25"
   ],
   "huggingface/transformers": [
-    "2026-06-24"
-  ],
-  "microsoft/markitdown": [
-    "2026-06-24"
+    "2026-06-25"
   ],
   "microsoft/onnxruntime": [
-    "2026-06-24"
-  ],
-  "modelcontextprotocol/typescript-sdk": [
-    "2026-06-24"
+    "2026-06-25"
   ],
   "deepseek-ai/FlashMLA": [
-    "2026-06-24"
+    "2026-06-25"
+  ],
+  "modelcontextprotocol/modelcontextprotocol": [
+    "2026-06-25"
   ]
 }
