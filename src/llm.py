@@ -27,7 +27,7 @@ class LLMClient:
 
     def _init_clients(self):
         from openai import OpenAI
-        for provider in ("openrouter", "sensenova", "openai"):
+        for provider in ("openrouter", "sensenova", "openai", "siliconflow"):
             key = resolve_api_key(provider)
             if not key:
                 continue
@@ -58,8 +58,8 @@ class LLMClient:
         if client is None:
             return None
 
-        delay = {"sensenova": 0.0, "openrouter": 1.0, "openai": 1.0}.get(provider, self.config.ai.rate_limit_delay)
-        timeout = {"sensenova": 30, "openrouter": 45, "openai": 30}.get(provider, 30)
+        delay = {"sensenova": 0.0, "openrouter": 1.0, "openai": 1.0, "siliconflow": 0.1}.get(provider, self.config.ai.rate_limit_delay)
+        timeout = {"sensenova": 30, "openrouter": 45, "openai": 30, "siliconflow": 30}.get(provider, 30)
         for attempt in range(retries):
             try:
                 if attempt > 0:
