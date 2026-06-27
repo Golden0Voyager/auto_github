@@ -32,7 +32,8 @@ class AIConfig(BaseModel):
         "classifier": RoleConfig(model="sensenova-6.7-flash-lite", provider="sensenova"),
         "writer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter"),
         "translator_a": RoleConfig(model="sensenova-6.7-flash-lite", provider="sensenova"),
-        "translator_b": RoleConfig(model="nex-agi/nex-n2-pro:free", provider="openrouter"),
+        "translator_b": RoleConfig(model="google/gemma-4-31b-it:free", provider="openrouter",
+                                   fallback_model="nvidia/nemotron-3-ultra-550b-a55b:free", fallback_provider="openrouter"),
         "reviewer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter",
                                fallback_model="nvidia/nemotron-3-super-120b-a12b:free", fallback_provider="openrouter"),
     })
@@ -44,6 +45,7 @@ _PROVIDER_ENV = {
     "openrouter": ("OPENROUTER_API_KEY", "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
     "sensenova": ("SENSENOVA_API_KEY", "SENSENOVA_BASE_URL", "https://token.sensenova.cn/v1"),
     "openai": ("OPENAI_API_KEY", "OPENAI_BASE_URL", "https://api.openai.com/v1"),
+    "siliconflow": ("SILICONFLOW_API_KEY", "SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1"),
 }
 
 
@@ -53,6 +55,11 @@ class DedupConfig(BaseModel):
     archive_cooldown_days: int = 30
     history_file: str = "reports/repo_history.json"
     archive_file: str = "reports/high_star_archive.json"
+    first_seen_window_days: int = 90
+    history_ttl_days: int = 365
+    max_cooldown_days: int = 90
+    steps_cooldown: bool = True
+    cycles_file: str = "reports/repo_cycles.json"
 
 
 class BucketAllocationConfig(BaseModel):
@@ -61,6 +68,8 @@ class BucketAllocationConfig(BaseModel):
     early_bird: int = 3
     high_star_hot: int = 3
     deep_dive: int = 3
+    diversity_enabled: bool = True
+    diversity_max_ratio: float = 0.4
 
 
 class Stage2PreFilterConfig(BaseModel):

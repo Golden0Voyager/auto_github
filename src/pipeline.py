@@ -1,6 +1,7 @@
 import json
 import re
 import time
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -368,6 +369,7 @@ class CurationPipeline:
         tds_order = {"T": 0, "E": 1, "S": 2}
         leftover.sort(key=lambda x: (tds_order.get(x.get("tds", "S"), 3), -(x.get("stars") or 0)))
         dd_taken = leftover[:cfg.deep_dive]
+        all_leftover = leftover[cfg.deep_dive:]
 
         result = eb_taken + hs_taken + dd_taken
 
@@ -387,6 +389,39 @@ class CurationPipeline:
                 )
             )
             result = result[:cfg.total_slots]
+
+        # 主题多样性约束：单类 tds 不得超过 total_slots × diversity_max_ratio
+        if cfg.diversity_enabled and len(result) > 0:
+            max_per_tds = max(1, int(cfg.total_slots * cfg.diversity_max_ratio))
+            tds_cnt = Counter(r.get("tds", "S") for r in result)
+            dominant = [t for t, c in tds_cnt.items() if c > max_per_tds]
+            if dominant and all_leftover:
+                cand = [r for r in all_leftover if r.get("tds", "S") not in dominant]
+                cand.sort(key=lambda x: -(x.get("stars", 0) or 0))
+                result = list(result)
+                for tds in dominant:
+                    excess = tds_cnt[tds] - max_per_tds
+                    for _ in range(excess):
+                        # 找 result 中最后一个（最低优先级）该 tds 的 repo
+                        idx = None
+                        for i in range(len(result) - 1, -1, -1):
+                            if result[i].get("tds", "S") == tds:
+                                idx = i
+                                break
+                        if idx is None or not cand:
+                            break
+                        kicked = result.pop(idx)
+                        best = cand.pop(0)
+                        result.append(best)
+                        cand.append(kicked)
+                        cand.sort(key=lambda x: -(x.get("stars", 0) or 0))
+                # 重新按 bucket + tds + stars 排序
+                result.sort(key=lambda x: (
+                    0 if x.get("_bucket") == "early_bird" else
+                    1 if x.get("_bucket") == "high_star" else 2,
+                    tds_order.get(x.get("tds", "S"), 3),
+                    -(x.get("stars", 0) or 0),
+                ))
 
         dropped = len(repos) - len(result)
         print(

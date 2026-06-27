@@ -233,7 +233,7 @@ class TestFilterActive:
     def test_first_seen_map_mixed_repos(self, dedup_config_with_custom_paths):
         """With a mix of new and existing repos, first_seen_map should reflect each."""
         tracker = RepoHistoryTracker(dedup_config_with_custom_paths)
-        tracker._history = {"old/repo": ["2026-01-01"], "also-old/repo": ["2026-05-01"]}
+        tracker._history = {"old/repo": ["2026-05-01"], "also-old/repo": ["2026-05-01"]}
         repos = [
             _make_repo("old/repo", stars=500),
             _make_repo("new/repo", stars=500),
@@ -243,6 +243,14 @@ class TestFilterActive:
         assert first_seen_map["old/repo"] is False
         assert first_seen_map["new/repo"] is True
         assert first_seen_map["also-old/repo"] is False
+
+    def test_first_seen_map_window_cutoff(self, dedup_config_with_custom_paths):
+        """Repos last seen beyond first_seen_window_days should be marked as new."""
+        tracker = RepoHistoryTracker(dedup_config_with_custom_paths)
+        tracker._history = {"old/repo": ["2026-01-01"]}  # > 90 days ago
+        repos = [_make_repo("old/repo", stars=500)]
+        _, _, first_seen_map = tracker.filter_active(repos)
+        assert first_seen_map["old/repo"] is True
 
     def test_first_seen_map_empty_full_name(self, dedup_config_with_custom_paths):
         """Repos with empty full_name should be marked first_seen=False (not in history)."""
