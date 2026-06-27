@@ -28,28 +28,28 @@
   "meta-llama/llama3": [
     "2026-06-20"
   ],
-  "microsoft/agent-governance-toolkit": [
-    "2026-06-27"
-  ],
   "NousResearch/hermes-agent-self-evolution": [
     "2026-06-27"
   ],
   "comfyanonymous/ComfyUI_examples": [
     "2026-06-27"
   ],
-  "NousResearch/hermes-agent": [
-    "2026-06-27"
-  ],
-  "huggingface/transformers": [
-    "2026-06-27"
-  ],
-  "microsoft/markitdown": [
+  "google-deepmind/dm_control": [
     "2026-06-27"
   ],
   "modelcontextprotocol/python-sdk": [
     "2026-06-27"
   ],
   "modelcontextprotocol/typescript-sdk": [
+    "2026-06-27"
+  ],
+  "NousResearch/hermes-agent": [
+    "2026-06-27"
+  ],
+  "microsoft/vscode": [
+    "2026-06-27"
+  ],
+  "microsoft/markitdown": [
     "2026-06-27"
   ],
   "lucidrains/x-transformers": [
