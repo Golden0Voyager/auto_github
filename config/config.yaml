@@ -61,13 +61,11 @@ ai:
       model: nvidia/nemotron-3-ultra-550b-a55b:free
       provider: openrouter
     translator_a:
-      model: sensenova-6.7-flash-lite
-      provider: sensenova
+      model: tencent/Hunyuan-MT-7B
+      provider: siliconflow
     translator_b:
-      model: google/gemma-4-31b-it:free
-      provider: openrouter
-      fallback_model: nvidia/nemotron-3-ultra-550b-a55b:free
-      fallback_provider: openrouter
+      model: Qwen/Qwen2.5-7B-Instruct
+      provider: siliconflow
     reviewer:
       model: nvidia/nemotron-3-ultra-550b-a55b:free
       provider: openrouter
@@ -85,6 +83,16 @@ dedup:
   # 历史记录持久化文件（相对项目根目录）
   history_file: "reports/repo_history.json"
   archive_file: "reports/high_star_archive.json"
+  # "首次出现"窗口天数：过去 N 天内未见视为新项目（而非"永远没见过"）
+  first_seen_window_days: 90
+  # 历史记录裁剪 TTL（天）：保存最近 N 天的出现记录，超时清理防膨胀
+  history_ttl_days: 365
+  # 冷却期上限天数（步进冷却时封顶值）
+  max_cooldown_days: 90
+  # 开启步进冷却：归档次数越多，冷却期越长（1× → 1.5× → 2× → ...）
+  steps_cooldown: true
+  # 归档次数计数器持久化文件（相对项目根目录）
+  cycles_file: "reports/repo_cycles.json"
 
 # Stage 2 LLM 批处理前的廉价预筛（避免 188+ repo 一次性塞给 LLM 时 completion 触顶 max_tokens=4096）
 stage2_pre_filter:
@@ -109,3 +117,6 @@ bucket_allocation:
   early_bird: 3
   high_star_hot: 3
   deep_dive: 3
+  # 主题多样性约束：开启后单类 tds（T/E/S）不得超过 total_slots 的此比例
+  diversity_enabled: true
+  diversity_max_ratio: 0.4

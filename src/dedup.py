@@ -32,7 +32,7 @@ import json
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from src.config import AppConfig
+from src.config import BASE_DIR, AppConfig
 
 
 def _today() -> str:
@@ -60,12 +60,17 @@ class RepoHistoryTracker:
         self.threshold = config.dedup.high_star_threshold
         self.archive_threshold = config.dedup.archive_threshold
         self.cooldown_days = config.dedup.archive_cooldown_days
-        # 历史/存档文件相对 BASE_DIR
-        from src.config import BASE_DIR
+        self.first_seen_window_days = config.dedup.first_seen_window_days
+        self.history_ttl_days = config.dedup.history_ttl_days
+        self.max_cooldown_days = config.dedup.max_cooldown_days
+        self.steps_cooldown = config.dedup.steps_cooldown
+        # 历史/存档/周期文件相对 BASE_DIR
         self.history_path = BASE_DIR / config.dedup.history_file
         self.archive_path = BASE_DIR / config.dedup.archive_file
+        self.cycles_path = BASE_DIR / config.dedup.cycles_file
         self._history: dict[str, list[str]] = self._load_json(self.history_path, default={})
         self._archive: dict[str, dict] = self._load_json(self.archive_path, default={})
+        self._cycle_counter: dict[str, int] = self._load_json(self.cycles_path, default={})
 
     @staticmethod
     def _load_json(path: Path, default):
@@ -78,9 +83,11 @@ class RepoHistoryTracker:
 
     def _save(self) -> None:
         """原子写入历史与存档（先写临时文件再 rename，避免半写状态）。"""
+        self._trim_history()
         for path, data in (
             (self.history_path, self._history),
             (self.archive_path, self._archive),
+            (self.cycles_path, self._cycle_counter),
         ):
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_suffix(path.suffix + ".tmp")
@@ -111,17 +118,20 @@ class RepoHistoryTracker:
         Returns:
             (active_repos, cooled_repos, first_seen_map) —— active 用于进入策展管线；
             cooled 仅用于日志/统计；first_seen_map 标记每个 full_name 是否首次出现。
+            窗口语义：过去 first_seen_window_days 天内未见过 → 视为"首次"。
         """
         active: list[dict] = []
         cooled: list[dict] = []
         first_seen_map: dict[str, bool] = {}
+        cutoff = _parse_date(_today()) - timedelta(days=self.first_seen_window_days)
         for r in repos:
             name = r.get("full_name", "")
             if self._cooldown_active(name):
                 cooled.append(r)
             else:
                 active.append(r)
-            first_seen_map[name] = name not in self._history
+            dates = self._history.get(name, [])
+            first_seen_map[name] = not any(_parse_date(d) >= cutoff for d in dates)
         return active, cooled, first_seen_map
 
     # ------------------------------------------------------------------
@@ -156,9 +166,21 @@ class RepoHistoryTracker:
                 stars >= self.threshold
                 and len(history) >= self.archive_threshold
             ):
+                cycle = self._cycle_counter.get(name, 0) + 1
+                self._cycle_counter[name] = cycle
+
+                if self.steps_cooldown:
+                    factor = max(1.0, 1.0 + (cycle - 1) * 0.5)
+                    effective_days = min(
+                        int(self.cooldown_days * factor),
+                        self.max_cooldown_days,
+                    )
+                else:
+                    effective_days = self.cooldown_days
+
                 first_seen = history[0]
                 cooldown_until = (
-                    _parse_date(today) + timedelta(days=self.cooldown_days)
+                    _parse_date(today) + timedelta(days=effective_days)
                 ).strftime("%Y-%m-%d")
                 self._archive[name] = {
                     "first_seen": first_seen,
@@ -175,6 +197,16 @@ class RepoHistoryTracker:
     # ------------------------------------------------------------------
     # 维护 API
     # ------------------------------------------------------------------
+
+    def _trim_history(self) -> None:
+        """裁剪超出 TTL 的历史记录，防止 repo_history.json 无限膨胀。"""
+        cutoff = _parse_date(_today()) - timedelta(days=self.history_ttl_days)
+        for name, dates in list(self._history.items()):
+            keep = [d for d in dates if _parse_date(d) >= cutoff]
+            if keep:
+                self._history[name] = keep
+            else:
+                del self._history[name]
 
     def purge_expired_cooldowns(self) -> int:
         """清理过期的存档项目（cooldown_until < 今天）。
@@ -195,6 +227,8 @@ class RepoHistoryTracker:
                 expired.append(name)
         for name in expired:
             del self._archive[name]
+            self._history.pop(name, None)
+            self._cycle_counter.pop(name, None)
         if expired:
             self._save()
         return len(expired)
