@@ -28,19 +28,13 @@
   "meta-llama/llama3": [
     "2026-06-20"
   ],
-  "NousResearch/hermes-agent-self-evolution": [
-    "2026-06-27"
-  ],
-  "comfyanonymous/ComfyUI_examples": [
+  "microsoft/fluentui-blazor": [
     "2026-06-27"
   ],
   "google-deepmind/dm_control": [
     "2026-06-27"
   ],
-  "modelcontextprotocol/python-sdk": [
-    "2026-06-27"
-  ],
-  "modelcontextprotocol/typescript-sdk": [
+  "NousResearch/hermes-agent-self-evolution": [
     "2026-06-27"
   ],
   "NousResearch/hermes-agent": [
@@ -49,7 +43,13 @@
   "microsoft/vscode": [
     "2026-06-27"
   ],
-  "microsoft/markitdown": [
+  "huggingface/transformers": [
+    "2026-06-27"
+  ],
+  "modelcontextprotocol/python-sdk": [
+    "2026-06-27"
+  ],
+  "modelcontextprotocol/typescript-sdk": [
     "2026-06-27"
   ],
   "lucidrains/x-transformers": [
