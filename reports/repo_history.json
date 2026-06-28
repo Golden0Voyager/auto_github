@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-20"
   ],
-  "microsoft/fluentui-blazor": [
-    "2026-06-27"
-  ],
-  "google-deepmind/dm_control": [
-    "2026-06-27"
-  ],
   "NousResearch/hermes-agent-self-evolution": [
-    "2026-06-27"
+    "2026-06-28"
   ],
-  "NousResearch/hermes-agent": [
-    "2026-06-27"
+  "comfyanonymous/ComfyUI_examples": [
+    "2026-06-28"
   ],
-  "microsoft/vscode": [
-    "2026-06-27"
-  ],
-  "huggingface/transformers": [
-    "2026-06-27"
+  "meta-llama/PurpleLlama": [
+    "2026-06-28"
   ],
   "modelcontextprotocol/python-sdk": [
-    "2026-06-27"
+    "2026-06-28"
   ],
   "modelcontextprotocol/typescript-sdk": [
-    "2026-06-27"
+    "2026-06-28"
   ],
-  "lucidrains/x-transformers": [
-    "2026-06-27"
+  "deepseek-ai/FlashMLA": [
+    "2026-06-28"
+  ],
+  "NousResearch/hermes-agent": [
+    "2026-06-28"
+  ],
+  "microsoft/vscode": [
+    "2026-06-28"
+  ],
+  "microsoft/markitdown": [
+    "2026-06-28"
   ]
 }
