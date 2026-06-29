@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-20"
   ],
+  "modelcontextprotocol/csharp-sdk": [
+    "2026-06-29"
+  ],
   "NousResearch/hermes-agent-self-evolution": [
-    "2026-06-28"
+    "2026-06-29"
   ],
   "comfyanonymous/ComfyUI_examples": [
-    "2026-06-28"
-  ],
-  "meta-llama/PurpleLlama": [
-    "2026-06-28"
+    "2026-06-29"
   ],
   "modelcontextprotocol/python-sdk": [
-    "2026-06-28"
+    "2026-06-29"
   ],
   "modelcontextprotocol/typescript-sdk": [
-    "2026-06-28"
-  ],
-  "deepseek-ai/FlashMLA": [
-    "2026-06-28"
+    "2026-06-29"
   ],
   "NousResearch/hermes-agent": [
-    "2026-06-28"
+    "2026-06-29"
+  ],
+  "huggingface/transformers": [
+    "2026-06-29"
   ],
   "microsoft/vscode": [
-    "2026-06-28"
+    "2026-06-29"
   ],
-  "microsoft/markitdown": [
-    "2026-06-28"
+  "iptv-org/iptv": [
+    "2026-06-29"
   ]
 }
