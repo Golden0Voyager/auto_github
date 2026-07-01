@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-20"
   ],
-  "vllm-project/semantic-router": [
-    "2026-06-30"
+  "modelcontextprotocol/go-sdk": [
+    "2026-07-01"
   ],
-  "google-deepmind/dm_control": [
-    "2026-06-30"
+  "vllm-project/aibrix": [
+    "2026-07-01"
   ],
   "mistralai/mistral-vibe": [
-    "2026-06-30"
+    "2026-07-01"
   ],
-  "NousResearch/hermes-agent": [
-    "2026-06-30"
-  ],
-  "huggingface/transformers": [
-    "2026-06-30"
-  ],
-  "microsoft/PowerToys": [
-    "2026-06-30"
+  "modelcontextprotocol/python-sdk": [
+    "2026-07-01"
   ],
   "modelcontextprotocol/typescript-sdk": [
-    "2026-06-30"
+    "2026-07-01"
   ],
-  "modelcontextprotocol/modelcontextprotocol": [
-    "2026-06-30"
+  "NousResearch/hermes-agent": [
+    "2026-07-01"
   ],
-  "modelcontextprotocol/csharp-sdk": [
-    "2026-06-30"
+  "huggingface/transformers": [
+    "2026-07-01"
+  ],
+  "microsoft/vscode": [
+    "2026-07-01"
+  ],
+  "iptv-org/iptv": [
+    "2026-07-01"
   ]
 }
