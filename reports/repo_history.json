@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-20"
   ],
-  "vllm-project/aibrix": [
-    "2026-07-02"
+  "modelcontextprotocol/csharp-sdk": [
+    "2026-07-03"
   ],
-  "mistralai/mistral-vibe": [
-    "2026-07-02"
+  "microsoft/agent-governance-toolkit": [
+    "2026-07-03"
   ],
   "NousResearch/hermes-agent-self-evolution": [
-    "2026-07-02"
+    "2026-07-03"
   ],
-  "modelcontextprotocol/python-sdk": [
-    "2026-07-02"
+  "deepseek-ai/awesome-deepseek-agent": [
+    "2026-07-03"
   ],
-  "microsoft/onnxruntime": [
-    "2026-07-02"
+  "modelcontextprotocol/typescript-sdk": [
+    "2026-07-03"
   ],
-  "deepseek-ai/FlashMLA": [
-    "2026-07-02"
+  "obra/superpowers": [
+    "2026-07-03"
   ],
-  "huggingface/transformers": [
-    "2026-07-02"
+  "NousResearch/hermes-agent": [
+    "2026-07-03"
   ],
-  "iptv-org/iptv": [
-    "2026-07-02"
+  "microsoft/vscode": [
+    "2026-07-03"
   ],
-  "ripienaar/free-for-dev": [
-    "2026-07-02"
+  "lucidrains/x-transformers": [
+    "2026-07-03"
   ]
 }
