@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-20"
   ],
-  "modelcontextprotocol/csharp-sdk": [
-    "2026-07-03"
+  "vllm-project/semantic-router": [
+    "2026-07-04"
   ],
-  "microsoft/agent-governance-toolkit": [
-    "2026-07-03"
+  "mistralai/mistral-vibe": [
+    "2026-07-04"
   ],
   "NousResearch/hermes-agent-self-evolution": [
-    "2026-07-03"
-  ],
-  "deepseek-ai/awesome-deepseek-agent": [
-    "2026-07-03"
-  ],
-  "modelcontextprotocol/typescript-sdk": [
-    "2026-07-03"
-  ],
-  "obra/superpowers": [
-    "2026-07-03"
+    "2026-07-04"
   ],
   "NousResearch/hermes-agent": [
-    "2026-07-03"
+    "2026-07-04"
   ],
   "microsoft/vscode": [
-    "2026-07-03"
+    "2026-07-04"
   ],
-  "lucidrains/x-transformers": [
-    "2026-07-03"
+  "iptv-org/iptv": [
+    "2026-07-04"
+  ],
+  "modelcontextprotocol/servers": [
+    "2026-07-04"
+  ],
+  "modelcontextprotocol/typescript-sdk": [
+    "2026-07-04"
+  ],
+  "modelcontextprotocol/modelcontextprotocol": [
+    "2026-07-04"
   ]
 }
