@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-20"
   ],
-  "vllm-project/semantic-router": [
-    "2026-07-04"
-  ],
   "mistralai/mistral-vibe": [
-    "2026-07-04"
+    "2026-07-05"
   ],
   "NousResearch/hermes-agent-self-evolution": [
-    "2026-07-04"
+    "2026-07-05"
   ],
-  "NousResearch/hermes-agent": [
-    "2026-07-04"
-  ],
-  "microsoft/vscode": [
-    "2026-07-04"
-  ],
-  "iptv-org/iptv": [
-    "2026-07-04"
+  "deepseek-ai/awesome-deepseek-agent": [
+    "2026-07-05"
   ],
   "modelcontextprotocol/servers": [
-    "2026-07-04"
+    "2026-07-05"
   ],
   "modelcontextprotocol/typescript-sdk": [
-    "2026-07-04"
+    "2026-07-05"
   ],
-  "modelcontextprotocol/modelcontextprotocol": [
-    "2026-07-04"
+  "deepseek-ai/FlashMLA": [
+    "2026-07-05"
+  ],
+  "NousResearch/hermes-agent": [
+    "2026-07-05"
+  ],
+  "microsoft/vscode": [
+    "2026-07-05"
+  ],
+  "iptv-org/iptv": [
+    "2026-07-05"
   ]
 }
