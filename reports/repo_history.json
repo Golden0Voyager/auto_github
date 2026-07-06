@@ -2,57 +2,57 @@
   "deepseek-ai/DeepSeek-R1": [
     "2026-01-01",
     "2026-01-02",
-    "2026-06-20"
+    "2026-06-27"
   ],
   "deepseek-ai/DeepSeek-V3": [
-    "2026-06-20"
+    "2026-06-27"
   ],
   "lucidrains/MLA-pytorch": [
-    "2026-06-20"
+    "2026-06-27"
   ],
   "openai/whisper": [
-    "2026-06-20"
+    "2026-06-27"
   ],
   "mistralai/mistral-inference": [
-    "2026-06-20"
+    "2026-06-27"
   ],
   "anthropics/claude-code": [
-    "2026-06-20"
+    "2026-06-27"
   ],
   "microsoft/AutoDev": [
-    "2026-06-20"
+    "2026-06-27"
   ],
   "google-research/sima": [
-    "2026-06-20"
+    "2026-06-27"
   ],
   "meta-llama/llama3": [
-    "2026-06-20"
+    "2026-06-27"
+  ],
+  "modelcontextprotocol/csharp-sdk": [
+    "2026-07-06"
   ],
   "mistralai/mistral-vibe": [
-    "2026-07-05"
+    "2026-07-06"
   ],
   "NousResearch/hermes-agent-self-evolution": [
-    "2026-07-05"
+    "2026-07-06"
   ],
   "deepseek-ai/awesome-deepseek-agent": [
-    "2026-07-05"
-  ],
-  "modelcontextprotocol/servers": [
-    "2026-07-05"
+    "2026-07-06"
   ],
   "modelcontextprotocol/typescript-sdk": [
-    "2026-07-05"
-  ],
-  "deepseek-ai/FlashMLA": [
-    "2026-07-05"
+    "2026-07-06"
   ],
   "NousResearch/hermes-agent": [
-    "2026-07-05"
+    "2026-07-06"
   ],
   "microsoft/vscode": [
-    "2026-07-05"
+    "2026-07-06"
   ],
   "iptv-org/iptv": [
-    "2026-07-05"
+    "2026-07-06"
+  ],
+  "lucidrains/x-transformers": [
+    "2026-07-06"
   ]
 }
