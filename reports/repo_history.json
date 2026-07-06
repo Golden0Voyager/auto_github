@@ -2,30 +2,30 @@
   "deepseek-ai/DeepSeek-R1": [
     "2026-01-01",
     "2026-01-02",
-    "2026-06-20"
+    "2026-06-27"
   ],
   "deepseek-ai/DeepSeek-V3": [
-    "2026-06-20"
+    "2026-06-27"
   ],
   "lucidrains/MLA-pytorch": [
-    "2026-06-20"
+    "2026-06-27"
   ],
   "openai/whisper": [
-    "2026-06-20"
+    "2026-06-27"
   ],
   "mistralai/mistral-inference": [
-    "2026-06-20"
+    "2026-06-27"
   ],
   "anthropics/claude-code": [
-    "2026-06-20"
+    "2026-06-27"
   ],
   "microsoft/AutoDev": [
-    "2026-06-20"
+    "2026-06-27"
   ],
   "google-research/sima": [
-    "2026-06-20"
+    "2026-06-27"
   ],
   "meta-llama/llama3": [
-    "2026-06-20"
+    "2026-06-27"
   ]
 }
