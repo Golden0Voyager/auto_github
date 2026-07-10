@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-27"
   ],
-  "vllm-project/aibrix": [
-    "2026-07-09"
-  ],
   "mistralai/mistral-vibe": [
-    "2026-07-09"
+    "2026-07-10"
   ],
-  "vllm-project/semantic-router": [
-    "2026-07-09"
+  "NousResearch/hermes-agent-self-evolution": [
+    "2026-07-10"
+  ],
+  "deepseek-ai/awesome-deepseek-agent": [
+    "2026-07-10"
+  ],
+  "modelcontextprotocol/servers": [
+    "2026-07-10"
+  ],
+  "microsoft/onnxruntime": [
+    "2026-07-10"
   ],
   "modelcontextprotocol/typescript-sdk": [
-    "2026-07-09"
+    "2026-07-10"
   ],
-  "obra/superpowers": [
-    "2026-07-09"
+  "NousResearch/hermes-agent": [
+    "2026-07-10"
   ],
-  "huggingface/transformers": [
-    "2026-07-09"
+  "microsoft/vscode": [
+    "2026-07-10"
   ],
   "iptv-org/iptv": [
-    "2026-07-09"
-  ],
-  "modelcontextprotocol/registry": [
-    "2026-07-09"
-  ],
-  "lucidrains/x-transformers": [
-    "2026-07-09"
+    "2026-07-10"
   ]
 }
