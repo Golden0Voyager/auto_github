@@ -29,30 +29,30 @@
     "2026-06-27"
   ],
   "mistralai/mistral-vibe": [
-    "2026-07-10"
+    "2026-07-11"
   ],
   "NousResearch/hermes-agent-self-evolution": [
-    "2026-07-10"
+    "2026-07-11"
   ],
   "deepseek-ai/awesome-deepseek-agent": [
-    "2026-07-10"
+    "2026-07-11"
   ],
-  "modelcontextprotocol/servers": [
-    "2026-07-10"
+  "oven-sh/bun": [
+    "2026-07-11"
   ],
-  "microsoft/onnxruntime": [
-    "2026-07-10"
+  "obra/superpowers": [
+    "2026-07-11"
   ],
-  "modelcontextprotocol/typescript-sdk": [
-    "2026-07-10"
+  "mattpocock/skills": [
+    "2026-07-11"
   ],
-  "NousResearch/hermes-agent": [
-    "2026-07-10"
+  "microsoft/PowerToys": [
+    "2026-07-11"
   ],
-  "microsoft/vscode": [
-    "2026-07-10"
+  "modelcontextprotocol/modelcontextprotocol": [
+    "2026-07-11"
   ],
-  "iptv-org/iptv": [
-    "2026-07-10"
+  "modelcontextprotocol/registry": [
+    "2026-07-11"
   ]
 }
