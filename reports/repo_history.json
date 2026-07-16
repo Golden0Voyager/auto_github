@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-27"
   ],
-  "modelcontextprotocol/csharp-sdk": [
-    "2026-07-15"
-  ],
-  "modelcontextprotocol/rust-sdk": [
-    "2026-07-15"
-  ],
   "vllm-project/semantic-router": [
-    "2026-07-15"
+    "2026-07-16"
   ],
-  "mistralai/mistral-vibe": [
-    "2026-07-15"
+  "Dicklesworthstone/destructive_command_guard": [
+    "2026-07-16"
   ],
   "deepseek-ai/awesome-deepseek-agent": [
-    "2026-07-15"
+    "2026-07-16"
   ],
   "NousResearch/hermes-agent": [
-    "2026-07-15"
+    "2026-07-16"
+  ],
+  "microsoft/vscode": [
+    "2026-07-16"
   ],
   "mattpocock/skills": [
-    "2026-07-15"
+    "2026-07-16"
   ],
-  "microsoft/PowerToys": [
-    "2026-07-15"
+  "oven-sh/bun": [
+    "2026-07-16"
   ],
-  "lucidrains/x-transformers": [
-    "2026-07-15"
+  "modelcontextprotocol/modelcontextprotocol": [
+    "2026-07-16"
+  ],
+  "modelcontextprotocol/registry": [
+    "2026-07-16"
   ]
 }
