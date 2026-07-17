@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-27"
   ],
-  "vllm-project/semantic-router": [
-    "2026-07-16"
+  "NousResearch/hermes-agent-self-evolution": [
+    "2026-07-17"
   ],
-  "Dicklesworthstone/destructive_command_guard": [
-    "2026-07-16"
+  "mistralai/mistral-vibe": [
+    "2026-07-17"
   ],
   "deepseek-ai/awesome-deepseek-agent": [
-    "2026-07-16"
-  ],
-  "NousResearch/hermes-agent": [
-    "2026-07-16"
-  ],
-  "microsoft/vscode": [
-    "2026-07-16"
-  ],
-  "mattpocock/skills": [
-    "2026-07-16"
+    "2026-07-17"
   ],
   "oven-sh/bun": [
-    "2026-07-16"
+    "2026-07-17"
   ],
-  "modelcontextprotocol/modelcontextprotocol": [
-    "2026-07-16"
+  "modelcontextprotocol/python-sdk": [
+    "2026-07-17"
   ],
-  "modelcontextprotocol/registry": [
-    "2026-07-16"
+  "microsoft/onnxruntime": [
+    "2026-07-17"
+  ],
+  "NousResearch/hermes-agent": [
+    "2026-07-17"
+  ],
+  "microsoft/vscode": [
+    "2026-07-17"
+  ],
+  "OpenCut-app/OpenCut": [
+    "2026-07-17"
   ]
 }
