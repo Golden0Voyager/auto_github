@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-27"
   ],
-  "NousResearch/hermes-agent-self-evolution": [
-    "2026-07-18"
-  ],
-  "mistralai/mistral-vibe": [
-    "2026-07-18"
+  "vllm-project/semantic-router": [
+    "2026-07-19"
   ],
   "deepseek-ai/awesome-deepseek-agent": [
-    "2026-07-18"
+    "2026-07-19"
   ],
-  "oven-sh/bun": [
-    "2026-07-18"
-  ],
-  "protocolbuffers/protobuf": [
-    "2026-07-18"
-  ],
-  "modelcontextprotocol/typescript-sdk": [
-    "2026-07-18"
-  ],
-  "NousResearch/hermes-agent": [
-    "2026-07-18"
+  "NousResearch/hermes-agent-self-evolution": [
+    "2026-07-19"
   ],
   "codecrafters-io/build-your-own-x": [
-    "2026-07-18"
+    "2026-07-19"
   ],
-  "OpenCut-app/OpenCut": [
-    "2026-07-18"
+  "NousResearch/hermes-agent": [
+    "2026-07-19"
+  ],
+  "microsoft/vscode": [
+    "2026-07-19"
+  ],
+  "modelcontextprotocol/typescript-sdk": [
+    "2026-07-19"
+  ],
+  "modelcontextprotocol/modelcontextprotocol": [
+    "2026-07-19"
+  ],
+  "lucidrains/x-transformers": [
+    "2026-07-19"
   ]
 }
