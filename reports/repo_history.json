@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-27"
   ],
-  "deepseek-ai/awesome-deepseek-agent": [
-    "2026-07-21"
+  "modelcontextprotocol/rust-sdk": [
+    "2026-07-22"
+  ],
+  "tradesdontlie/tradingview-mcp": [
+    "2026-07-22"
   ],
   "NousResearch/hermes-agent-self-evolution": [
-    "2026-07-21"
+    "2026-07-22"
   ],
-  "google-deepmind/dm_control": [
-    "2026-07-21"
+  "deepseek-ai/awesome-deepseek-agent": [
+    "2026-07-22"
+  ],
+  "microsoft/onnxruntime": [
+    "2026-07-22"
   ],
   "NousResearch/hermes-agent": [
-    "2026-07-21"
+    "2026-07-22"
   ],
-  "microsoft/vscode": [
-    "2026-07-21"
+  "microsoft/PowerToys": [
+    "2026-07-22"
   ],
-  "mattpocock/skills": [
-    "2026-07-21"
+  "OpenCut-app/OpenCut": [
+    "2026-07-22"
   ],
-  "modelcontextprotocol/modelcontextprotocol": [
-    "2026-07-21"
-  ],
-  "modelcontextprotocol/csharp-sdk": [
-    "2026-07-21"
-  ],
-  "modelcontextprotocol/rust-sdk": [
-    "2026-07-21"
+  "lucidrains/x-transformers": [
+    "2026-07-22"
   ]
 }
