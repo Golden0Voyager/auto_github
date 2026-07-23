@@ -29,30 +29,30 @@
     "2026-06-27"
   ],
   "modelcontextprotocol/rust-sdk": [
-    "2026-07-22"
+    "2026-07-23"
   ],
-  "tradesdontlie/tradingview-mcp": [
-    "2026-07-22"
+  "vllm-project/aibrix": [
+    "2026-07-23"
   ],
-  "NousResearch/hermes-agent-self-evolution": [
-    "2026-07-22"
+  "mistralai/mistral-vibe": [
+    "2026-07-23"
   ],
   "deepseek-ai/awesome-deepseek-agent": [
-    "2026-07-22"
-  ],
-  "microsoft/onnxruntime": [
-    "2026-07-22"
+    "2026-07-23"
   ],
   "NousResearch/hermes-agent": [
-    "2026-07-22"
+    "2026-07-23"
   ],
-  "microsoft/PowerToys": [
-    "2026-07-22"
+  "microsoft/vscode": [
+    "2026-07-23"
   ],
-  "OpenCut-app/OpenCut": [
-    "2026-07-22"
+  "ruvnet/RuView": [
+    "2026-07-23"
+  ],
+  "modelcontextprotocol/registry": [
+    "2026-07-23"
   ],
   "lucidrains/x-transformers": [
-    "2026-07-22"
+    "2026-07-23"
   ]
 }
