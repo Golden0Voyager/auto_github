@@ -29,30 +29,30 @@
     "2026-06-27"
   ],
   "modelcontextprotocol/rust-sdk": [
-    "2026-07-23"
+    "2026-07-24"
   ],
-  "vllm-project/aibrix": [
-    "2026-07-23"
+  "NousResearch/hermes-agent-self-evolution": [
+    "2026-07-24"
   ],
   "mistralai/mistral-vibe": [
-    "2026-07-23"
+    "2026-07-24"
   ],
   "deepseek-ai/awesome-deepseek-agent": [
-    "2026-07-23"
+    "2026-07-24"
+  ],
+  "deepseek-ai/FlashMLA": [
+    "2026-07-24"
   ],
   "NousResearch/hermes-agent": [
-    "2026-07-23"
+    "2026-07-24"
   ],
   "microsoft/vscode": [
-    "2026-07-23"
+    "2026-07-24"
   ],
-  "ruvnet/RuView": [
-    "2026-07-23"
+  "microsoft/terminal": [
+    "2026-07-24"
   ],
-  "modelcontextprotocol/registry": [
-    "2026-07-23"
-  ],
-  "lucidrains/x-transformers": [
-    "2026-07-23"
+  "modelcontextprotocol/modelcontextprotocol": [
+    "2026-07-24"
   ]
 }
