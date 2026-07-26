@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-27"
   ],
-  "modelcontextprotocol/csharp-sdk": [
-    "2026-07-25"
-  ],
   "NousResearch/hermes-agent-self-evolution": [
-    "2026-07-25"
+    "2026-07-26"
   ],
   "mistralai/mistral-vibe": [
-    "2026-07-25"
+    "2026-07-26"
   ],
   "deepseek-ai/awesome-deepseek-agent": [
-    "2026-07-25"
+    "2026-07-26"
   ],
-  "NousResearch/hermes-agent": [
-    "2026-07-25"
+  "modelcontextprotocol/servers": [
+    "2026-07-26"
+  ],
+  "modelcontextprotocol/python-sdk": [
+    "2026-07-26"
+  ],
+  "deepseek-ai/FlashMLA": [
+    "2026-07-26"
+  ],
+  "obra/superpowers": [
+    "2026-07-26"
   ],
   "microsoft/vscode": [
-    "2026-07-25"
+    "2026-07-26"
   ],
-  "ruvnet/RuView": [
-    "2026-07-25"
-  ],
-  "modelcontextprotocol/registry": [
-    "2026-07-25"
-  ],
-  "lucidrains/x-transformers": [
-    "2026-07-25"
+  "microsoft/ML-For-Beginners": [
+    "2026-07-26"
   ]
 }
