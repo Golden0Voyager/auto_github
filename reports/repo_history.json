@@ -29,30 +29,30 @@
     "2026-06-27"
   ],
   "NousResearch/hermes-agent-self-evolution": [
-    "2026-07-26"
+    "2026-07-27"
   ],
   "mistralai/mistral-vibe": [
-    "2026-07-26"
+    "2026-07-27"
   ],
   "deepseek-ai/awesome-deepseek-agent": [
-    "2026-07-26"
+    "2026-07-27"
+  ],
+  "nodejs/node": [
+    "2026-07-27"
   ],
   "modelcontextprotocol/servers": [
-    "2026-07-26"
+    "2026-07-27"
   ],
   "modelcontextprotocol/python-sdk": [
-    "2026-07-26"
+    "2026-07-27"
   ],
-  "deepseek-ai/FlashMLA": [
-    "2026-07-26"
+  "NousResearch/hermes-agent": [
+    "2026-07-27"
   ],
-  "obra/superpowers": [
-    "2026-07-26"
+  "huggingface/transformers": [
+    "2026-07-27"
   ],
-  "microsoft/vscode": [
-    "2026-07-26"
-  ],
-  "microsoft/ML-For-Beginners": [
-    "2026-07-26"
+  "ruvnet/RuView": [
+    "2026-07-27"
   ]
 }
