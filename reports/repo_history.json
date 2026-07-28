@@ -28,31 +28,31 @@
   "meta-llama/llama3": [
     "2026-06-27"
   ],
-  "NousResearch/hermes-agent-self-evolution": [
-    "2026-07-27"
-  ],
-  "mistralai/mistral-vibe": [
-    "2026-07-27"
-  ],
   "deepseek-ai/awesome-deepseek-agent": [
-    "2026-07-27"
+    "2026-07-28"
   ],
-  "nodejs/node": [
-    "2026-07-27"
+  "NousResearch/hermes-agent-self-evolution": [
+    "2026-07-28"
   ],
-  "modelcontextprotocol/servers": [
-    "2026-07-27"
-  ],
-  "modelcontextprotocol/python-sdk": [
-    "2026-07-27"
+  "google-deepmind/dm_control": [
+    "2026-07-28"
   ],
   "NousResearch/hermes-agent": [
-    "2026-07-27"
+    "2026-07-28"
   ],
-  "huggingface/transformers": [
-    "2026-07-27"
+  "mattpocock/skills": [
+    "2026-07-28"
   ],
-  "ruvnet/RuView": [
-    "2026-07-27"
+  "microsoft/vscode": [
+    "2026-07-28"
+  ],
+  "modelcontextprotocol/python-sdk": [
+    "2026-07-28"
+  ],
+  "modelcontextprotocol/typescript-sdk": [
+    "2026-07-28"
+  ],
+  "modelcontextprotocol/modelcontextprotocol": [
+    "2026-07-28"
   ]
 }
