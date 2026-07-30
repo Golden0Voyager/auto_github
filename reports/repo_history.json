@@ -29,30 +29,30 @@
     "2026-06-27"
   ],
   "NousResearch/hermes-agent-self-evolution": [
-    "2026-07-29"
+    "2026-07-30"
   ],
   "mistralai/mistral-vibe": [
-    "2026-07-29"
+    "2026-07-30"
   ],
   "deepseek-ai/awesome-deepseek-agent": [
-    "2026-07-29"
+    "2026-07-30"
   ],
-  "microsoft/onnxruntime": [
-    "2026-07-29"
-  ],
-  "modelcontextprotocol/typescript-sdk": [
-    "2026-07-29"
+  "modelcontextprotocol/servers": [
+    "2026-07-30"
   ],
   "deepseek-ai/FlashMLA": [
-    "2026-07-29"
+    "2026-07-30"
   ],
-  "affaan-m/ECC": [
-    "2026-07-29"
+  "obra/superpowers": [
+    "2026-07-30"
   ],
-  "mattpocock/skills": [
-    "2026-07-29"
+  "NousResearch/hermes-agent": [
+    "2026-07-30"
   ],
-  "ruvnet/RuView": [
-    "2026-07-29"
+  "microsoft/vscode": [
+    "2026-07-30"
+  ],
+  "modelcontextprotocol/modelcontextprotocol": [
+    "2026-07-30"
   ]
 }
