@@ -9,6 +9,7 @@ Covers the remaining uncovered lines in src/pipeline.py:
 """
 
 import json
+from datetime import datetime, timedelta
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -279,7 +280,14 @@ class TestPipelineRunEdgeCases:
         # Clear archive + pre-populate history to trigger archive on next run
         pipeline.dedup._archive.clear()
         pipeline.dedup._history.clear()
-        pipeline.dedup._history["deepseek-ai/DeepSeek-R1"] = ["2026-01-01", "2026-01-02"]
+        # Two past occurrences: outside the 90-day first_seen window (so the repo
+        # still counts as "new") yet inside the 365-day TTL (so they survive trim
+        # and the third occurrence today promotes it to the archive).
+        now = datetime.now()
+        pipeline.dedup._history["deepseek-ai/DeepSeek-R1"] = [
+            (now - timedelta(days=200)).strftime("%Y-%m-%d"),
+            (now - timedelta(days=199)).strftime("%Y-%m-%d"),
+        ]
         result = pipeline.run(since="daily", use_mock=True)
         assert result["meta"]["total_curated_repos"] > 0
 

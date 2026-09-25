@@ -34,6 +34,11 @@ def _make_repo(full_name: str, stars: int = 5000) -> dict:
     }
 
 
+def _days_ago(n: int) -> str:
+    """YYYY-MM-DD for n days before today (keeps date-dependent tests time-proof)."""
+    return (datetime.now() - timedelta(days=n)).strftime("%Y-%m-%d")
+
+
 class TestTodayAndParseDate:
     """Test the internal date helpers."""
 
@@ -216,7 +221,8 @@ class TestFilterActive:
 
     def test_first_seen_map_existing_repo_is_false(self, tmp_path):
         """A repo already in history should be marked first_seen=False."""
-        history = {"existing/repo": ["2026-01-01", "2026-06-01"]}
+        # Both dates inside the 90-day first_seen window; older one is metadata only.
+        history = {"existing/repo": [_days_ago(200), _days_ago(30)]}
         hist_path = tmp_path / "repo_history.json"
         hist_path.write_text(json.dumps(history), encoding="utf-8")
         cfg = AppConfig(
@@ -233,7 +239,7 @@ class TestFilterActive:
     def test_first_seen_map_mixed_repos(self, dedup_config_with_custom_paths):
         """With a mix of new and existing repos, first_seen_map should reflect each."""
         tracker = RepoHistoryTracker(dedup_config_with_custom_paths)
-        tracker._history = {"old/repo": ["2026-05-01"], "also-old/repo": ["2026-05-01"]}
+        tracker._history = {"old/repo": [_days_ago(30)], "also-old/repo": [_days_ago(30)]}
         repos = [
             _make_repo("old/repo", stars=500),
             _make_repo("new/repo", stars=500),
@@ -247,7 +253,7 @@ class TestFilterActive:
     def test_first_seen_map_window_cutoff(self, dedup_config_with_custom_paths):
         """Repos last seen beyond first_seen_window_days should be marked as new."""
         tracker = RepoHistoryTracker(dedup_config_with_custom_paths)
-        tracker._history = {"old/repo": ["2026-01-01"]}  # > 90 days ago
+        tracker._history = {"old/repo": [_days_ago(120)]}  # beyond the 90-day window
         repos = [_make_repo("old/repo", stars=500)]
         _, _, first_seen_map = tracker.filter_active(repos)
         assert first_seen_map["old/repo"] is True
@@ -271,9 +277,9 @@ class TestFilterActive:
         """A cooled repo should still have correct first_seen marking."""
         today = _today()
         cooldown_future = (datetime.strptime(today, "%Y-%m-%d") + timedelta(days=10)).strftime("%Y-%m-%d")
-        history = {"cooled/repo": ["2026-01-01", "2026-06-01"]}
+        history = {"cooled/repo": [_days_ago(200), _days_ago(30)]}
         archive = {"cooled/repo": {
-            "first_seen": "2026-01-01", "archived_at": "2026-06-01",
+            "first_seen": _days_ago(200), "archived_at": _days_ago(30),
             "cooldown_until": cooldown_future, "stars": 50000, "occurrences": 3,
         }}
         hist_path = tmp_path / "repo_history.json"
@@ -349,7 +355,7 @@ class TestRecordOccurrences:
         repos = [_make_repo("test/repo", stars=50)]
 
         # Write the first occurrence with yesterday's date by manipulating internal state
-        tracker._history["test/repo"] = ["2026-01-01"]
+        tracker._history["test/repo"] = [_days_ago(1)]
         # Now record again - should add today
         tracker.record_occurrences(repos)
 
