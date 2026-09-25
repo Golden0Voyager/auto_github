@@ -5,3 +5,8 @@ requests>=2.31.0
 beautifulsoup4>=4.12.0
 jinja2>=3.1.0
 python-dotenv>=1.0.0
+
+# Transitive-dep security floors (Dependabot: anyio<4.14.2 TLS spoof [critical]
+# + process-group leak [high]; soupsieve<2.9.0 ReDoS [medium])
+anyio>=4.14.2
+soupsieve>=2.9.0
