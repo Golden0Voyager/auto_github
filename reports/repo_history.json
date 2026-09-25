@@ -26,7 +26,7 @@
   "comfyanonymous/ComfyUI_examples": [
     "2026-09-25"
   ],
-  "NVIDIA/Model-Optimizer": [
+  "microsoft/PyRIT": [
     "2026-09-25"
   ],
   "meta-llama/PurpleLlama": [
@@ -38,13 +38,13 @@
   "dream-num/univer": [
     "2026-09-25"
   ],
-  "google/ax": [
+  "modelcontextprotocol/typescript-sdk": [
     "2026-09-25"
   ],
   "obra/superpowers": [
     "2026-09-25"
   ],
-  "NousResearch/hermes-agent": [
+  "affaan-m/ECC": [
     "2026-09-25"
   ],
   "deepseek-ai/deepseek-harness": [
