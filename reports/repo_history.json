@@ -26,10 +26,10 @@
   "comfyanonymous/ComfyUI_examples": [
     "2026-09-25"
   ],
-  "meta-llama/PurpleLlama": [
+  "NVIDIA/Model-Optimizer": [
     "2026-09-25"
   ],
-  "google-deepmind/mujoco_menagerie": [
+  "meta-llama/PurpleLlama": [
     "2026-09-25"
   ],
   "stablyai/orca": [
@@ -44,7 +44,7 @@
   "obra/superpowers": [
     "2026-09-25"
   ],
-  "affaan-m/ECC": [
+  "NousResearch/hermes-agent": [
     "2026-09-25"
   ],
   "deepseek-ai/deepseek-harness": [
