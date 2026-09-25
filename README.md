@@ -20,7 +20,7 @@
 - **信息降噪即“展位控制”**：过滤冗余的 README 搬运，只选择真正具有架构创新（如 MLA 优化、MoE、KV-Cache、强化学习对齐等）的硬核开源更新。
 - **高🌟项目去重**：自动追踪每个项目的出现频次；对于累计出现 ≥ 3 次且 star ≥ 10k 的「常驻高星项目」，自动进入 30 天冷却的存档列表，把策展位腾给新兴项目。
 - **多端触点即“展陈转译”**：输出针对不同阶段画像（初阶入门、中阶实践、高阶大神）深度定制的报告，且排版经过美学精修，完美支持飞书卡片、Slack Block Kit 及高颜值 Markdown。
-- **透明审计与反思**：利用 **sensenova-6.7-flash-lite** 思考模式反思每一份初稿，严厉核实所有技术专有名词，杜绝空泛的 AI 腔调宣传词。
+- **透明审计与反思**：利用 **sensenova-6.8-flash-lite** 思考模式反思每一份初稿，严厉核实所有技术专有名词，杜绝空泛的 AI 腔调宣传词。
 
 ---
 
@@ -32,7 +32,7 @@ graph TD
     B -->|过滤 30 天冷却中的高🌟项目| C[Stage 2: Analyze 分析]
     C -->|画像匹配 / 智能星级评定| D[Stage 3: Summarize 总结]
     D -->|初稿生成| E[Stage 4: Reflect 反思]
-    E -->|sensenova-6.7-flash-lite 思考模式审校| F[Stage 5: Translate 翻译]
+    E -->|sensenova-6.8-flash-lite 思考模式审校| F[Stage 5: Translate 翻译]
     F -->|学术级专业技术翻译| G[Stage 6: Refine Layout 排版]
     G -->|多端格式打包| H[Webhook 每日推送 & Git 提交日志]
     B -.->|本次命中 → 累计 ≥ 3| I[高🌟项目存档 30 天冷却]
@@ -97,7 +97,7 @@ pip install -r requirements.txt
 ### 2. 配置环境变量
 在项目根目录创建 `.env` 文件：
 ```bash
-# 商汤 SenseNova Token Plan API 密钥 (sensenova-6.7-flash-lite 每 5h 配额 1500 次)
+# 商汤 SenseNova Token Plan API 密钥 (sensenova-6.8-flash-lite 每 5h 配额 1500 次)
 SENSENOVA_API_KEY="sk-your-sensenova-key"
 # Token Plan 端点已默认，可不设置；如需自定义可覆盖
 # SENSENOVA_BASE_URL="https://token.sensenova.cn/v1"

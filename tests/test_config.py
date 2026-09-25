@@ -120,7 +120,7 @@ class TestLoadConfig:
         monkeypatch.setenv("SENSENOVA_API_KEY", "sk-sensenova-test")
         cfg = AppConfig()
         cfg.ai.roles["classifier"] = cfg.ai.roles["classifier"]  # default is sensenova
-        assert cfg.ai.roles["classifier"].model == "sensenova-6.7-flash-lite"
+        assert cfg.ai.roles["classifier"].model == "sensenova-6.8-flash-lite"
         assert cfg.ai.roles["classifier"].provider == "sensenova"
 
     def test_webhook_overrides_from_env(self, monkeypatch):

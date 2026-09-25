@@ -29,9 +29,9 @@ class AIConfig(BaseModel):
     api_key: str | None = None
     base_url: str | None = None
     roles: dict[str, RoleConfig] = Field(default_factory=lambda: {
-        "classifier": RoleConfig(model="sensenova-6.7-flash-lite", provider="sensenova"),
+        "classifier": RoleConfig(model="sensenova-6.8-flash-lite", provider="sensenova"),
         "writer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter"),
-        "translator_a": RoleConfig(model="sensenova-6.7-flash-lite", provider="sensenova"),
+        "translator_a": RoleConfig(model="sensenova-6.8-flash-lite", provider="sensenova"),
         "translator_b": RoleConfig(model="google/gemma-4-31b-it:free", provider="openrouter",
                                    fallback_model="nvidia/nemotron-3-ultra-550b-a55b:free", fallback_provider="openrouter"),
         "reviewer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter",
