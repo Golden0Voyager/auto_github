@@ -12,30 +12,30 @@
   </a>
 </p>
 
-一个基于“策展思维”设计的高审美、低信噪比开源趋势与大厂动态监测系统。它能够每日自动抓取 GitHub 热门项目及 LLM 大厂的最新动态，通过由商汤 SenseNova **Token Plan** 驱动的“抓取 - 去重 - 分析 - 总结 - 反思 - 翻译 - 排版”六阶段智能体管线，最终输出为精美且富有技术深度的多维画像评级报告。
+一个基于“策展思维”设计的高审美、低信噪比开源趋势与大厂动态监测系统。它能够每日自动抓取 GitHub 热门项目及 LLM 大厂的最新动态，通过 **OpenRouter + SenseNova + SiliconFlow 多供应商混合驱动**的“抓取 - 去重 - 分桶 - 分析 - 写作反思 - 双语翻译 - 评审 - 排版”智能体管线，最终输出为精美且富有技术深度的多维画像评级报告。
 
 ---
 
 ## 🎨 策展设计理念
 - **信息降噪即“展位控制”**：过滤冗余的 README 搬运，只选择真正具有架构创新（如 MLA 优化、MoE、KV-Cache、强化学习对齐等）的硬核开源更新。
-- **高🌟项目去重**：自动追踪每个项目的出现频次；对于累计出现 ≥ 3 次且 star ≥ 10k 的「常驻高星项目」，自动进入 30 天冷却的存档列表，把策展位腾给新兴项目。
+- **高🌟项目去重**：自动追踪每个项目的出现频次；对于累计出现 ≥ 3 次且 star ≥ 10k 的「常驻高星项目」，自动进入**阶梯冷却**存档(30/45/60… 天递增,封顶 90 天)，把策展位腾给新兴项目。
 - **多端触点即“展陈转译”**：输出针对不同阶段画像（初阶入门、中阶实践、高阶大神）深度定制的报告，且排版经过美学精修，完美支持飞书卡片、Slack Block Kit 及高颜值 Markdown。
-- **透明审计与反思**：利用 **sensenova-6.8-flash-lite** 思考模式反思每一份初稿，严厉核实所有技术专有名词，杜绝空泛的 AI 腔调宣传词。
+- **透明审计与反思**:写作由 OpenRouter(nemotron-ultra)在 prompt 约束下完成自我审校;翻译走 A/B 双模型(Hunyuan-MT / Qwen2.5)竞稿,再由 reviewer 逐段二选一比稿,杜绝空泛的 AI 腔调宣传词。
 
 ---
 
-## 🔄 7-Stage 智能体管线架构
+## 🔄 多阶段智能体管线架构
 
 ```mermaid
 graph TD
-    A[Stage 1: Crawl 抓取] -->|GitHub API & Scraper| B[Stage 1.5: Dedup 去重]
-    B -->|过滤 30 天冷却中的高🌟项目| C[Stage 2: Analyze 分析]
-    C -->|画像匹配 / 智能星级评定| D[Stage 3: Summarize 总结]
-    D -->|初稿生成| E[Stage 4: Reflect 反思]
-    E -->|sensenova-6.8-flash-lite 思考模式审校| F[Stage 5: Translate 翻译]
-    F -->|学术级专业技术翻译| G[Stage 6: Refine Layout 排版]
-    G -->|多端格式打包| H[Webhook 每日推送 & Git 提交日志]
-    B -.->|本次命中 → 累计 ≥ 3| I[高🌟项目存档 30 天冷却]
+    A[Stage 1: Crawl 抓取<br>daily+weekly+monthly 三榜] -->|GitHub API & Scraper| B[Stage 1.5: Dedup 去重]
+    B -->|过滤阶梯冷却中的高🌟项目| B2[Stage 1.6: Bucket Allocate 分桶配额]
+    B2 --> C[Stage 2: Analyze 批量分析<br>SenseNova 6.8 评级 S/A/B]
+    C -->|画像匹配 / 智能星级评定| D[Stage 3+4: Write & Reflect 逐仓库写作+反思<br>OpenRouter nemotron-ultra]
+    D -->|README 深抓提供上下文| E[Stage 5: Translate A/B 双语竞稿<br>SiliconFlow Hunyuan-MT / Qwen2.5]
+    E -->|Stage 5.5: Review 逐段二选一<br>OpenRouter| F[Stage 6: Refine Layout 排版]
+    F -->|多端格式打包| H[Webhook 每日推送 & Git 提交日志]
+    B -.->|本次命中 → 累计 ≥ 3| I[高🌟项目存档 阶梯冷却 30→90 天]
 ```
 
 ---
@@ -45,7 +45,7 @@ graph TD
 ```
 auto_github/
 ├── .github/workflows/
-│   └── daily_trending.yml      # GitHub Actions 每日自动流 (北京时间上午9:00运行)
+│   └── daily_trending.yml      # GitHub Actions 每日自动流 (北京时间上午10:00运行)
 ├── config/
 │   ├── config.yaml             # 系统基础配置 (监测目标、大厂列表、模型、去重策略)
 │   └── personas.yaml           # Beginner / Intermediate / Advanced 画像 prompt
@@ -53,13 +53,14 @@ auto_github/
 │   ├── latest_daily.md         # 最新生成的每日策展报告
 │   ├── daily_YYYY-MM-DD.md     # 历史策展报告归档
 │   ├── repo_history.json       # 项目出现日期历史 (dedup 状态)
-│   └── high_star_archive.json  # 30 天冷却中的高🌟项目存档
+│   ├── high_star_archive.json  # 冷却中的高🌟项目存档 (dedup 状态)
+│   └── repo_cycles.json        # 归档轮次计数 (阶梯冷却用,dedup 状态)
 ├── src/
-│   ├── config.py               # Pydantic 配置引擎
+│   ├── config.py               # Pydantic 配置引擎 + 多 provider 路由表
 │   ├── crawler.py              # GitHub Trend HTML 爬虫 & API 客户端
-│   ├── dedup.py                # 高🌟项目存档追踪器 (节省算力 + 留展位)
-│   ├── llm.py                  # LLM 网关 (内置 429 频率限流指数退避)
-│   ├── pipeline.py             # 6-Stage 核心流程调度
+│   ├── dedup.py                # 高🌟项目存档追踪器 (阶梯冷却 + 留展位)
+│   ├── llm.py                  # LLM 网关 (多 provider + 429 指数退避 + fallback 模型)
+│   ├── pipeline.py             # 多阶段编排 (分桶/翻译竞稿/评审 + JSON 容错)
 │   ├── formatter.py            # 排版渲染器 (飞书/Slack/Markdown)
 │   ├── notifier.py             # Webhook 分发与本地写入
 │   └── main.py                 # CLI 入口
@@ -67,7 +68,9 @@ auto_github/
 │   ├── feishu_card.json.j2     # 飞书卡片 Jinja2 模板
 │   ├── slack_blocks.json.j2    # Slack blocks Jinja2 模板
 │   └── report.md.j2            # Markdown 报告 Jinja2 模板
-├── requirements.txt            # 项目依赖
+├── pyproject.toml              # 依赖声明 + ruff/pytest/coverage 配置
+├── uv.lock                     # uv 锁定文件 (Dependabot 扫描对象)
+├── requirements.txt            # CI 安装清单
 └── README.md                   # 本说明文档
 ```
 
@@ -86,21 +89,22 @@ auto_github/
 
 ### 1. 初始化本地环境
 ```bash
-# 创建虚拟环境并激活
-python3 -m venv .venv
-source .venv/bin/activate
+# 一键装依赖(uv 自动建 venv 并按 uv.lock 锁版本)
+uv sync
 
-# 安装项目依赖
-pip install -r requirements.txt
+# 跑测试套件(~310 用例,coverage 门槛 85%)
+uv run pytest tests/ --cov
 ```
 
 ### 2. 配置环境变量
 在项目根目录创建 `.env` 文件：
 ```bash
-# 商汤 SenseNova Token Plan API 密钥 (sensenova-6.8-flash-lite 每 5h 配额 1500 次)
-SENSENOVA_API_KEY="sk-your-sensenova-key"
-# Token Plan 端点已默认，可不设置；如需自定义可覆盖
-# SENSENOVA_BASE_URL="https://token.sensenova.cn/v1"
+# 三把 LLM 密钥(缺一即对应通道静默降级,不中断管线)
+SENSENOVA_API_KEY="sk-your-sensenova-key"   # 分类评级 classifier(Token Plan 端点)
+OPENROUTER_API_KEY="sk-or-your-openrouter-key"  # 写作 writer + 评审 reviewer
+SILICONFLOW_API_KEY="sk-your-siliconflow-key"   # 翻译 translator_a/b
+# 各 provider 端点已内置(src/config.py),如需自定义可覆盖
+# SENSENOVA_BASE_URL / OPENROUTER_BASE_URL / SILICONFLOW_BASE_URL
 
 # (可选) 飞书 webhook 地址 (如有)
 FEISHU_WEBHOOK_URL="https://open.feishu.cn/open-apis/bot/v2/hook/xxx"
@@ -128,17 +132,20 @@ python src/main.py --since weekly --persona advanced
 
 本仓库已布设好 GitHub Actions 工作流：
 1. **定时触发**：每天 UTC 02:00 (北京时间上午 10:00) 自动运行。
-2. **Git 归档日志**：生成报告后，工作流会自动将生成的 Markdown 报告存入 `reports/` 目录下，并以 `[skip ci]` 方式自动 commit 并 push 回本仓库，形成不可篡改的**开源技术史记看板**。
+2. **Git 归档日志**:生成报告后,工作流会将 Markdown 报告以 `[skip ci]` 方式自动 commit 并 push 到 **`auto-docs` 孤儿分支**(`reports/latest_daily.md` 常驻该分支),main 保留历史报告,形成不可篡改的开源技术史记看板。
 3. **推送 Webhook**：自动向绑定的飞书、Slack 或 Discord 机器人推送经过视觉美化排版的互动消息。
 
 ### 配置 Actions 密钥 (GitHub Secrets)
 在 GitHub 仓库的 `Settings` -> `Secrets and variables` -> `Actions` 下添加以下机密信息：
-- `SENSENOVA_API_KEY`: 您的商汤 SenseNova Token Plan API 密钥（`sk-xxx` 格式）。
+- `SENSENOVA_API_KEY`: 商汤 SenseNova Token Plan API 密钥(classifier 通道)。
+- `OPENROUTER_API_KEY`: OpenRouter 密钥(writer + reviewer 通道)。
+- `SILICONFLOW_API_KEY`: 硅基流动密钥(translator_a/b 翻译通道)。
 - `FEISHU_WEBHOOK_URL`: (可选) 飞书机器人 webhook 地址。
 - `SLACK_WEBHOOK_URL`: (可选) Slack 机器人 webhook 地址。
 - `DISCORD_WEBHOOK_URL`: (可选) Discord 机器人 webhook 地址。
 
-> Token Plan 端点 `https://token.sensenova.cn/v1` 已硬编码在 workflow 中，无需额外配置 Base URL。
+> 三家 provider 端点均已内置(`src/config.py`),无需配置 Base URL。
+> 注意:新增 provider 时需同步 GitHub Secrets **和** workflow `env:` 注入,缺一即该通道拿不到 key。
 
 ---
 
@@ -146,10 +153,11 @@ python src/main.py --since weekly --persona advanced
 
 为避免每天重复推送同一个老牌高星项目浪费 LLM 配额与读者注意力，系统会自动维护一个 **高🌟项目存档**：
 
-- **触发条件**：项目 `star ≥ 10000` 且**累计出现次数 ≥ 3**（默认阈值，可在 `config/config.yaml` 的 `dedup` 段调整）。
-- **冷却期**：进入存档后 **30 天内不再推送**该项目的策展内容。
-- **复活机制**：冷却期结束后，若该项目再次进入 trending 列表，将重新进入策展管线（同时历史日期计数保留，避免立即重新触发存档）。
-- **历史数据**：每次运行结果持久化到 `reports/repo_history.json` 与 `reports/high_star_archive.json`，可随时 `git log` 回溯。
+- **触发条件**:项目 `star ≥ 10000` 且**累计出现次数 ≥ 3**(默认阈值,可在 `config/config.yaml` 的 `dedup` 段调整)。
+- **阶梯冷却**:第 k 次归档冷却 `30 × max(1, 1+0.5(k-1))` 天(30 → 45 → 60 …),封顶 90 天。越「常青」的项目让位越久。
+- **复活机制**:冷却期结束后,若该项目再次进入 trending 列表,将重新进入策展管线(轮次计数保留在 `repo_cycles.json`)。
+- **首次出现窗口**:90 天内没出现过才算 Early Bird(新面孔),是分桶配额与评级的依据之一。
+- **历史数据**:持久化到 `repo_history.json` / `high_star_archive.json` / `repo_cycles.json` 三个状态文件,可随时 `git log` 回溯。
 
 调整示例（`config/config.yaml`）：
 ```yaml
