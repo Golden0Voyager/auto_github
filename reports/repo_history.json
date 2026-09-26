@@ -23,31 +23,31 @@
   "meta-llama/llama3": [
     "2026-06-27"
   ],
-  "comfyanonymous/ComfyUI_examples": [
-    "2026-09-25"
+  "modelcontextprotocol/rust-sdk": [
+    "2026-09-26"
   ],
-  "microsoft/PyRIT": [
-    "2026-09-25"
+  "comfyanonymous/ComfyUI_examples": [
+    "2026-09-26"
   ],
   "meta-llama/PurpleLlama": [
-    "2026-09-25"
+    "2026-09-26"
   ],
   "stablyai/orca": [
-    "2026-09-25"
+    "2026-09-26"
   ],
   "dream-num/univer": [
-    "2026-09-25"
-  ],
-  "modelcontextprotocol/typescript-sdk": [
-    "2026-09-25"
+    "2026-09-26"
   ],
   "obra/superpowers": [
-    "2026-09-25"
+    "2026-09-26"
+  ],
+  "mattpocock/skills": [
+    "2026-09-26"
   ],
   "affaan-m/ECC": [
-    "2026-09-25"
+    "2026-09-26"
   ],
   "deepseek-ai/deepseek-harness": [
-    "2026-09-25"
+    "2026-09-26"
   ]
 }
