@@ -23,31 +23,31 @@
   "meta-llama/llama3": [
     "2026-06-27"
   ],
-  "modelcontextprotocol/rust-sdk": [
-    "2026-09-26"
+  "NVIDIA/Model-Optimizer": [
+    "2026-09-27"
   ],
   "comfyanonymous/ComfyUI_examples": [
-    "2026-09-26"
+    "2026-09-27"
   ],
-  "meta-llama/PurpleLlama": [
-    "2026-09-26"
+  "microsoft/PyRIT": [
+    "2026-09-27"
+  ],
+  "modelcontextprotocol/servers": [
+    "2026-09-27"
   ],
   "stablyai/orca": [
-    "2026-09-26"
+    "2026-09-27"
   ],
   "dream-num/univer": [
-    "2026-09-26"
-  ],
-  "obra/superpowers": [
-    "2026-09-26"
-  ],
-  "mattpocock/skills": [
-    "2026-09-26"
+    "2026-09-27"
   ],
   "affaan-m/ECC": [
-    "2026-09-26"
+    "2026-09-27"
   ],
   "deepseek-ai/deepseek-harness": [
-    "2026-09-26"
+    "2026-09-27"
+  ],
+  "tensorflow/tensorflow": [
+    "2026-09-27"
   ]
 }
