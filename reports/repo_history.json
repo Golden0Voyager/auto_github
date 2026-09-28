@@ -23,31 +23,31 @@
   "meta-llama/llama3": [
     "2026-06-27"
   ],
-  "NVIDIA/Model-Optimizer": [
-    "2026-09-27"
+  "modelcontextprotocol/csharp-sdk": [
+    "2026-09-28"
   ],
   "comfyanonymous/ComfyUI_examples": [
-    "2026-09-27"
+    "2026-09-28"
   ],
-  "microsoft/PyRIT": [
-    "2026-09-27"
-  ],
-  "modelcontextprotocol/servers": [
-    "2026-09-27"
+  "meta-llama/PurpleLlama": [
+    "2026-09-28"
   ],
   "stablyai/orca": [
-    "2026-09-27"
+    "2026-09-28"
   ],
   "dream-num/univer": [
-    "2026-09-27"
+    "2026-09-28"
   ],
-  "affaan-m/ECC": [
-    "2026-09-27"
+  "NousResearch/hermes-agent": [
+    "2026-09-28"
+  ],
+  "huggingface/transformers": [
+    "2026-09-28"
   ],
   "deepseek-ai/deepseek-harness": [
-    "2026-09-27"
+    "2026-09-28"
   ],
-  "tensorflow/tensorflow": [
-    "2026-09-27"
+  "vercel/next.js": [
+    "2026-09-28"
   ]
 }
