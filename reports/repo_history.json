@@ -24,30 +24,30 @@
     "2026-06-27"
   ],
   "comfyanonymous/ComfyUI_examples": [
-    "2026-09-29"
+    "2026-09-30"
   ],
   "meta-llama/PurpleLlama": [
-    "2026-09-29"
+    "2026-09-30"
   ],
-  "lucidrains/vector-quantize-pytorch": [
-    "2026-09-29"
-  ],
-  "NousResearch/hermes-agent": [
-    "2026-09-29"
-  ],
-  "deepseek-ai/deepseek-harness": [
-    "2026-09-29"
-  ],
-  "huggingface/transformers": [
-    "2026-09-29"
-  ],
-  "modelcontextprotocol/servers": [
-    "2026-09-29"
+  "microsoft/react-native-macos": [
+    "2026-09-30"
   ],
   "stablyai/orca": [
-    "2026-09-29"
+    "2026-09-30"
   ],
-  "dream-num/univer": [
-    "2026-09-29"
+  "modelcontextprotocol/typescript-sdk": [
+    "2026-09-30"
+  ],
+  "deepseek-ai/FlashMLA": [
+    "2026-09-30"
+  ],
+  "affaan-m/ECC": [
+    "2026-09-30"
+  ],
+  "NousResearch/hermes-agent": [
+    "2026-09-30"
+  ],
+  "vercel/next.js": [
+    "2026-09-30"
   ]
 }
