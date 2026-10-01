@@ -304,3 +304,43 @@ class TestGetStatsAndReset:
         assert stats["failed_attempt_count"] == 0
         assert stats["total_prompt_tokens"] == 0
         assert stats["total_completion_tokens"] == 0
+
+
+class TestRoleCircuitBreaker:
+    """一个 role 耗尽重试后本次运行熔断，剩余仓库不再付重试的失败税。
+
+    真实事故：siliconflow 的 Hunyuan-MT-7B 每次 30s 超时，9 个仓库各烧 3 次
+    = 约 14 分钟，整条 curate job 撞上 timeout 被取消，一份报告都没出。
+    """
+
+    def test_exhausted_role_trips_off(self, llm_config, mock_openai):
+        mock_client = mock_openai.return_value
+        mock_client.chat.completions.create.side_effect = Exception("Request timed out.")
+        client = LLMClient(llm_config)
+
+        with pytest.raises(LLMError, match="tripped off"):
+            client.call_llm([{"role": "user", "content": "Hi"}], role="translator_a", retries=2, backoff_factor=1.0)
+
+        assert client.has_role("translator_a") is False
+
+    def test_tripped_role_sends_no_more_requests(self, llm_config, mock_openai):
+        mock_client = mock_openai.return_value
+        mock_client.chat.completions.create.side_effect = Exception("Request timed out.")
+        client = LLMClient(llm_config)
+
+        with pytest.raises(LLMError):
+            client.call_llm([{"role": "user", "content": "1"}], role="translator_a", retries=2, backoff_factor=1.0)
+        calls_after_trip = mock_client.chat.completions.create.call_count
+
+        with pytest.raises(LLMError, match="already tripped off"):
+            client.call_llm([{"role": "user", "content": "2"}], role="translator_a", retries=2, backoff_factor=1.0)
+        assert mock_client.chat.completions.create.call_count == calls_after_trip
+
+    def test_trip_is_scoped_to_the_role(self, llm_config, mock_openai):
+        mock_client = mock_openai.return_value
+        mock_client.chat.completions.create.side_effect = Exception("Request timed out.")
+        client = LLMClient(llm_config)
+        with pytest.raises(LLMError):
+            client.call_llm([{"role": "user", "content": "Hi"}], role="translator_a", retries=1, backoff_factor=1.0)
+        assert client.has_role("translator_a") is False
+        assert client.has_role("writer") is True

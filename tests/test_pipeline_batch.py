@@ -17,6 +17,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from src.config import AIConfig, AppConfig, GitHubConfig, Stage2PreFilterConfig
+from src.llm import LLMError
 from src.pipeline import (
     WRITER_SECTIONS,
     CurationPipeline,
@@ -293,6 +294,44 @@ class TestTranslateDegradation:
         pipeline._stage_translate(repos)
         assert repos[0]["translation_a"] == _TRANSLATED_A
         assert repos[0]["translation_b"] == _TRANSLATED_B
+
+
+class _TrippingLLM:
+    """模拟 LLMClient 的熔断：某 role 失败一次后 has_role 立刻变 False。"""
+
+    def __init__(self, available: set[str], failing: str):
+        self.available = set(available)
+        self.failing = failing
+        self.calls: list[str] = []
+
+    def has_role(self, role: str) -> bool:
+        return role in self.available
+
+    def call_llm(self, messages, role="writer", **kwargs):
+        self.calls.append(role)
+        if role == self.failing:
+            self.available.discard(role)
+            raise LLMError(f"role '{role}' failed; channel tripped off")
+        return {"content": _TRANSLATED_B}
+
+
+class TestTranslateCircuitBreakerIntegration:
+    def test_remaining_repos_skipped_after_trip(self, batch_config):
+        """熔断后第 2..N 个仓库不该再为该通道发请求（否则 9 个仓库各烧一轮重试）。"""
+        llm = _TrippingLLM({"translator_a", "translator_b", "reviewer"}, failing="translator_a")
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = [
+            {"full_name": f"r{i}/repo", "description": "d", "refined_summary": "long enough english text" * 5}
+            for i in range(4)
+        ]
+        pipeline._stage_translate(repos)
+        assert llm.calls.count("translator_a") == 1
+        assert all(r["translation_a"] == "" for r in repos)
+        assert all(r["translation_b"] == _TRANSLATED_B for r in repos)
+
+        pipeline._stage_review(repos)
+        # A 通道全空 → 直接采用 B，不必再让 reviewer 逐仓库比稿
+        assert all(r["chinese_summary"] == _TRANSLATED_B for r in repos)
 
 
 class TestReviewDegradation:

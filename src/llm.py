@@ -31,6 +31,7 @@ class LLMClient:
         self.total_prompt_tokens: int = 0
         self.total_completion_tokens: int = 0
         self._clients: dict[str, Any] = {}
+        self._unavailable_roles: set[str] = set()
         self._init_clients()
 
         if not self._clients:
@@ -66,7 +67,11 @@ class LLMClient:
         """True when the role has at least one reachable provider.
 
         Lets pipeline stages skip a channel without burning a request.
+        Once a role has exhausted its retries it is tripped off for the rest of
+        the run — a dead model otherwise costs retries × every repository.
         """
+        if role in self._unavailable_roles:
+            return False
         role_cfg = self.config.ai.roles.get(role)
         if role_cfg is None:
             return False
@@ -102,7 +107,9 @@ class LLMClient:
 
         delay = {"sensenova": 0.0, "openrouter": 1.0, "openai": 1.0, "siliconflow": 0.1}.get(provider, self.config.ai.rate_limit_delay)
         delay = max(delay, MIN_RETRY_DELAY)
-        timeout = {"sensenova": 30, "openrouter": 45, "openai": 30, "siliconflow": 30}.get(provider, 30)
+        # Hunyuan-MT-7B 在硅基流动上响应 >30s(实测每次都在 30s 处 Request timed out),
+        # 而同一 provider 的 Qwen2.5 只要 ~22s,所以是模型慢不是通道死 —— 给它更宽的额度。
+        timeout = {"sensenova": 30, "openrouter": 45, "openai": 30, "siliconflow": 90}.get(provider, 30)
         for attempt in range(retries):
             try:
                 if attempt > 0:
@@ -151,6 +158,8 @@ class LLMClient:
         backoff_factor: float = 2.0,
     ) -> dict[str, Any]:
         provider, fallback = self._resolve_providers(role)
+        if role in self._unavailable_roles:
+            raise LLMError(f"role '{role}' already tripped off this run")
         if not self.has_provider(provider) and fallback is None:
             raise LLMError(f"no client for provider '{provider}' (role={role})")
 
@@ -183,7 +192,12 @@ class LLMClient:
             if result is not None:
                 return result
 
-        raise LLMError(f"role '{role}' failed after {retries} attempts (primary + fallback).")
+        # 熔断：本次运行剩余仓库不再为该 role 付重试的失败税
+        self._unavailable_roles.add(role)
+        raise LLMError(
+            f"role '{role}' failed after {retries} attempts (primary + fallback); "
+            f"channel tripped off for the rest of this run."
+        )
 
     def get_stats(self) -> dict[str, int]:
         return {

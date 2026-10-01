@@ -117,6 +117,11 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
   `{"content": "Error: no client..."}`。旧实现会把错误字符串当正文一路写进报告
   (历史上真发生过)。上层用 `llm.has_role(role)` 预判通道可用性 → 不可用就**跳过、不发请求**;
   逐仓库阶段(analyze/write/translate/review)`except Exception` 落到 stub,保证单仓库失败不拖垮整份报告。
+- **失败税熔断**:某个 role 把 primary + fallback 的重试全部耗尽后,会被 trips off
+  (`has_role` 之后一律 False),本次运行剩余仓库直接跳过该通道。先例:siliconflow 的
+  `tencent/Hunyuan-MT-7B` 每次 30s 超时,9 个仓库各烧 3 次重试 ≈ 14 分钟,整条 curate job
+  撞上 `timeout-minutes` 被取消,一份报告都没出。所以同时把 siliconflow 超时提到 90s
+  (同 provider 的 Qwen2.5 只要 ~22s,说明是模型慢不是通道死)。
 - **改通道配置后必须验证**:CI 日志里 `[LLM Init] Providers with keys:` 包含该 provider,
   且对应 stage 的 `+N 成功调用` > 0。free tier 模型随时可能下架(classifier 的 6.7→404 就是先例)。
 

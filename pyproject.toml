@@ -12,9 +12,10 @@ dependencies = [
     "python-dotenv>=1.0",
     "openai>=1.0",
     # Security floors for transitive deps (Dependabot: anyio<4.14.2 TLS spoof,
-    # soupsieve<2.9.0 ReDoS)
+    # soupsieve<2.9.0 ReDoS; pip-audit: urllib3<2.8.0 three CVEs)
     "anyio>=4.14.2",
     "soupsieve>=2.9.0",
+    "urllib3>=2.8.0",
 ]
 
 [dependency-groups]
