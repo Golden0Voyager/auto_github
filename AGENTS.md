@@ -196,8 +196,11 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
   cycle 永远回到 1 → 冷却恒为 30 天,阶梯冷却从未真正生效(有回归用例守住这条)。
 - 因此被冷却过的高星项目重新入库后,只需**再出现 1 次**就会被重新归档,且关得更久(30→45→60→75→90 封顶)。
 - 这三个文件**不能 gitignore**:它们是系统的"记忆",丢失会破坏去重不变量。
-- CI 的 curate job 跑完会把它们推到 `auto-docs`,并在下次跑之前**从 `auto-docs` 读回**——
-  main 上那份只是初值,不是运行时的最新记忆。
+- CI 的 curate job 跑完会把它们推到 `auto-docs`,并在下次跑之前**从 `auto-docs` 合并读回**——
+  main 上那份只是初值,不是运行时的最新记忆。合并语义(见 workflow 的 "Restore curation memory
+  from auto-docs" 步骤):`repo_history` 取日期并集、`repo_cycles` 取 max(直接覆盖会把归档轮次
+  抹掉,阶梯冷却又退回第 1 轮)、`high_star_archive` 以 `auto-docs` 为唯一权威(**包括它为空的情况**,
+  否则 main 上陈旧的"仍在冷却中"标记会被复活)。
 
 ### 多端通知的坑
 

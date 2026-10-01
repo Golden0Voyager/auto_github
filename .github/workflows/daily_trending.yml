@@ -132,21 +132,76 @@ jobs:
 
       - name: Restore curation memory from auto-docs
         run: |
-          # reports/*.json 是系统的记忆。CI 只往 auto-docs 写、main 上那份是陈旧的，
+          # reports/*.json 是系统的记忆。CI 只往 auto-docs 写,main 上那份是陈旧初值,
           # 不读回来等于每次都用空白历史做去重判断。
-          if git ls-remote --exit-code origin auto-docs >/dev/null 2>&1; then
-            git fetch --quiet origin auto-docs
-            for f in repo_history.json high_star_archive.json repo_cycles.json; do
-              if git cat-file -e "origin/auto-docs:reports/$f" 2>/dev/null; then
-                git show "origin/auto-docs:reports/$f" > "reports/$f"
-                echo "restored reports/$f from auto-docs"
-              else
-                echo "reports/$f not present on auto-docs; keeping main's copy"
-              fi
-            done
-          else
-            echo "auto-docs branch does not exist yet; starting from main's copies"
+          # 合并而非覆盖:history 取日期并集、cycles 取 max(直接覆盖会把 main 上的
+          # 归档轮次抹掉,阶梯冷却又退回第 1 轮),archive 以 auto-docs 为准(它才反映最新冷却状态)。
+          if ! git ls-remote --exit-code origin auto-docs >/dev/null 2>&1; then
+            echo "auto-docs 还不存在,使用 main 的记忆作为初值"
+            exit 0
           fi
+          git fetch --quiet origin auto-docs
+          python3 - <<'PYEOF'
+          import json, subprocess
+          from pathlib import Path
+
+          def read(name):
+              """返回 None 表示 auto-docs 上缺失/不可读(该回退到 main)，{} 表示它确实是空的。"""
+              out = subprocess.run(
+                  ["git", "show", f"origin/auto-docs:reports/{name}"],
+                  capture_output=True, text=True,
+              )
+              if out.returncode != 0:
+                  return None
+              if not out.stdout.strip():
+                  return {}
+              try:
+                  return json.loads(out.stdout)
+              except json.JSONDecodeError:
+                  print(f"auto-docs:reports/{name} 解析失败,回退到 main 的副本")
+                  return None
+
+          reports = Path("reports")
+
+          def load_local(name):
+              raw = (reports / name).read_text(encoding="utf-8")
+              return json.loads(raw) if raw.strip() else {}
+
+          def write(name, data):
+              (reports / name).write_text(
+                  json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+              )
+
+          history_main = load_local("repo_history.json")
+          cycles_main = load_local("repo_cycles.json")
+          archive_main = load_local("high_star_archive.json")
+
+          history_docs = read("repo_history.json")
+          cycles_docs = read("repo_cycles.json")
+          archive_docs = read("high_star_archive.json")
+
+          if history_docs is not None:
+              merged = {
+                  k: sorted(set(history_main.get(k, [])) | set(history_docs.get(k, [])))
+                  for k in set(history_main) | set(history_docs)
+              }
+              write("repo_history.json", merged)
+              print(f"merged repo_history.json: main={len(history_main)} auto-docs={len(history_docs)} -> {len(merged)}")
+
+          if cycles_docs is not None:
+              # 取 max：直接覆盖会把 main 上的归档轮次抹掉,阶梯冷却又退回第 1 轮
+              merged_cycles = {
+                  k: max(cycles_main.get(k, 0), cycles_docs.get(k, 0))
+                  for k in set(cycles_main) | set(cycles_docs)
+              }
+              write("repo_cycles.json", merged_cycles)
+              print(f"merged repo_cycles.json: main={len(cycles_main)} auto-docs={len(cycles_docs)} -> {len(merged_cycles)}")
+
+          if archive_docs is not None:
+              # archive 存的是"仍在冷却中"的标记,auto-docs 是唯一权威,包括它为空的情况
+              write("high_star_archive.json", archive_docs)
+              print(f"restored high_star_archive.json from auto-docs: {len(archive_docs)} 项 (main 原 {len(archive_main)} 项)")
+          PYEOF
 
       - name: Run Curator Pipeline
         env:
