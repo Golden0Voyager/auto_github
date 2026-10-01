@@ -1,44 +1,8 @@
 {
-  "deepseek-ai/DeepSeek-V3": [
-    "2026-06-27"
-  ],
-  "lucidrains/MLA-pytorch": [
-    "2026-06-27"
-  ],
-  "openai/whisper": [
-    "2026-06-27"
-  ],
-  "mistralai/mistral-inference": [
-    "2026-06-27"
-  ],
-  "anthropics/claude-code": [
-    "2026-06-27"
-  ],
-  "microsoft/AutoDev": [
-    "2026-06-27"
-  ],
-  "google-research/sima": [
-    "2026-06-27"
-  ],
-  "meta-llama/llama3": [
-    "2026-06-27"
-  ],
-  "comfyanonymous/ComfyUI_examples": [
-    "2026-09-30"
-  ],
-  "meta-llama/PurpleLlama": [
-    "2026-09-30"
-  ],
-  "microsoft/react-native-macos": [
-    "2026-09-30"
-  ],
-  "stablyai/orca": [
-    "2026-09-30"
-  ],
   "modelcontextprotocol/typescript-sdk": [
     "2026-09-30"
   ],
-  "deepseek-ai/FlashMLA": [
+  "comfyanonymous/ComfyUI_examples": [
     "2026-09-30"
   ],
   "affaan-m/ECC": [
@@ -47,7 +11,71 @@
   "NousResearch/hermes-agent": [
     "2026-09-30"
   ],
-  "vercel/next.js": [
+  "meta-llama/PurpleLlama": [
     "2026-09-30"
+  ],
+  "microsoft/react-native-macos": [
+    "2026-09-30"
+  ],
+  "deepseek-ai/DeepSeek-V3": [
+    "2026-06-27"
+  ],
+  "anthropics/claude-code": [
+    "2026-06-27"
+  ],
+  "google-research/sima": [
+    "2026-06-27"
+  ],
+  "deepseek-ai/DeepSeek-R1": [
+    "2026-01-01",
+    "2026-01-02",
+    "2026-06-27"
+  ],
+  "stablyai/orca": [
+    "2026-09-30"
+  ],
+  "meta-llama/llama3": [
+    "2026-06-27"
+  ],
+  "openai/whisper": [
+    "2026-06-27"
+  ],
+  "lucidrains/MLA-pytorch": [
+    "2026-06-27"
+  ],
+  "deepseek-ai/FlashMLA": [
+    "2026-09-30",
+    "2026-10-01"
+  ],
+  "microsoft/AutoDev": [
+    "2026-06-27"
+  ],
+  "vercel/next.js": [
+    "2026-09-30",
+    "2026-10-01"
+  ],
+  "mistralai/mistral-inference": [
+    "2026-06-27"
+  ],
+  "vllm-project/llm-compressor": [
+    "2026-10-01"
+  ],
+  "THUDM/AgentBench": [
+    "2026-10-01"
+  ],
+  "jonbarron/jonbarron.github.io": [
+    "2026-10-01"
+  ],
+  "modelcontextprotocol/servers": [
+    "2026-10-01"
+  ],
+  "NVIDIA/OpenShell": [
+    "2026-10-01"
+  ],
+  "mattpocock/skills": [
+    "2026-10-01"
+  ],
+  "openclaw/openclaw": [
+    "2026-10-01"
   ]
 }
