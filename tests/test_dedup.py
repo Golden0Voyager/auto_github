@@ -15,8 +15,9 @@ from pathlib import Path
 
 import pytest
 
-from src.config import AppConfig, DedupConfig
+from src.config import AppConfig
 from src.dedup import RepoHistoryTracker, _parse_date, _today
+from tests.conftest import isolated_dedup_config
 
 # ---------------------------------------------------------------------------
 # Helper
@@ -77,7 +78,7 @@ class TestRepoHistoryTrackerInit:
     def test_init_history_file_not_exist_returns_empty(self, tmp_path):
         """When history/archive files don't exist, tracker starts empty."""
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 history_file=str(tmp_path / "nonexistent_history.json"),
                 archive_file=str(tmp_path / "nonexistent_archive.json"),
             )
@@ -102,7 +103,7 @@ class TestRepoHistoryTrackerInit:
         arch_path.write_text(json.dumps(archive), encoding="utf-8")
 
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 history_file=str(hist_path),
                 archive_file=str(arch_path),
             )
@@ -117,7 +118,7 @@ class TestRepoHistoryTrackerInit:
         hist_path.write_text("{{{broken json", encoding="utf-8")
 
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 history_file=str(hist_path),
                 archive_file=str(tmp_path / "high_star_archive.json"),
             )
@@ -155,7 +156,7 @@ class TestFilterActive:
         arch_path.write_text(json.dumps(archive), encoding="utf-8")
 
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 archive_file=str(arch_path),
                 history_file=str(tmp_path / "repo_history.json"),
             )
@@ -182,7 +183,7 @@ class TestFilterActive:
         arch_path.write_text(json.dumps(archive), encoding="utf-8")
 
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 archive_file=str(arch_path),
                 history_file=str(tmp_path / "repo_history.json"),
             )
@@ -226,7 +227,7 @@ class TestFilterActive:
         hist_path = tmp_path / "repo_history.json"
         hist_path.write_text(json.dumps(history), encoding="utf-8")
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 history_file=str(hist_path),
                 archive_file=str(tmp_path / "high_star_archive.json"),
             )
@@ -287,7 +288,7 @@ class TestFilterActive:
         hist_path.write_text(json.dumps(history), encoding="utf-8")
         arch_path.write_text(json.dumps(archive), encoding="utf-8")
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 history_file=str(hist_path),
                 archive_file=str(arch_path),
             )
@@ -330,7 +331,7 @@ class TestRecordOccurrences:
     def test_same_day_dedup(self, tmp_path):
         """Multiple occurrences on same day should not add duplicate dates."""
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 history_file=str(tmp_path / "repo_history.json"),
                 archive_file=str(tmp_path / "high_star_archive.json"),
             )
@@ -346,7 +347,7 @@ class TestRecordOccurrences:
     def test_different_day_not_deduped(self, tmp_path):
         """Occurrences on different days should each be recorded."""
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 history_file=str(tmp_path / "repo_history.json"),
                 archive_file=str(tmp_path / "high_star_archive.json"),
             )
@@ -365,7 +366,7 @@ class TestRecordOccurrences:
     def test_archive_triggered_when_threshold_met(self, tmp_path):
         """When a repo meets threshold, it should be archived."""
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 high_star_threshold=100,  # Any star >= 100
                 archive_threshold=2,       # After 2 occurrences
                 archive_cooldown_days=30,
@@ -389,7 +390,7 @@ class TestRecordOccurrences:
     def test_archive_not_triggered_below_star_threshold(self, tmp_path):
         """Even with multiple occurrences, low-star repos should not be archived."""
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 high_star_threshold=10000,   # High threshold
                 archive_threshold=2,
                 archive_cooldown_days=30,
@@ -409,7 +410,7 @@ class TestRecordOccurrences:
     def test_archive_not_triggered_below_occurrence_threshold(self, tmp_path):
         """High-star repos with too few occurrences should not be archived."""
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 high_star_threshold=100,
                 archive_threshold=5,   # Need 5 occurrences
                 archive_cooldown_days=30,
@@ -429,7 +430,7 @@ class TestRecordOccurrences:
     def test_already_archived_repo_not_rearchived(self, tmp_path):
         """If a repo is already in the archive, it shouldn't be added again."""
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 high_star_threshold=100,
                 archive_threshold=2,
                 archive_cooldown_days=30,
@@ -468,7 +469,7 @@ class TestPurgeExpiredCooldowns:
         """Archives with cooldown in the past should be removed."""
         last_week = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 archive_file=str(tmp_path / "high_star_archive.json"),
                 history_file=str(tmp_path / "repo_history.json"),
             )
@@ -512,7 +513,7 @@ class TestPurgeExpiredCooldowns:
     def test_malformed_archive_entry_purged(self, tmp_path):
         """Entries with missing/incorrect cooldown_until are purged."""
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 archive_file=str(tmp_path / "high_star_archive.json"),
                 history_file=str(tmp_path / "repo_history.json"),
             )
@@ -529,6 +530,65 @@ class TestPurgeExpiredCooldowns:
         assert purged == 2
 
 
+class TestSteppedCooldownAcrossPurge:
+    """阶梯冷却必须跨 purge 累积：purge 只该删「仍在冷却中」这个标记。
+
+    回归：早期 purge_expired_cooldowns() 把 _cycle_counter 和 _history 一起抹掉,
+    cycle 永远回到 1 → 冷却恒为 archive_cooldown_days,AGENTS.md 承诺的
+    30→45→60→90 从未生效,max_cooldown_days 成了死配置,高星项目每 30 天回来占位。
+    """
+
+    def _cfg(self, tmp_path, **overrides):
+        base = {
+            "high_star_threshold": 10000,
+            "archive_threshold": 1,
+            "archive_cooldown_days": 30,
+            "steps_cooldown": True,
+            "max_cooldown_days": 90,
+        }
+        base.update(overrides)
+        return AppConfig(dedup=isolated_dedup_config(tmp_path, **base))
+
+    def _cooldown_length_after_archive(self, cfg, repo) -> int:
+        """走完整一轮「归档 → 过期 → purge」，返回本轮的冷却天数。"""
+        tracker = RepoHistoryTracker(cfg)
+        assert tracker.record_occurrences([repo]) == [repo["full_name"]]
+        until = tracker._archive[repo["full_name"]]["cooldown_until"]
+        days = (_parse_date(until) - _parse_date(_today())).days
+        # 手动把 cooldown_until 挪到昨天，模拟时间流逝
+        yesterday = (_parse_date(_today()) - timedelta(days=1)).strftime("%Y-%m-%d")
+        tracker._archive[repo["full_name"]]["cooldown_until"] = yesterday
+        tracker._save()
+        assert RepoHistoryTracker(cfg).purge_expired_cooldowns() == 1
+        return days
+
+    def test_cooldown_escalates_across_cycles(self, tmp_path):
+        cfg = self._cfg(tmp_path)
+        repo = {"full_name": "owner/huge", "stars": 20000}
+        lengths = [self._cooldown_length_after_archive(cfg, repo) for _ in range(4)]
+        assert lengths == [30, 45, 60, 75]
+
+    def test_escalation_caps_at_max_cooldown_days(self, tmp_path):
+        cfg = self._cfg(tmp_path)
+        repo = {"full_name": "owner/huge", "stars": 20000}
+        lengths = [self._cooldown_length_after_archive(cfg, repo) for _ in range(6)]
+        assert lengths == [30, 45, 60, 75, 90, 90]
+
+    def test_purge_keeps_history_and_cycle_memory(self, tmp_path):
+        cfg = self._cfg(tmp_path)
+        repo = {"full_name": "owner/huge", "stars": 20000}
+        self._cooldown_length_after_archive(cfg, repo)
+        survivor = RepoHistoryTracker(cfg)
+        assert survivor.history_count == 1
+        assert survivor._cycle_counter["owner/huge"] == 1
+
+    def test_flat_cooldown_when_steps_disabled(self, tmp_path):
+        cfg = self._cfg(tmp_path, steps_cooldown=False)
+        repo = {"full_name": "owner/huge", "stars": 20000}
+        lengths = [self._cooldown_length_after_archive(cfg, repo) for _ in range(3)]
+        assert lengths == [30, 30, 30]
+
+
 class TestActiveArchivedRepos:
     """Test the active_archived_repos property."""
 
@@ -538,7 +598,7 @@ class TestActiveArchivedRepos:
         last_week = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
 
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 archive_file=str(tmp_path / "high_star_archive.json"),
                 history_file=str(tmp_path / "repo_history.json"),
             )
@@ -567,7 +627,7 @@ class TestArchiveWriteAtomicity:
     def test_save_uses_atomic_write(self, tmp_path):
         """Internal _save should write to .tmp first then rename."""
         cfg = AppConfig(
-            dedup=DedupConfig(
+            dedup=isolated_dedup_config(tmp_path,
                 history_file=str(tmp_path / "repo_history.json"),
                 archive_file=str(tmp_path / "high_star_archive.json"),
             )

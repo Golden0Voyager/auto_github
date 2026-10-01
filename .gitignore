@@ -114,6 +114,7 @@ venv.bak/
 # Project local files
 reports/raw/
 reports/debug/
+reports_mock/
 *.db
 *.local
 # Skill-generated analysis artifacts

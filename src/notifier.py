@@ -15,16 +15,16 @@ class ReportNotifier:
         self.feishu_url = config.notifications.feishu_webhook_url
         self.slack_url = config.notifications.slack_webhook_url
         self.discord_url = config.notifications.discord_webhook_url
-
-        # Ensure local report output directory exists
+        # 目录在写报告时再建：构造期 mkdir 会让任何拿到 mock config 的调用者
+        # 在磁盘上创建以 mock _repr_ 命名的目录。
         self.report_dir = Path(config.notifications.local_report_dir)
-        self.report_dir.mkdir(parents=True, exist_ok=True)
 
     def notify_all(self, reports: dict[str, Any], timeframe: str, llm_stats: dict[str, int] | None = None) -> dict[str, bool]:
         """Pushes reports to all active channels and logs the outcomes.
 
         Args:
-            reports: dict with keys 'markdown', 'feishu', 'slack', 'discord'
+            reports: formatter 输出，含 'markdown' / 'feishu' / 'slack'
+                （Discord 直接复用 markdown 文本）
             timeframe: 'daily' | 'weekly' | 'monthly'
             llm_stats: optional dict from LLMClient.get_stats(); if provided,
                 each channel gets a small footer with call count + token usage.
@@ -82,6 +82,7 @@ class ReportNotifier:
             markdown_content = markdown_content.rstrip() + "\n\n---\n\n" + self._llm_footer_text(llm_stats, locale="zh") + "\n"
 
         try:
+            self.report_dir.mkdir(parents=True, exist_ok=True)
             print(f"[Notify] Saving markdown report locally to {filepath}...")
             with open(filepath, "w", encoding="utf-8") as f:
                 f.write(markdown_content)
@@ -99,6 +100,9 @@ class ReportNotifier:
 
     def send_feishu(self, payload: dict[str, Any], llm_stats: dict[str, int] | None = None) -> bool:
         """Sends interactive card to Feishu webhook."""
+        if not self.feishu_url:
+            print("[Notify] Feishu Webhook is not configured. Skipping.")
+            return False
         if llm_stats:
             payload = {
                 **payload,
@@ -136,6 +140,9 @@ class ReportNotifier:
 
     def send_slack(self, payload: dict[str, Any], llm_stats: dict[str, int] | None = None) -> bool:
         """Sends Block Kit message to Slack webhook."""
+        if not self.slack_url:
+            print("[Notify] Slack Webhook is not configured. Skipping.")
+            return False
         if llm_stats:
             payload = {
                 **payload,
@@ -163,6 +170,9 @@ class ReportNotifier:
 
     def send_discord(self, markdown_content: str, llm_stats: dict[str, int] | None = None) -> bool:
         """Sends markdown message to Discord webhook."""
+        if not self.discord_url:
+            print("[Notify] Discord Webhook is not configured. Skipping.")
+            return False
         print("[Notify] Sending markdown report to Discord Webhook...")
         if llm_stats:
             markdown_content = markdown_content.rstrip() + "\n\n---\n\n" + self._llm_footer_text(llm_stats, locale="zh")

@@ -7,7 +7,9 @@ on:
       - 'src/**'
       - 'tests/**'
       - 'config/**'
-      - 'requirements.txt'
+      - 'templates/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
       - '.github/workflows/daily_trending.yml'
   pull_request:
     branches: [main]
@@ -15,7 +17,9 @@ on:
       - 'src/**'
       - 'tests/**'
       - 'config/**'
-      - 'requirements.txt'
+      - 'templates/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
       - '.github/workflows/daily_trending.yml'
   schedule:
     - cron: '0 2 * * *'
@@ -40,124 +44,192 @@ on:
           - beginner
           - advanced
 
+# 同一 ref 串行：并发跑会让两次 curate 争抢 auto-docs 上的去重记忆
+concurrency:
+  group: curate-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    timeout-minutes: 15
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-        cache: 'pip'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
 
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest pytest-cov ruff mypy
+      - name: Set up Python
+        run: uv python install 3.12
 
-    - name: Run ruff check
-      run: ruff check src/ tests/
+      - name: Install dependencies (locked, fails on uv.lock drift)
+        run: uv sync --frozen --dev
 
-    - name: Run mypy
-      run: mypy src/ || true
+      - name: Run ruff check
+        run: uv run ruff check src/ tests/
 
-    - name: Run Tests with Coverage
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        python -m pytest tests/ \
-          --cov \
-          --cov-report=term-missing \
-          -v
+      - name: Run mypy
+        run: uv run mypy src/
 
-    - name: Enforce coverage threshold
-      run: coverage report
+      - name: Run security scan (bandit)
+        run: uv tool run bandit -q -r src/
+
+      - name: Run tests with coverage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: uv run pytest tests/ --cov --cov-report=term-missing
+
+      - name: Enforce coverage threshold
+        run: uv run coverage report
+
+  # 依赖漏洞扫描单独成 job：红叉可见，但不阻塞 curate-and-notify 发日报
+  supply-chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Verify uv.lock matches pyproject.toml
+        run: uv lock --check
+
+      - name: Audit locked dependencies
+        run: |
+          uv export --frozen --no-dev --no-hashes -o /tmp/deps.txt
+          uv tool run pip-audit -r /tmp/deps.txt
 
   curate-and-notify:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     needs: [test]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write # Allows writing and pushing daily reports back to repository logs
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-        cache: 'pip'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
 
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Set up Python
+        run: uv python install 3.12
 
-    - name: Run Curator Pipeline
-      env:
-        # LLM Engine API Keys
-        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-        SENSENOVA_API_KEY: ${{ secrets.SENSENOVA_API_KEY }}
-        SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
-        
-        # GitHub API Token (automatically provided by GitHub to bypass API limits)
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-        # Webhook Notification URIs
-        FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-      run: |
-        # Use inputs from manual trigger if available, otherwise default to daily and intermediate
-        TIMEFRAME="${{ github.event.inputs.since || 'daily' }}"
-        PERSONA="${{ github.event.inputs.persona || 'intermediate' }}"
-        
-        echo "Running pipeline with timeframe=$TIMEFRAME and persona=$PERSONA..."
-        python src/main.py --since "$TIMEFRAME" --persona "$PERSONA"
+      - name: Install dependencies (same lockfile the tests ran on)
+        run: uv sync --frozen
 
-    - name: Push reports to auto-docs (orphan branch, no main contamination)
-      run: |
-        set -euo pipefail
-        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        
-        # Check if there are changes in reports/ directory to commit
-        if [ ! -d "reports" ] || [ -z "$(git status --porcelain reports/)" ]; then
-          echo "No new reports generated or no changes detected."
-          exit 0
-        fi
-        
-        # Save report artifacts
-        mkdir -p /tmp/auto-docs-save
-        cp -r reports/ /tmp/auto-docs-save/
-        
-        # Switch to auto-docs orphan branch (preserves only reports/ on push)
-        git fetch origin auto-docs 2>/dev/null || true
-        git checkout -f -B _docs origin/auto-docs 2>/dev/null || git checkout --orphan _docs
+      - name: Restore curation memory from auto-docs
+        run: |
+          # reports/*.json 是系统的记忆。CI 只往 auto-docs 写、main 上那份是陈旧的，
+          # 不读回来等于每次都用空白历史做去重判断。
+          if git ls-remote --exit-code origin auto-docs >/dev/null 2>&1; then
+            git fetch --quiet origin auto-docs
+            for f in repo_history.json high_star_archive.json repo_cycles.json; do
+              if git cat-file -e "origin/auto-docs:reports/$f" 2>/dev/null; then
+                git show "origin/auto-docs:reports/$f" > "reports/$f"
+                echo "restored reports/$f from auto-docs"
+              else
+                echo "reports/$f not present on auto-docs; keeping main's copy"
+              fi
+            done
+          else
+            echo "auto-docs branch does not exist yet; starting from main's copies"
+          fi
 
-        # Replace report files
-        rm -rf reports/
-        mkdir -p reports
-        cp -r /tmp/auto-docs-save/reports/* reports/
-        rm -rf /tmp/auto-docs-save
+      - name: Run Curator Pipeline
+        env:
+          # LLM Engine API Keys
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SENSENOVA_API_KEY: ${{ secrets.SENSENOVA_API_KEY }}
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
 
-        git add reports/
-        if git diff --cached --quiet; then
-          echo "No changes to commit; skipping."
-          exit 0
-        fi
+          # GitHub API Token (automatically provided by GitHub to bypass API limits)
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-        git commit -m "docs: auto-commit daily github curation report logs [skip ci]"
-        git push --force origin _docs:auto-docs
-        echo "Successfully pushed daily reports to auto-docs (orphan) branch."
+          # Webhook Notification URIs
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+          # Actions 日志按块缓冲会让 per-stage 成本归因挤在一起
+          PYTHONUNBUFFERED: 1
+        run: |
+          TIMEFRAME="${{ github.event.inputs.since || 'daily' }}"
+          PERSONA="${{ github.event.inputs.persona || 'intermediate' }}"
+
+          echo "Running pipeline with timeframe=$TIMEFRAME and persona=$PERSONA..."
+          uv run python src/main.py --since "$TIMEFRAME" --persona "$PERSONA"
+
+      - name: Upload report artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ github.run_id }}
+          path: reports/
+          if-no-files-found: ignore
+
+      - name: Push reports to auto-docs (orphan branch, no main contamination)
+        run: |
+          set -euo pipefail
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+
+          if [ ! -d "reports" ] || [ -z "$(git status --porcelain reports/)" ]; then
+            echo "No new reports generated or no changes detected."
+            exit 0
+          fi
+
+          mkdir -p /tmp/auto-docs-save
+          cp -r reports/ /tmp/auto-docs-save/
+
+          git fetch --quiet origin auto-docs 2>/dev/null || true
+          if git rev-parse --verify --quiet origin/auto-docs >/dev/null; then
+            git checkout -q -B _docs origin/auto-docs
+            rm -rf reports/
+          else
+            git checkout -q --orphan _docs
+            # orphan 检出会带着 main 的全部索引，只保留 reports/
+            git rm -r --cached -q .
+            rm -rf reports/
+          fi
+          mkdir -p reports
+          cp -r /tmp/auto-docs-save/reports/. reports/
+          rm -rf /tmp/auto-docs-save
+
+          git add reports/
+          if git diff --cached --quiet; then
+            echo "No changes to commit; skipping."
+            exit 0
+          fi
+
+          git commit -q -m "docs: auto-commit curation report and dedup memory [skip ci]"
+
+          pushed=""
+          for attempt in 1 2 3; do
+            if git push origin _docs:auto-docs; then
+              pushed="yes"
+              break
+            fi
+            echo "push rejected (attempt $attempt) — rebasing onto latest auto-docs"
+            git fetch --quiet origin auto-docs
+            # 本次新生成的报告与状态必须胜出，否则并发跑会丢记忆
+            git rebase -X theirs origin/auto-docs || { git rebase --abort; exit 1; }
+          done
+
+          if [ -z "$pushed" ]; then
+            echo "::error::failed to push reports to auto-docs after 3 attempts"
+            exit 1
+          fi
+          echo "Successfully pushed reports and dedup memory to auto-docs (orphan) branch."

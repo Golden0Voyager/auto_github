@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.config import AIConfig, AppConfig, RoleConfig
-from src.llm import LLMClient
+from src.llm import MIN_RETRY_DELAY, LLMClient, LLMError
 
 
 @pytest.fixture
@@ -32,8 +32,6 @@ def llm_config(monkeypatch) -> AppConfig:
             temperature=0.3,
             max_tokens=4096,
             rate_limit_delay=0.01,
-            api_key="sk-test-key",
-            base_url="https://api.openai.com/v1",
         )
     )
 
@@ -86,18 +84,26 @@ class TestLLMClientInit:
 class TestCallLLMNoKey:
     """Test behavior when no API key is configured."""
 
-    def test_call_llm_no_key_returns_error_dict(self, no_key_config):
-        """Without API key, call_llm should return an error dict."""
+    def test_call_llm_no_key_raises(self, no_key_config):
+        """Without API key, call_llm must raise — never hand back an error string as content."""
         client = LLMClient(no_key_config)
-        result = client.call_llm([{"role": "user", "content": "Hi"}])
-        assert isinstance(result, dict)
-        assert "Error:" in result.get("content", "")
+        with pytest.raises(LLMError, match="no client for provider"):
+            client.call_llm([{"role": "user", "content": "Hi"}])
 
-    def test_call_llm_unknown_role_returns_error(self, llm_config):
-        """An unknown role should return an error dict."""
+    def test_call_llm_unknown_role_raises(self, llm_config):
+        """An unknown role should raise instead of returning an error dict."""
         client = LLMClient(llm_config)
-        result = client.call_llm([{"role": "user", "content": "Hi"}], role="nonexistent")
-        assert "Error:" in result.get("content", "")
+        with pytest.raises(LLMError, match="unknown role"):
+            client.call_llm([{"role": "user", "content": "Hi"}], role="nonexistent")
+
+    def test_has_role_reflects_provider_availability(self, llm_config, monkeypatch, mock_openai):
+        """has_role 让上层在没有 key 时直接跳过通道，不浪费请求。"""
+        assert LLMClient(llm_config).has_role("writer") is True
+        for key in ("OPENAI_API_KEY", "OPENROUTER_API_KEY", "SENSENOVA_API_KEY", "SILICONFLOW_API_KEY"):
+            monkeypatch.delenv(key, raising=False)
+        bare = LLMClient(llm_config)
+        assert bare.has_role("writer") is False
+        assert bare.has_role("nonexistent") is False
 
 
 class TestCallLLM:
@@ -209,13 +215,27 @@ class TestCallLLMErrors:
         assert mock_client.chat.completions.create.call_count == 3
 
     def test_all_retries_fail_raises(self, llm_config, mock_openai):
-        """When all retries fail, should raise RuntimeError."""
+        """When all retries fail, should raise LLMError instead of returning error text."""
         mock_client = mock_openai.return_value
         mock_client.chat.completions.create.side_effect = Exception("429 rate limit")
 
         client = LLMClient(llm_config)
-        with pytest.raises(RuntimeError, match="maximum retries"):
+        with pytest.raises(LLMError, match="failed after"):
             client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=2, backoff_factor=1.0)
+
+    def test_retry_backoff_has_floor_for_zero_delay_providers(self, llm_config, mock_openai):
+        """sensenova/siliconflow 配的 delay 是 0，退避必须有下限，否则 429 时无脑重试。"""
+        mock_client = mock_openai.return_value
+        mock_client.chat.completions.create.side_effect = Exception("429 rate limit")
+
+        client = LLMClient(llm_config)
+        slept: list[float] = []
+        with (
+            patch("src.llm.time.sleep", side_effect=slept.append),
+            pytest.raises(LLMError),
+        ):
+            client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=3, backoff_factor=1.0)
+        assert all(wait >= MIN_RETRY_DELAY for wait in slept), slept
 
     def test_non_rate_limit_errors_retry(self, llm_config, mock_openai):
         """Non-rate-limit errors should also trigger retries."""

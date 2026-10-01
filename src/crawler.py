@@ -61,11 +61,13 @@ class GitHubCrawler:
                 if not title_tag:
                     title_tag = article.find("h2")
 
-                if not title_tag or not title_tag.find("a"):
+                if not title_tag:
                     continue
 
                 a_tag = title_tag.find("a")
-                href = a_tag["href"].strip()
+                if not a_tag:
+                    continue
+                href = str(a_tag.get("href") or "").strip()
                 # href is usually "/owner/repo"
                 parts = [p for p in href.split("/") if p]
                 if len(parts) < 2:
@@ -91,7 +93,7 @@ class GitHubCrawler:
                 if meta_div:
                     links = meta_div.find_all("a", class_="Link--muted")
                     for link in links:
-                        link_href = link.get("href", "")
+                        link_href = str(link.get("href") or "")
                         if "stargazers" in link_href:
                             stars_text = link.text.strip().replace(",", "")
                             with contextlib.suppress(ValueError):

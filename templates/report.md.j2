@@ -1,67 +1,47 @@
-# 🌌 GitHub 开源趋势 & LLM 大厂动态周报
+# 🌌 GitHub 开源趋势 & LLM 大厂动态{{ timeframe_label }}
 
 > **分析画像**: {{ persona.name }} (`{{ persona.description }}`)  
 > **生成时间**: {{ timestamp }}  
-> **精选指标**: 已从 {{ total_input }} 个热门候选项目中筛选出 {{ repos | length }} 个硬核更新。
+> **精选指标**: 已从 {{ total_input }} 个候选项目中筛选出 {{ repos | length }} 个硬核更新。
 
 ---
 
-## 📊 今日热门看板 (Dashboard)
+## 📊 分桶看板 (Bucket Dashboard)
 
 > [!TIP]
-> 点击下方各类别即可展开/收起项目列表看板。星标数与热度已实现标准化对齐。
+> 三桶来自 bucket allocation 的配额分配（早鸟 / 高星热点 / 技术深潜），与趋势榜的 daily/weekly/monthly 时间窗无关。
 
 {% macro repo_card(repo) %}
-| {{ '**`'+repo.rating+'`**' if repo.rating else '' }} | [{{ repo.full_name }}]({{ repo.url }}) | `{{ repo.language }}` | ⭐️ {{ "{:,}".format(repo.stars) }} ({{ repo.period_stars }}) | {% for t in repo.tags %}`{{ t }}` {% endfor %} | {{ repo.description_short }} |
+| {{ '**`'+repo.rating+'`**' if repo.rating else '' }} | **`{{ repo.tds }}`** | [{{ repo.full_name }}]({{ repo.url }}) | `{{ repo.language }}` | ⭐️ {{ "{:,}".format(repo.stars) }} ({{ repo.period_stars }}) | {% for t in repo.tags %}`{{ t }}` {% endfor %} | {{ repo.description_short }} |
 {% endmacro %}
 
-{% set buckets = repos | groupby('_bucket') %}
-{% for bucket_key in ['early_bird', 'high_star', 'deep_dive'] %}
+{% for bucket_key, bucket_title, bucket_note in bucket_sections %}
 {% set bucket_repos = repos | selectattr('_bucket', 'equalto', bucket_key) | list %}
-{% if bucket_key == 'early_bird' %}
-<details open>
-  <summary><b>📅 每日热门趋势 (Daily Trending) [共计 {{ bucket_repos | length }} 个项目]</b></summary>
+<details {{ 'open' if bucket_key == 'early_bird' }}>
+  <summary><b>{{ bucket_title }} [共计 {{ bucket_repos | length }} 个项目]</b> — {{ bucket_note }}</summary>
   <br>
 
-| 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
-| :---: | :--- | :---: | :---: | :--- | :--- |
+| 评级 | 深度 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
+| :---: | :---: | :--- | :---: | :---: | :--- | :--- |
 {% for r in bucket_repos %}{{ repo_card(r) }}
 {% endfor %}
   <br>
 </details>
-{% elif bucket_key == 'high_star' %}
-<details>
-  <summary><b>📅 每周热门趋势 (Weekly Trending) [共计 {{ bucket_repos | length }} 个项目]</b></summary>
-  <br>
-
-| 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
-| :---: | :--- | :---: | :---: | :--- | :--- |
-{% for r in bucket_repos %}{{ repo_card(r) }}
 {% endfor %}
-  <br>
-</details>
-{% elif bucket_key == 'deep_dive' %}
-<details>
-  <summary><b>📅 每月热门趋势 (Monthly Trending) [共计 {{ bucket_repos | length }} 个项目]</b></summary>
-  <br>
 
-| 评级 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
-| :---: | :--- | :---: | :---: | :--- | :--- |
-{% for r in bucket_repos %}{{ repo_card(r) }}
-{% endfor %}
-  <br>
-</details>
+{% if cooled_repos %}
+> [!NOTE]
+> 🌟 **高🌟项目存档**: 今日 {{ cooled_repos | length }} 个高星项目处于阶梯冷却期（{{ cooled_repos | map(attribute='full_name') | join('、') }}）；累计存档 {{ archive_total }} 个。
 {% endif %}
-{% endfor %}
 
 ---
 
 ## 🔍 深度项目解析
 
 {% for r in repos %}
-### {% if r.rating == 'S' %}👑 {% elif r.rating == 'A' %}🔥 {% else %}🔹 {% endif %}[{{ r.rating }}] {{ r.full_name }}
+### {% if r.rating == 'S' %}👑 {% elif r.rating == 'A' %}🔥 {% else %}🔹 {% endif %}[{{ r.rating }} · 深度 {{ r.tds }}] {{ r.full_name }}
 - **项目地址**: [{{ r.url }}]({{ r.url }})
-- **基本数据**: `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} ({{ r.period_stars }}) | **来源**: `{{ r.source }}`
+- **基本数据**: `{{ r.language }}` | ⭐️ {{ "{:,}".format(r.stars) }} ({{ r.period_stars }}) | **来源**: `{{ r.source }}` | **分桶**: `{{ r._bucket }}`
 - **入选理由**: *{{ r.selection_reason }}*
 
 {{ r.chinese_summary }}
@@ -70,6 +50,4 @@
 
 {% endfor %}
 
-> **Token Economics**: multi-model curation via OpenRouter + SenseNova.
-
-*Designed with ❤️ by Haining Yu.*
+> **Token Economics**: {{ provider_footer }}

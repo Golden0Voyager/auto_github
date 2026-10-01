@@ -18,6 +18,24 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 RATING_ORDER = {"S": 0, "A": 1, "B": 2, "C": 3}
 
+# 短于该长度的正文不值得翻译（多半是 stub 或失败产物）
+MIN_TRANSLATABLE_CHARS = 50
+# 喂给 writer 的 README 摘录预算：够判断项目实际做什么，又不吃掉整个 input 配额
+README_CONTEXT_CHARS = 1200
+
+TRANSLATE_PROMPT = (
+    "Translate the following English technical analysis into natural Chinese. "
+    "Preserve all paragraph breaks and markdown formatting. "
+    "Output only the translation, no explanations.\n\n{summary}"
+)
+
+REVIEW_PROMPT = (
+    "Compare these two Chinese translations of the same English text. "
+    "Pick the one that is more accurate, natural, and readable.\n"
+    'Output ONLY "A" or "B".\n\n'
+    "--- Translation A ---\n{ta}\n\n--- Translation B ---\n{tb}"
+)
+
 
 TAG_KEYWORDS = {
     "#LLM":        ["llm", "language model", "gpt", "inference", "transformer", "tokenizer", "embedding"],
@@ -123,9 +141,43 @@ def _infer_tds_fallback(desc: str) -> str:
     return "S"
 
 
+def _bucket_rank(repo: dict[str, Any], tds_order: dict[str, int]) -> tuple[int, int, int]:
+    """排序键：bucket 优先级 → 技术深度 → 星标数（降序）。"""
+    bucket = repo.get("_bucket")
+    bucket_rank = 0 if bucket == "early_bird" else 1 if bucket == "high_star" else 2
+    return (bucket_rank, tds_order.get(repo.get("tds", "S"), 3), -(repo.get("stars") or 0))
+
+
+REFLECTION_PREFIX = "SELF-CHECK:"
+
+WRITER_SECTIONS = (
+    "### Core Pain Point Solved",
+    "### Design & Architectural Trade-offs",
+    "### Engineering Insights & Transferable Lessons",
+    "### Ecosystem & Related Projects",
+)
+
+
+def _split_reflection(text: str) -> tuple[str, str]:
+    """拆出 writer 前置的自检行，返回 (正文, 自检)。没有自检行时正文原样返回。"""
+    for i, line in enumerate(text.split("\n")):
+        if not line.strip():
+            continue
+        if line.strip().upper().startswith(REFLECTION_PREFIX):
+            tail = "\n".join(text.split("\n")[i + 1:])
+            return tail.lstrip("\n"), line.strip()[len(REFLECTION_PREFIX):].strip()
+        break
+    return text, ""
+
+
+def _analysis_complete(text: str) -> bool:
+    """4 个 ### 小节齐全才认为产物可用,否则落 stub。"""
+    return all(header in text for header in WRITER_SECTIONS)
+
+
 def _ensure_markdown_spacing(text: str) -> str:
     lines = text.split("\n")
-    result = []
+    result: list[str] = []
     for i, line in enumerate(lines):
         stripped = line.strip()
         if stripped.startswith("###"):
@@ -332,7 +384,6 @@ class CurationPipeline:
         all_remaining: list[dict] = []
 
         for r in repos:
-            r.get("full_name", "")
             stars = r.get("stars", 0) or 0
             period_stars = r.get("period_stars", "")
             period_num = 0
@@ -361,7 +412,6 @@ class CurationPipeline:
             pool.sort(key=lambda x: -(x.get("stars") or 0))
             return pool[:n], pool[n:]
 
-        result = []
         eb_taken, eb_rest = take_from(early_bird_pool, cfg.early_bird)
         hs_taken, hs_rest = take_from(high_star_pool, cfg.high_star_hot)
 
@@ -374,54 +424,35 @@ class CurationPipeline:
         result = eb_taken + hs_taken + dd_taken
 
         if len(result) < cfg.total_slots:
-            remaining = leftover[cfg.deep_dive:]
-            remaining.sort(key=lambda x: -x.get("stars", 0))
-            needed = cfg.total_slots - len(result)
-            result.extend(remaining[:needed])
+            remaining = sorted(all_leftover, key=lambda x: -(x.get("stars") or 0))
+            result.extend(remaining[:cfg.total_slots - len(result)])
 
         if len(result) > cfg.total_slots:
-            result.sort(
-                key=lambda x: (
-                    0 if x.get("_bucket") == "early_bird" else
-                    1 if x.get("_bucket") == "high_star" else 2,
-                    tds_order.get(x.get("tds", "S"), 3),
-                    -x.get("stars", 0),
-                )
-            )
+            result.sort(key=lambda x: _bucket_rank(x, tds_order))
             result = result[:cfg.total_slots]
 
         # 主题多样性约束：单类 tds 不得超过 total_slots × diversity_max_ratio
-        if cfg.diversity_enabled and len(result) > 0:
+        if cfg.diversity_enabled and result:
             max_per_tds = max(1, int(cfg.total_slots * cfg.diversity_max_ratio))
-            tds_cnt = Counter(r.get("tds", "S") for r in result)
-            dominant = [t for t, c in tds_cnt.items() if c > max_per_tds]
-            if dominant and all_leftover:
-                cand = [r for r in all_leftover if r.get("tds", "S") not in dominant]
-                cand.sort(key=lambda x: -(x.get("stars", 0) or 0))
-                result = list(result)
-                for tds in dominant:
-                    excess = tds_cnt[tds] - max_per_tds
-                    for _ in range(excess):
-                        # 找 result 中最后一个（最低优先级）该 tds 的 repo
-                        idx = None
-                        for i in range(len(result) - 1, -1, -1):
-                            if result[i].get("tds", "S") == tds:
-                                idx = i
-                                break
-                        if idx is None or not cand:
-                            break
-                        kicked = result.pop(idx)
-                        best = cand.pop(0)
-                        result.append(best)
-                        cand.append(kicked)
-                        cand.sort(key=lambda x: -(x.get("stars", 0) or 0))
-                # 重新按 bucket + tds + stars 排序
-                result.sort(key=lambda x: (
-                    0 if x.get("_bucket") == "early_bird" else
-                    1 if x.get("_bucket") == "high_star" else 2,
-                    tds_order.get(x.get("tds", "S"), 3),
-                    -(x.get("stars", 0) or 0),
-                ))
+            cand = sorted(all_leftover, key=lambda x: -(x.get("stars") or 0))
+            # 每次换入换出都会改变计数,所以逐轮重算 dominant 而不是循环前算一次
+            while cand:
+                tds_cnt = Counter(r.get("tds", "S") for r in result)
+                dominant = [t for t, c in tds_cnt.items() if c > max_per_tds]
+                if not dominant:
+                    break
+                tds = dominant[0]
+                idx = next(
+                    (i for i in range(len(result) - 1, -1, -1) if result[i].get("tds", "S") == tds),
+                    None,
+                )
+                replacement = next((i for i, r in enumerate(cand) if r.get("tds", "S") not in dominant), None)
+                if idx is None or replacement is None:
+                    break
+                kicked = result.pop(idx)
+                result.insert(idx, cand.pop(replacement))
+                cand.append(kicked)
+            result.sort(key=lambda x: _bucket_rank(x, tds_order))
 
         dropped = len(repos) - len(result)
         print(
@@ -432,8 +463,13 @@ class CurationPipeline:
         return result
 
     def _stage_scrape(self, repos: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Scrape README for each repo to provide context to the writer."""
+        """Scrape README for each repo so the writer can ground claims in real content."""
         print("\n=== Scrape（抓取 README）===")
+        if self.use_mock:
+            print("[Scrape Skip] mock 模式不发起网络请求。")
+            for r in repos:
+                r.setdefault("scraped_readme", "")
+            return repos
         result = []
         for r in repos:
             rc = r.copy()
@@ -454,7 +490,10 @@ class CurationPipeline:
             use_mock: If True, uses realistic offline mock data to avoid network/API limits.
         """
         self.use_mock = use_mock
-        print("\n[Pipeline] Starting Pipeline (Timeframe: {since}, Persona: {self.current_persona['name']}, Mock: {use_mock})")
+        print(
+            f"\n[Pipeline] Starting Pipeline "
+            f"(Timeframe: {since}, Persona: {self.current_persona['name']}, Mock: {use_mock})"
+        )
 
         # 预清理过期的存档项目（cooldown 已过的项目重新允许进入策展）
         purged = self.dedup.purge_expired_cooldowns()
@@ -473,24 +512,13 @@ class CurationPipeline:
             r["is_first_seen"] = first_seen_map.get(r.get("full_name", ""), False)
         if cooled_repos:
             print(
-                f"[Dedup] 过滤掉 {len(cooled_repos)} 个处于 30 天冷却期的高🌟项目:"
+                f"[Dedup] 过滤掉 {len(cooled_repos)} 个处于冷却期的高🌟项目:"
                 f" {', '.join(r.get('full_name', '?') for r in cooled_repos[:5])}"
                 + (" ..." if len(cooled_repos) > 5 else "")
             )
         if not active_repos:
             print("[Pipeline Info] All fetched repos are in archive cooldown. Nothing to curate today.")
-            return {
-                "meta": {
-                    "timeframe": since,
-                    "persona": self.current_persona["name"],
-                    "total_input_repos": len(raw_repos),
-                    "total_curated_repos": 0,
-                    "cooled_repos": [r["full_name"] for r in cooled_repos],
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                },
-                "repos": [],
-                "reports": {},
-            }
+            return self._empty_result(since, cooled_repos, len(raw_repos))
 
         # --- Bucket Allocation ---
         if self.config.bucket_allocation.enabled:
@@ -499,18 +527,7 @@ class CurationPipeline:
             active_repos = self._prefilter_top_n(active_repos)
         if not active_repos:
             print("[Pipeline Info] All repos filtered out by bucket allocation. Aborting.")
-            return {
-                "meta": {
-                    "timeframe": since,
-                    "persona": self.current_persona["name"],
-                    "total_input_repos": len(raw_repos),
-                    "total_curated_repos": 0,
-                    "cooled_repos": [r["full_name"] for r in cooled_repos],
-                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                },
-                "repos": [],
-                "reports": {},
-            }
+            return self._empty_result(since, cooled_repos, len(raw_repos))
 
         # --- Stage 2: Analyze (分析 & 过滤) ---
         before = self.llm.get_stats()
@@ -528,59 +545,15 @@ class CurationPipeline:
         refined_repos = self._stage_summarize_and_reflect(scraped_repos)
         self._log_llm_stage("Write", before)
 
-# --- Translate A + Translate B ---
+        # --- Translate A + Translate B (双通道竞稿) ---
         if not self.use_mock:
             before = self.llm.get_stats()
-            for r in refined_repos:
-                summary = (r.get("refined_summary", "") or "").strip()
-                if len(summary) < 50:
-                    r["translation_a"] = r["translation_b"] = ""
-                    continue
-                try:
-                    res_a = self.llm.call_llm(
-                        [{"role": "user", "content": f"Translate the following English technical analysis into natural Chinese. Preserve all paragraph breaks and markdown formatting. Output only the translation, no explanations.\n\n{summary}"}],
-                        role="translator_a", temperature=0.2,
-                    )
-                    r["translation_a"] = (res_a.get("content") or "").strip()
-                except Exception:
-                    r["translation_a"] = ""
-                try:
-                    res_b = self.llm.call_llm(
-                        [{"role": "user", "content": f"Translate the following English technical analysis into natural Chinese. Preserve all paragraph breaks and markdown formatting. Output only the translation, no explanations.\n\n{summary}"}],
-                        role="translator_b", temperature=0.2,
-                    )
-                    r["translation_b"] = (res_b.get("content") or "").strip()
-                except Exception:
-                    r["translation_b"] = ""
+            self._stage_translate(refined_repos)
             self._log_llm_stage("Translate", before)
 
-        # --- Reviewer: pick best translation ---
-        if not self.use_mock:
+            # --- Reviewer: pick best translation ---
             before = self.llm.get_stats()
-            for r in refined_repos:
-                ta, tb = r.get("translation_a", ""), r.get("translation_b", "")
-                if not ta and not tb:
-                    r["chinese_summary"] = self._chinese_stub(r)
-                    continue
-                if not ta:
-                    r["chinese_summary"] = tb
-                    continue
-                if not tb:
-                    r["chinese_summary"] = ta
-                    continue
-                try:
-                    res = self.llm.call_llm(
-                        [{"role": "user", "content":
-                            f"Compare these two Chinese translations of the same English text. "
-                            f"Pick the one that is more accurate, natural, and readable.\n"
-                            f"Output ONLY \"A\" or \"B\".\n\n"
-                            f"--- Translation A ---\n{ta}\n\n--- Translation B ---\n{tb}"}],
-                        role="reviewer", temperature=0.1, max_tokens=10,
-                    )
-                    choice = (res.get("content") or "").strip().upper()
-                    r["chinese_summary"] = ta if choice.startswith("A") else tb
-                except Exception:
-                    r["chinese_summary"] = ta
+            self._stage_review(refined_repos)
             self._log_llm_stage("Review", before)
         else:
             # Mock mode: use refined_summary (already Chinese from mock data)
@@ -588,17 +561,20 @@ class CurationPipeline:
                 r["chinese_summary"] = r.get("refined_summary", "")
 
         for r in refined_repos:
-            r["chinese_summary"] = _ensure_markdown_spacing(r["chinese_summary"])
+            r["chinese_summary"] = _ensure_markdown_spacing(r.get("chinese_summary", ""))
 
         # --- Layout ---
         reports = self._stage_refine_layout(
             refined_repos,
             since,
+            candidate_total=len(raw_repos),
             cooled_repos=cooled_repos,
             archive_total=self.dedup.archive_count,
         )
 
         # --- 写回: 记录本次出现的项目；满足条件的晋升到存档 ---
+        # 记的是分桶后的候选集而非最终入选集：高星项目反复挤进候选池本身就是
+        # 「该让它冷却」的信号,只记最终被报道的项目会让它永远攒不满归档次数。
         newly_archived = self.dedup.record_occurrences(active_repos)
         if newly_archived:
             print(
@@ -622,6 +598,76 @@ class CurationPipeline:
             "reports": reports,
         }
 
+    def _empty_result(self, since: str, cooled_repos: list[dict[str, Any]], total_input: int) -> dict[str, Any]:
+        """早退路径的统一返回值（保证 main.py 与模板拿到同一组键）。"""
+        return {
+            "meta": {
+                "timeframe": since,
+                "persona": self.current_persona["name"],
+                "total_input_repos": total_input,
+                "total_curated_repos": 0,
+                "cooled_repos": [r["full_name"] for r in cooled_repos],
+                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+            },
+            "repos": [],
+            "reports": {},
+        }
+
+    def _stage_translate(self, repos: list[dict[str, Any]]) -> None:
+        """A/B 双通道翻译，原地写入 translation_a / translation_b。
+
+        provider 不可用的通道直接留空（不发请求，也绝不把错误信息当译文），
+        由 _stage_review 用另一边的译文兜底。
+        """
+        print("\n=== Translate（A/B 双通道翻译）===")
+        for r in repos:
+            r["translation_a"] = ""
+            r["translation_b"] = ""
+            summary = (r.get("refined_summary", "") or "").strip()
+            if len(summary) < MIN_TRANSLATABLE_CHARS:
+                continue
+            for role, key in (("translator_a", "translation_a"), ("translator_b", "translation_b")):
+                if not self.llm.has_role(role):
+                    print(f"  [Translate Skip] {role} 的 provider 不可用 → {r['full_name']} 该通道留空")
+                    continue
+                try:
+                    res = self.llm.call_llm(
+                        [{"role": "user", "content": TRANSLATE_PROMPT.format(summary=summary)}],
+                        role=role, temperature=0.2,
+                    )
+                except Exception as e:
+                    print(f"  [Translate Fail] {role} for {r['full_name']}: {e}")
+                    continue
+                r[key] = (res.get("content") or "").strip()
+
+    def _stage_review(self, repos: list[dict[str, Any]]) -> None:
+        """逐仓库二选一；只有一边有译文时直接采用，两边都缺则用中文 stub。"""
+        print("\n=== Review（比稿选优）===")
+        for r in repos:
+            ta, tb = r.get("translation_a", ""), r.get("translation_b", "")
+            if not ta and not tb:
+                r["chinese_summary"] = self._chinese_stub(r)
+                continue
+            if not ta or not tb:
+                r["chinese_summary"] = ta or tb
+                continue
+            if not self.llm.has_role("reviewer"):
+                print(f"  [Review Skip] reviewer 不可用 → {r['full_name']} 直接采用 A 通道")
+                r["chinese_summary"] = ta
+                continue
+            try:
+                res = self.llm.call_llm(
+                    [{"role": "user", "content": REVIEW_PROMPT.format(ta=ta, tb=tb)}],
+                    role="reviewer", temperature=0.1, max_tokens=10,
+                )
+            except Exception as e:
+                print(f"  [Review Fail] {r['full_name']}: {e} → 采用 A 通道")
+                r["chinese_summary"] = ta
+                continue
+            choice = (res.get("content") or "").strip().upper()
+            # 只有明确选了 B 才换，乱答（含空串）一律回到 A
+            r["chinese_summary"] = tb if choice.startswith("B") else ta
+
     def _stage_crawl(self, since: str, use_mock: bool) -> list[dict[str, Any]]:
         """Stage: Fetch raw repository data from GitHub Trending and Orgs."""
         print("\n=== Crawl (数据抓取) ===")
@@ -632,31 +678,29 @@ class CurationPipeline:
             # Limit to top 10 for each to keep Stage 2 LLM analysis batch optimized
             orig_max = self.config.github.max_trending_repos
             self.config.github.max_trending_repos = 10
-
-            print("[Crawl] Pulling all three timeframes (daily, weekly, monthly) to build a unified trend board...")
-            t_daily = self.crawler.crawl_trending("daily")
-            t_weekly = self.crawler.crawl_trending("weekly")
-            t_monthly = self.crawler.crawl_trending("monthly")
-
-            # Reset config
-            self.config.github.max_trending_repos = orig_max
-
-            trending = t_daily + t_weekly + t_monthly
-            giants = self.crawler.fetch_giant_repos()
+            try:
+                print("[Crawl] Pulling all three timeframes (daily, weekly, monthly) to build a unified trend board...")
+                t_daily = self.crawler.crawl_trending("daily")
+                t_weekly = self.crawler.crawl_trending("weekly")
+                t_monthly = self.crawler.crawl_trending("monthly")
+                trending = t_daily + t_weekly + t_monthly
+                giants = self.crawler.fetch_giant_repos()
+            finally:
+                self.config.github.max_trending_repos = orig_max
 
             # Deduplicate by full_name, prioritizing trending data if available
-            dedup = {}
+            merged: dict[str, dict[str, Any]] = {}
             for repo in trending + giants:
                 name = repo["full_name"]
-                if name not in dedup:
-                    dedup[name] = repo
+                if name not in merged:
+                    merged[name] = repo
                 else:
                     # Merge information: keep period_stars if from trending
-                    if repo.get("period_stars") and not dedup[name].get("period_stars"):
-                        dedup[name]["period_stars"] = repo["period_stars"]
-                        dedup[name]["source"] = "trending & llm_giant"
+                    if repo.get("period_stars") and not merged[name].get("period_stars"):
+                        merged[name]["period_stars"] = repo["period_stars"]
+                        merged[name]["source"] = "trending & llm_giant"
 
-            repos = list(dedup.values())
+            repos = list(merged.values())
 
         print(f"[Crawl Done] Retrieved {len(repos)} unique repositories.")
         return repos
@@ -665,7 +709,7 @@ class CurationPipeline:
         """Stage: Filter and classify repositories using LLM."""
         print("\n=== Classify (项目分析与智能筛选) ===")
 
-        if self.use_mock or not self.llm.client:
+        if self.use_mock or not self.llm.has_role("classifier"):
             print("[Classify Fallback] Bypassing LLM API. Selecting and rating all crawled repos offline.")
             analyzed_repos = []
             ratings = ["S", "S", "A", "B", "A", "B", "C"]
@@ -692,10 +736,10 @@ class CurationPipeline:
                 rc["rating"] = ratings[i % len(ratings)]
                 rc["tags"] = tags_list[i % len(tags_list)]
                 rc["selection_reason"] = reasons[i % len(reasons)]
-                rc["technical_depth"] = _infer_tds_fallback(rc.get("description", "") or "")
+                rc.setdefault("tds", _infer_tds_fallback(rc.get("description", "") or ""))
                 analyzed_repos.append(rc)
             # Sort curated repos primarily by rating (S > A > B > C) and secondarily by star count descending
-            analyzed_repos.sort(key=lambda x: (RATING_ORDER.get(x.get("rating", "B"), 4), -x.get("stars", 0)))
+            analyzed_repos.sort(key=lambda x: (RATING_ORDER.get(x.get("rating", "B"), 4), -(x.get("stars") or 0)))
             return analyzed_repos
 
         # Prepare list of repos for LLM to review in batch to save tokens and avoid 429
@@ -725,11 +769,15 @@ class CurationPipeline:
             "   - 'B': Interesting utility, good developer ergonomics, solid experiment.\n"
             "   - 'C': Moderate interest but marginally relevant.\n"
             "4. Tags: Add 2-3 specific technical hashtags (e.g. #Agent, #RAG, #MoE, #MLA, #ComfyUI, #Vibecoding, #Telemetry).\n"
-            "5. reason_for_selection: Keep this VERY SHORT — 1-2 sentences maximum. "
+            "5. tds — technical depth class, exactly one of:\n"
+            "   - 'T': touches the substrate (model architecture, kernel, compiler, runtime, protocol, engine).\n"
+            "   - 'E': engineering layer (agent, RAG, inference optimization, CLI, workflow, integration).\n"
+            "   - 'S': surface layer (docs, collections, UI skin, thin wrapper).\n"
+            "6. reason_for_selection: Keep this VERY SHORT — 1-2 sentences maximum. "
             "A brief explanation of why this repo matters. Do NOT repeat the full analysis here.\n\n"
             "Return a strictly valid JSON array containing an entry for EVERY provided repository. "
             "Each object must have exactly these keys: "
-            "['index', 'full_name', 'rating', 'tags', 'reason_for_selection']. "
+            "['index', 'full_name', 'rating', 'tags', 'tds', 'reason_for_selection']. "
             "Do not wrap with text outside the JSON block."
         )
 
@@ -741,7 +789,6 @@ class CurationPipeline:
         ]
 
         try:
-            # Stage 2 uses DeepSeek-V3-1 (non-reasoning) for batch classification
             response = self.llm.call_llm(messages, role="classifier", temperature=0.2)
             raw_content = response["content"]
 
@@ -756,37 +803,41 @@ class CurationPipeline:
                     orig_repo["rating"] = item.get("rating", "B")
                     orig_repo["tags"] = item.get("tags", [])
                     orig_repo["selection_reason"] = (item.get("reason_for_selection", "") or "")[:200]
+                    tds = (item.get("tds") or "").strip().upper()[:1]
+                    # 分类器没给出合法 T/E/S 时保留分桶阶段的规则值
+                    orig_repo["tds"] = tds if tds in {"T", "E", "S"} else orig_repo.get("tds", "S")
                     analyzed_repos.append(orig_repo)
 
             # Sort curated repos primarily by rating (S > A > B > C) and secondarily by star count descending
-            analyzed_repos.sort(key=lambda x: (RATING_ORDER.get(x.get("rating", "B"), 4), -x.get("stars", 0)))
+            analyzed_repos.sort(key=lambda x: (RATING_ORDER.get(x.get("rating", "B"), 4), -(x.get("stars") or 0)))
 
             print(f"[Classify Done] Selected {len(analyzed_repos)}/{len(repos)} repositories based on persona filtering.")
             for r in analyzed_repos:
-                print(f" - [{r['rating']}] {r['full_name']} | Tags: {r['tags']}")
+                print(f" - [{r['rating']}/{r['tds']}] {r['full_name']} | Tags: {r['tags']}")
             return analyzed_repos
 
         except Exception as e:
             print(f"[Classify Error] Failed to analyze repositories: {e}")
-            print("[Classify Fallback] Retaining top repositories with rule-based tag inference.")
+            print("[Classify Fallback] Retaining all bucketed repositories with rule-based tag inference.")
             fallback_repos = []
-            for r in repos[:6]:
+            for r in repos:
                 rc = r.copy()
                 rc["rating"] = _infer_rating_fallback(r)
                 rc["tags"] = _infer_tags_fallback(r)
                 rc["selection_reason"] = _infer_selection_reason_fallback(r)
-                rc["technical_depth"] = _infer_tds_fallback(r.get("description", "") or "")
+                rc.setdefault("tds", _infer_tds_fallback(r.get("description", "") or ""))
                 fallback_repos.append(rc)
             return fallback_repos
 
     def _stage_summarize_and_reflect(self, repos: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Per-repo summarization with the new 4-section + vibecoding style.
+        """逐仓库写作 + 自检，1 次调用/仓库。
 
-        One LLM call per repo. Falls back to static stub on failure.
+        自检行前置（先判断再动笔），正文仍是 4 段英文；不合格产物落到英文 stub，
+        由后续翻译层转成中文，因此报告不会出现半中半英的段落。
         """
         print("\n=== Write & Reflect (逐仓库深度分析) ===")
 
-        if self.use_mock or not self.llm.client:
+        if self.use_mock or not self.llm.has_role("writer"):
             print("[Write Fallback] Bypassing LLM. Generating mock summaries offline.")
             result = []
             for r in repos:
@@ -808,15 +859,33 @@ class CurationPipeline:
         print(f"[Write Done] Analyzed {len(result)} repositories.")
         return result
 
+    def _readme_excerpt(self, r: dict[str, Any]) -> str:
+        """README 前若干行去掉徽章/图片噪声后的摘录，供 writer 判断项目实际做什么。"""
+        readme = (r.get("scraped_readme") or "").strip()
+        if not readme:
+            return ""
+        keep = [
+            line for line in readme.split("\n")
+            if not line.lstrip().startswith(("<", "[![", "![", "<!--", "[!["))
+        ]
+        return "\n".join(keep)[:README_CONTEXT_CHARS]
+
     def _summarize_reflect_per_repo(self, r: dict[str, Any]) -> dict[str, Any]:
         rc = r.copy()
+        persona_focus = (self.current_persona.get("prompt_focus") or "").strip()
         system_prompt = (
             "You are a senior engineer who loves teaching. Write English tech analysis "
             "that reads like an experienced colleague sharing hard-won insights.\n\n"
-            "Your reader: Can code but may not have CS degree. They build things with LLMs, "
-            "Agents, and automation tools. They respect deep understanding, not buzzwords.\n\n"
+            f"Target reader: {self.current_persona.get('name', '中阶实践者')}. "
+            "Follow this profile's tone, vocabulary and depth (written in Chinese; apply its intent, "
+            "do NOT copy its wording or translate it into the output):\n"
+            f"{persona_focus}\n\n"
             "Write a technical analysis of the following GitHub project in English. "
-            "Use this 4-section structure (keep the ### headers exactly as shown):\n\n"
+            "FIRST line must be a one-sentence self-check that names the single sharpest insight you "
+            "can defend from the evidence given, formatted exactly as:\n"
+            "SELF-CHECK: <one sentence>\n\n"
+            "THEN the analysis in this 4-section structure (keep the ### headers exactly as shown, "
+            "in English, regardless of the profile focus above):\n\n"
             "### Core Pain Point Solved\n"
             "Make the reader recall a problem they've faced. Show why it's hard.\n\n"
             "### Design & Architectural Trade-offs\n"
@@ -827,6 +896,8 @@ class CurationPipeline:
             "### Ecosystem & Related Projects\n"
             "Recommend 2-3 well-known related projects (5000+ stars, must exist). "
             "Explain how they complement each other.\n\n"
+            "Ground every claim in the metadata and README excerpt provided. If the evidence does not "
+            "support a section, say what the project appears to do instead of inventing internals.\n\n"
             "Guidelines:\n"
             "- Write like you're teaching a smart colleague who's short on time\n"
             "- Use technical terms but explain why they're important here\n"
@@ -836,6 +907,7 @@ class CurationPipeline:
             "- FORMATTING: blank line before and after each ### header\n"
             "- FORMATTING: blank line between paragraphs (double newline \\n\\n)"
         )
+        readme_excerpt = self._readme_excerpt(r)
         user_content = (
             f"Repository: {r['full_name']}\n"
             f"Stars: {r.get('stars', 0)}\n"
@@ -844,23 +916,36 @@ class CurationPipeline:
             f"Description: {r.get('description', '')}\n"
             f"Tags: {', '.join(r.get('tags', []))}\n"
             f"Rating: {r.get('rating', 'B')}\n"
-            f"Selection Reason: {r.get('selection_reason', '')}"
+            f"Technical depth: {r.get('tds', 'S')}\n"
+            f"Selection Reason: {r.get('selection_reason', '')}\n\n"
+            f"README excerpt:\n{readme_excerpt or '(unavailable)'}"
         )
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content},
         ]
         try:
-            res = self.llm.call_llm(messages, temperature=0.3)
-            rc["refined_summary"] = res["content"]
+            res = self.llm.call_llm(messages, role="writer", temperature=0.3)
         except Exception as e:
-            print(f"[Write Warning] Failed for {r['full_name']}: {e}")
-            rc["refined_summary"] = self._chinese_stub(r)
-        rc["reflection_trace"] = ""
+            # 单仓库失败不能拖垮整份报告（降级三层兜底之一）
+            print(f"[Write Fail] {r['full_name']}: {e}")
+            rc["refined_summary"] = self._english_stub(r)
+            rc["reflection_trace"] = ""
+            return rc
+
+        analysis, reflection = _split_reflection(res["content"])
+        if not _analysis_complete(analysis):
+            print(f"[Write Gate] {r['full_name']} 缺少规定的 ### 小节 → 落到英文 stub")
+            rc["refined_summary"] = self._english_stub(r)
+        else:
+            rc["refined_summary"] = analysis
+        rc["reflection_trace"] = reflection
+        if reflection:
+            print(f"  [{r['full_name']}] {reflection[:100]}")
         return rc
 
-    def _summarize_reflect_stub(self, r: dict[str, Any]) -> str:
-        """Static fallback stub when LLM is unavailable for summarization."""
+    def _english_stub(self, r: dict[str, Any]) -> str:
+        """英文 stub：writer 不可用或产物不合格时使用，交给翻译层出中文。"""
         desc = r.get("description", "Open-source engineering project") or "Open-source engineering project"
         return (
             f"### Core Pain Point Solved\n{desc}\n\n"
@@ -886,7 +971,8 @@ class CurationPipeline:
             f"通过依赖关系图和 GitHub Topics 页面探索相关生态项目。"
         )
 
-    def _stage_refine_layout(self, repos: list[dict[str, Any]], since: str, cooled_repos: list[dict[str, Any]] | None = None, archive_total: int = 0) -> dict[str, Any]:
+    def _stage_refine_layout(self, repos: list[dict[str, Any]], since: str, candidate_total: int,
+                             cooled_repos: list[dict[str, Any]] | None = None, archive_total: int = 0) -> dict[str, Any]:
         """Layout: render reports in multiple formats."""
         print("\n=== Layout（渲染报告）===")
         from src.formatter import ReportFormatter
@@ -896,6 +982,7 @@ class CurationPipeline:
             repos,
             cooled_repos=cooled_repos or [],
             archive_total=archive_total,
+            candidate_total=candidate_total,
         )
 
         print("[Layout Done] Generated reports in multiple formats.")

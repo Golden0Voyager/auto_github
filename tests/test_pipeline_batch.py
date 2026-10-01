@@ -10,6 +10,7 @@ Covers the remaining uncovered lines in src/pipeline.py:
 
 import json
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock
 
@@ -17,12 +18,16 @@ import pytest
 
 from src.config import AIConfig, AppConfig, GitHubConfig, Stage2PreFilterConfig
 from src.pipeline import (
+    WRITER_SECTIONS,
     CurationPipeline,
+    _analysis_complete,
+    _split_reflection,
 )
+from tests.conftest import isolated_dedup_config
 
 
 @pytest.fixture
-def batch_config() -> AppConfig:
+def batch_config(tmp_path: Path) -> AppConfig:
     return AppConfig(
         github=GitHubConfig(max_trending_repos=10, max_org_repos=5),
         ai=AIConfig(
@@ -30,9 +35,8 @@ def batch_config() -> AppConfig:
             temperature=0.3,
             max_tokens=4096,
             rate_limit_delay=0.01,
-            api_key="sk-test",
-            base_url="https://api.openai.com/v1",
         ),
+        dedup=isolated_dedup_config(tmp_path),
         stage2_pre_filter=Stage2PreFilterConfig(enabled=True, max_repos=88),
     )
 
@@ -124,28 +128,214 @@ class TestStage2AnalyzeLLMPath:
             assert "selection_reason" in r
 
 
+def _full_analysis(body: str = "Evidence-backed prose.") -> str:
+    """一份能通过完整性门的四段英文分析。"""
+    return "\n\n".join(f"{header}\n{body}" for header in WRITER_SECTIONS)
+
+
 class TestSummarizeReflectPerRepo:
-    """Test per-repo summarization."""
+    """Test per-repo summarization, the reflection split, and the completeness gate."""
 
     def test_per_repo_success(self, batch_config):
-        """Per-repo should return repo with refined_summary."""
+        """完整 4 段产物直接进入 refined_summary，自检行被剥离到 reflection_trace。"""
         client = MagicMock()
-        client.call_llm.return_value = {"content": "### Core Technical Problem\\nTest."}
+        client.call_llm.return_value = {
+            "content": "SELF-CHECK: The KV-cache trade-off is the sharpest claim here.\n\n" + _full_analysis()
+        }
         pipeline = CurationPipeline(batch_config, client)
         repo = {"full_name": "test/repo", "description": "Test.", "tags": ["#Test"], "stars": 100}
         result = pipeline._summarize_reflect_per_repo(repo)
-        assert result["refined_summary"] == "### Core Technical Problem\\nTest."
-        assert result["reflection_trace"] == ""
+        assert _analysis_complete(result["refined_summary"])
+        assert "SELF-CHECK" not in result["refined_summary"]
+        assert result["reflection_trace"] == "The KV-cache trade-off is the sharpest claim here."
 
-    def test_per_repo_failure_uses_chinese_stub(self, batch_config):
-        """When per-repo fails, should use Chinese stub summary."""
+    def test_incomplete_analysis_hits_gate(self, batch_config):
+        """缺小节的产物不能进报告，落英文 stub 由翻译层出中文。"""
+        client = MagicMock()
+        client.call_llm.return_value = {"content": "SELF-CHECK: thin\n### Core Pain Point Solved\nonly one section"}
+        pipeline = CurationPipeline(batch_config, client)
+        repo = {"full_name": "test/repo", "description": "A test project.", "tags": ["#Test"], "stars": 100}
+        result = pipeline._summarize_reflect_per_repo(repo)
+        assert "Deeper LLM analysis pending" in result["refined_summary"]
+        assert result["reflection_trace"] == "thin"
+
+    def test_per_repo_failure_uses_english_stub(self, batch_config):
+        """写作失败返回英文 stub（不是中文），保证翻译层语义一致。"""
         client = MagicMock()
         client.call_llm.side_effect = RuntimeError("Failed")
         pipeline = CurationPipeline(batch_config, client)
         repo = {"full_name": "test/repo", "description": "Test.", "tags": ["#Test"], "stars": 100}
         result = pipeline._summarize_reflect_per_repo(repo)
-        assert "要解决的核心痛点" in result["refined_summary"]
-        assert "设计巧思与架构取舍" in result["refined_summary"]
+        assert "### Core Pain Point Solved" in result["refined_summary"]
+        assert "要解决的核心痛点" not in result["refined_summary"]
+
+    def test_readme_excerpt_reaches_the_writer(self, batch_config):
+        """scraped_readme 必须进入 prompt，否则 Scrape 阶段是纯浪费。"""
+        client = MagicMock()
+        client.call_llm.return_value = {"content": _full_analysis()}
+        pipeline = CurationPipeline(batch_config, client)
+        repo = {
+            "full_name": "test/repo", "description": "Test.", "tags": [], "stars": 1,
+            "scraped_readme": "[![badge](https://img.shields.io/x)]\n<svg></svg>\nRust-based KV cache router for local LLMs.",
+        }
+        pipeline._summarize_reflect_per_repo(repo)
+        prompt = client.call_llm.call_args[0][0][1]["content"]
+        assert "Rust-based KV cache router" in prompt
+        assert "img.shields.io" not in prompt
+
+    def test_persona_focus_reaches_the_writer(self, batch_config):
+        """画像的 prompt_focus 必须进 writer，否则 --persona 换的是空气。"""
+        client = MagicMock()
+        client.call_llm.return_value = {"content": _full_analysis()}
+        pipeline = CurationPipeline(batch_config, client)
+        pipeline.current_persona = {"name": "高阶大神", "prompt_focus": "极致学术硬核度 MCTS RLHF"}
+        pipeline._summarize_reflect_per_repo({"full_name": "t/r", "description": "d", "tags": [], "stars": 1})
+        system_prompt = client.call_llm.call_args[0][0][0]["content"]
+        assert "极致学术硬核度 MCTS RLHF" in system_prompt
+        assert "高阶大神" in system_prompt
+
+
+class TestReflectionSplit:
+    """_split_reflection / _analysis_complete helpers."""
+
+    def test_splits_leading_self_check(self):
+        analysis, reflection = _split_reflection("SELF-CHECK: sharp point\n\n### A\nbody")
+        assert reflection == "sharp point"
+        assert analysis.startswith("### A")
+
+    def test_case_insensitive_prefix(self):
+        _, reflection = _split_reflection("self-check: loud\nbody")
+        assert reflection == "loud"
+
+    def test_no_self_check_line(self):
+        analysis, reflection = _split_reflection("### A\nbody")
+        assert reflection == ""
+        assert analysis == "### A\nbody"
+
+    def test_blank_lines_before_self_check_are_skipped(self):
+        _, reflection = _split_reflection("\nSELF-CHECK: found it\nbody")
+        assert reflection == "found it"
+
+    def test_complete_requires_all_four_sections(self):
+        assert not _analysis_complete("### Core Pain Point Solved only")
+        assert _analysis_complete(_full_analysis())
+
+
+# ===================================================================
+# Translate / Review 降级路径（曾经把 "Error: no client..." 写进报告正文）
+# ===================================================================
+
+class _FakeLLM:
+    """只实现 pipeline 用到的两个方法：has_role 与 call_llm。"""
+
+    def __init__(self, available: set[str], responder):
+        self.available = available
+        self.responder = responder
+        self.calls: list[str] = []
+
+    def has_role(self, role: str) -> bool:
+        return role in self.available
+
+    def call_llm(self, messages, role="writer", **kwargs):
+        self.calls.append(role)
+        return self.responder(role, messages)
+
+
+def _batch_pipeline(batch_config, llm):
+    pipeline = CurationPipeline(batch_config, llm)
+    pipeline.use_mock = False
+    return pipeline
+
+
+_TRANSLATED_A = "### 要解决的核心痛点\nA 通道译文"
+_TRANSLATED_B = "### 要解决的核心痛点\nB 通道译文"
+
+
+class TestTranslateDegradation:
+    def test_unavailable_channels_are_skipped_without_requests(self, batch_config):
+        """provider 没 key → 直接留空，一次请求都不该发（省失败税）。"""
+        llm = _FakeLLM({"writer"}, lambda role, msg: {"content": "x"})
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = [{"full_name": "a/b", "refined_summary": "long enough english text" * 5}]
+        pipeline._stage_translate(repos)
+        assert llm.calls == []
+        assert repos[0]["translation_a"] == "" and repos[0]["translation_b"] == ""
+
+    def test_error_text_never_becomes_translation(self, batch_config):
+        """回归：siliconflow 缺 key 时旧实现会把错误字符串当 content 返回并写入正文。"""
+        from src.llm import LLMError
+
+        def responder(role, messages):
+            raise LLMError("no client for provider 'siliconflow'")
+
+        llm = _FakeLLM({"translator_a", "translator_b", "reviewer"}, responder)
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = [{"full_name": "a/b", "description": "d", "refined_summary": "long enough english text" * 5}]
+        pipeline._stage_translate(repos)
+        pipeline._stage_review(repos)
+        assert repos[0]["translation_a"] == "" and repos[0]["translation_b"] == ""
+        assert "Error" not in repos[0]["chinese_summary"]
+        assert "要解决的核心痛点" in repos[0]["chinese_summary"]
+
+    def test_short_summary_is_not_translated(self, batch_config):
+        llm = _FakeLLM({"translator_a", "translator_b"}, lambda role, msg: {"content": _TRANSLATED_A})
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = [{"full_name": "a/b", "refined_summary": "tiny"}]
+        pipeline._stage_translate(repos)
+        assert llm.calls == []
+        assert repos[0]["translation_a"] == ""
+
+    def test_both_channels_filled(self, batch_config):
+        seen = {"translator_a": _TRANSLATED_A, "translator_b": _TRANSLATED_B}
+        llm = _FakeLLM(set(seen), lambda role, msg: {"content": seen[role]})
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = [{"full_name": "a/b", "refined_summary": "long enough english text" * 5}]
+        pipeline._stage_translate(repos)
+        assert repos[0]["translation_a"] == _TRANSLATED_A
+        assert repos[0]["translation_b"] == _TRANSLATED_B
+
+
+class TestReviewDegradation:
+    def _repos(self, ta, tb):
+        return [{"full_name": "a/b", "description": "d", "translation_a": ta, "translation_b": tb}]
+
+    def test_picks_b_when_reviewer_says_b(self, batch_config):
+        llm = _FakeLLM({"reviewer"}, lambda role, msg: {"content": "B"})
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = self._repos(_TRANSLATED_A, _TRANSLATED_B)
+        pipeline._stage_review(repos)
+        assert repos[0]["chinese_summary"] == _TRANSLATED_B
+
+    def test_garbage_verdict_falls_back_to_a(self, batch_config):
+        llm = _FakeLLM({"reviewer"}, lambda role, msg: {"content": "translation B looks nicer honestly"})
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = self._repos(_TRANSLATED_A, _TRANSLATED_B)
+        pipeline._stage_review(repos)
+        assert repos[0]["chinese_summary"] == _TRANSLATED_A
+
+    def test_reviewer_unavailable_uses_a_without_call(self, batch_config):
+        llm = _FakeLLM(set(), lambda role, msg: {"content": "unused"})
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = self._repos(_TRANSLATED_A, _TRANSLATED_B)
+        pipeline._stage_review(repos)
+        assert llm.calls == []
+        assert repos[0]["chinese_summary"] == _TRANSLATED_A
+
+    def test_single_channel_used_without_review(self, batch_config):
+        llm = _FakeLLM({"reviewer"}, lambda role, msg: pytest.fail("不应调用 reviewer"))
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = self._repos("", _TRANSLATED_B)
+        pipeline._stage_review(repos)
+        assert repos[0]["chinese_summary"] == _TRANSLATED_B
+
+    def test_no_translation_uses_chinese_stub(self, batch_config):
+        llm = _FakeLLM({"reviewer"}, lambda role, msg: {"content": "A"})
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = self._repos("", "")
+        repos[0]["description"] = "一个测试项目"
+        pipeline._stage_review(repos)
+        assert "### 要解决的核心痛点" in repos[0]["chinese_summary"]
+        assert llm.calls == []
 
 
 class TestPipelineRunEdgeCases:

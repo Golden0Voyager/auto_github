@@ -12,12 +12,14 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import ValidationError
 
-from src.config import AppConfig, BucketAllocationConfig
+from src.config import AppConfig, BucketAllocationConfig, NotificationConfig
 from src.pipeline import (
     CurationPipeline,
     _infer_tds_fallback,
 )
+from tests.conftest import isolated_dedup_config
 
 # ===================================================================
 # _infer_tds_fallback
@@ -163,12 +165,18 @@ class TestBucketAllocationConfig:
         assert cfg.bucket_allocation.total_slots == 9
 
     def test_partial_override_keeps_defaults(self):
-        cfg = BucketAllocationConfig(early_bird=5)
+        """改单个桶的配额时必须同步 total_slots，否则校验器会拦住。"""
+        cfg = BucketAllocationConfig(early_bird=5, total_slots=11)
         assert cfg.early_bird == 5
         assert cfg.high_star_hot == 3
         assert cfg.deep_dive == 3
-        assert cfg.total_slots == 9
+        assert cfg.total_slots == 11
         assert cfg.enabled is True
+
+    def test_quota_sum_mismatch_rejected(self):
+        """三桶配额之和不等于 total_slots 会让分桶结果悄悄偏离预期曝光量。"""
+        with pytest.raises(ValidationError, match="must equal total_slots"):
+            BucketAllocationConfig(early_bird=5)
 
 
 # ===================================================================
@@ -362,8 +370,8 @@ class TestBucketAllocateEdgeCases:
         result = bucket_pipeline._bucket_allocate(repos)
         assert len(result) == 9
 
-    @pytest.mark.xfail(reason="Known bug: take_from() sort crashes on None stars (user still debugging)")
     def test_none_stars_handled(self, bucket_pipeline):
+        """stars 为 None（GitHub API 偶发 null）不能让排序崩掉。"""
         repos = [_make_repo("null/repo", stars=0)]
         repos[-1]["stars"] = None
         for i in range(12):
@@ -466,10 +474,12 @@ class TestPipelineRunWithBucketAllocation:
     """Verify bucket allocation integrates correctly in mock pipeline run."""
 
     @pytest.fixture(name="simple_pipeline_config")
-    def _pipeline_config(self):
-        cfg = AppConfig()
-        cfg.ai.api_key = "test-key"
-        return cfg
+    def _pipeline_config(self, tmp_path):
+        # 状态文件必须隔离：run() 会写 dedup 记忆
+        return AppConfig(
+            dedup=isolated_dedup_config(tmp_path),
+            notifications=NotificationConfig(local_report_dir=str(tmp_path / "reports")),
+        )
 
     def test_mock_run_sets_bucket_and_tds(self, simple_pipeline_config):
         client = MagicMock()
@@ -484,9 +494,8 @@ class TestPipelineRunWithBucketAllocation:
             assert r["_bucket"] in ("early_bird", "high_star", "deep_dive")
             assert "tds" in r
             assert r["tds"] in ("T", "E", "S")
-            # Verify mock _stage_analyze also sets technical_depth
-            assert "technical_depth" in r
-            assert r["technical_depth"] in ("T", "E", "S")
+            # technical_depth 是与 tds 重复的死字段，已统一为 tds
+            assert "technical_depth" not in r
 
     def test_disabled_bucket_still_works(self, simple_pipeline_config):
         client = MagicMock()

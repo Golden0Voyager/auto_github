@@ -61,13 +61,22 @@ class TestReportNotifierInit:
         assert notifier.slack_url == "https://slack.test/hook"
         assert notifier.discord_url == "https://discord.test/hook"
 
-    def test_init_creates_report_dir(self, tmp_path):
-        """Report directory should be created on init."""
+    def test_init_does_not_create_report_dir(self, tmp_path):
+        """构造 Notifier 不该建目录：mock config 曾因此在仓库根拉出 MagicMock/ 目录树。"""
         cfg = AppConfig(
             notifications=NotificationConfig(local_report_dir=str(tmp_path / "new_reports"))
         )
         ReportNotifier(cfg)
-        assert (tmp_path / "new_reports").exists()
+        assert not (tmp_path / "new_reports").exists()
+
+    def test_save_locally_creates_report_dir(self, tmp_path):
+        """目录在写报告时才创建。"""
+        cfg = AppConfig(
+            notifications=NotificationConfig(local_report_dir=str(tmp_path / "new_reports"))
+        )
+        notifier = ReportNotifier(cfg)
+        assert notifier.save_locally("# report", "daily") is True
+        assert (tmp_path / "new_reports" / "latest_daily.md").exists()
 
     def test_init_no_webhooks(self, tmp_path):
         """Without webhook URLs, notifier should still work for local saves."""

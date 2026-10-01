@@ -48,6 +48,8 @@ github:
   max_org_repos: 5
 
 # AI Settings & Default Model Options
+# roles 是模型路由的唯一真相；代码级默认在 src/config.py 的 AIConfig.roles，
+# 两处必须同步（tests/test_config.py::test_code_role_defaults_mirror_config_yaml 会守住这条）。
 ai:
   default_provider: openrouter
   temperature: 0.3
@@ -76,9 +78,9 @@ ai:
 dedup:
   # 视为"高星"项目的最低 star 阈值（低于此值不进入去重逻辑，让新项目自由展示）
   high_star_threshold: 10000
-  # 累计出现次数达到此值后进入「高🌟项目存档」，30 天内不再推送
+  # 累计出现次数达到此值后进入「高🌟项目存档」，冷却期内不再推送
   archive_threshold: 3
-  # 存档冷却天数：进入存档后多少天内不再出现在日报中
+  # 存档冷却基础天数（steps_cooldown=true 时按归档轮次递增）
   archive_cooldown_days: 30
   # 历史记录持久化文件（相对项目根目录）
   history_file: "reports/repo_history.json"
@@ -94,10 +96,12 @@ dedup:
   # 归档次数计数器持久化文件（相对项目根目录）
   cycles_file: "reports/repo_cycles.json"
 
-# Stage 2 LLM 批处理前的廉价预筛（避免 188+ repo 一次性塞给 LLM 时 completion 触顶 max_tokens=4096）
+# 分桶引擎关闭时的回退预筛：按 stars 降序保留头部 N 个,砍掉长尾,
+# 避免一次把 188+ repo 塞给 Stage 2 批量分类导致 completion 触顶。
+# bucket_allocation.enabled=true 时不生效(由三桶配额直接把候选压到 total_slots)。
 stage2_pre_filter:
   enabled: true
-  max_repos: 88  # 按 stars 降序保留头部 N 个，砍掉长尾
+  max_repos: 88
 
 # Notification Settings
 notifications:

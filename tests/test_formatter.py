@@ -2,33 +2,28 @@
 
 Covers:
 - ReportFormatter initialization with/without templates
-- _fallback_markdown() - fallback report generation
-- _fallback_feishu() - fallback Feishu card
-- _fallback_slack() - fallback Slack message
+- _fallback_markdown() / _fallback_slack() 兜底产物
 - generate_all() with various inputs
-- _render_template() error handling
-- _render_json_template() error handling
+- 模板渲染完整性（Slack JSON 必须真能 parse，不允许静默降级）
+- _render_template() / _render_json_template() error handling
 - Dedup status display in reports
 """
 
+import json
 from typing import Any
 from unittest.mock import patch
 
 import pytest
 
-from src.config import AIConfig, AppConfig, NotificationConfig
+from src.config import AppConfig, NotificationConfig
 from src.formatter import ReportFormatter
 
 
 @pytest.fixture
-def formatter_config() -> AppConfig:
+def formatter_config(tmp_path) -> AppConfig:
     return AppConfig(
-        ai=AIConfig(
-            model_v3="sensenova-6.7-flash-lite",
-            model_r1="sensenova-6.7-flash-lite",
-        ),
         notifications=NotificationConfig(
-            local_report_dir="./reports",
+            local_report_dir=str(tmp_path / "reports"),
         ),
     )
 
@@ -191,32 +186,6 @@ class TestFallbackMarkdown:
         assert "auto_github" in md
 
 
-class TestFallbackFeishu:
-    """Test the fallback Feishu card generator."""
-
-    def test_fallback_feishu_returns_dict(self, formatter, sample_formatted_repos):
-        """Fallback Feishu should return a valid payload dict."""
-        payload = formatter._fallback_feishu(sample_formatted_repos)
-        assert isinstance(payload, dict)
-        assert payload["msg_type"] == "interactive"
-        assert "card" in payload
-
-    def test_fallback_feishu_empty_repos(self, formatter):
-        """Fallback Feishu with empty repos should not crash."""
-        payload = formatter._fallback_feishu([])
-        assert isinstance(payload, dict)
-
-    def test_fallback_feishu_only_top_5(self, formatter):
-        """Fallback should include at most 5 repos."""
-        many_repos = [{"full_name": f"repo/{i}", "rating": "B", "tags": [], "chinese_summary": "test", "url": f"https://github.com/repo/{i}"} for i in range(10)]
-        payload = formatter._fallback_feishu(many_repos)
-        # Count the div/button elements (each repo has 2 elements: div and hr)
-        elements = payload["card"]["elements"]
-        # Elements 0 is header, then repo pairs, then final hr
-        repo_sections = [e for e in elements if isinstance(e, dict) and e.get("tag") == "div"]
-        assert len(repo_sections) <= 5
-
-
 class TestFallbackSlack:
     """Test the fallback Slack message generator."""
 
@@ -321,3 +290,80 @@ class TestEdgeCases:
         }]
         reports = formatter.generate_all(repos)
         assert "test/repo" in reports["markdown"]
+
+
+class TestTemplateIntegrity:
+    """模板必须真的渲染成功：JSON parse 失败会静默降级到只看 5 个仓库的兜底。"""
+
+    def _reports(self, formatter, repos, **kw):
+        return formatter.generate_all(repos, **kw)
+
+    def test_slack_payload_parses_from_template(self, formatter, sample_formatted_repos):
+        slack = self._reports(formatter, sample_formatted_repos)["slack"]
+        assert slack.get("blocks"), "Slack 载荷为空"
+        # 兜底载荷的 header 不带 🌌,出现它说明模板渲染失败了
+        joined = json.dumps(slack, ensure_ascii=False)
+        assert "GitHub Trend Report" not in joined
+        assert "DeepSeek-V3" in joined
+
+    def test_slack_survives_quotes_backslashes_and_newlines(self, formatter):
+        """旧模板手写 replace 只处理引号,反斜杠/控制字符会让 json.loads 崩。"""
+        repos = [{
+            "full_name": "tricky/repo",
+            "url": "https://github.com/tricky/repo",
+            "description": 'He said "hi" C:\\path\\to\\file',
+            "language": "Python",
+            "stars": 10,
+            "rating": "A",
+            "tags": ["#X"],
+            "selection_reason": 'quote " and \\ backslash',
+            "chinese_summary": "### 标题\n第二行\t制表符",
+            "refined_summary": "body",
+        }]
+        slack = formatter.generate_all(repos)["slack"]
+        joined = json.dumps(slack, ensure_ascii=False)
+        assert "GitHub Trend Report" not in joined, "落到了 Slack 兜底载荷"
+        texts = [b["text"]["text"] for b in slack["blocks"] if b.get("type") == "section"]
+        assert any("tricky/repo" in t for t in texts)
+
+    def test_empty_repos_still_produces_valid_slack(self, formatter):
+        """空列表时模板尾部逗号会让 json.loads 抛错。"""
+        slack = formatter.generate_all([])["slack"]
+        assert isinstance(slack, dict)
+        assert "GitHub Trend Report" not in json.dumps(slack, ensure_ascii=False)
+
+    def test_markdown_title_follows_timeframe(self, formatter_config, sample_formatted_repos):
+        for timeframe, label in (("daily", "日报"), ("weekly", "周报"), ("monthly", "月报")):
+            persona = {"name": "中阶实践者", "description": "d", "prompt_focus": "f"}
+            formatter = ReportFormatter(formatter_config, persona, timeframe)
+            report = formatter.generate_all(sample_formatted_repos)["markdown"]
+            assert f"LLM 大厂动态{label}" in report.splitlines()[0]
+
+    def test_markdown_uses_bucket_names_not_timeframes(self, formatter, sample_formatted_repos):
+        report = formatter.generate_all(sample_formatted_repos)["markdown"]
+        assert "Early Bird" in report and "High-Star Hot" in report and "Deep Dive" in report
+        assert "每日热门趋势 (Daily Trending)" not in report
+
+    def test_markdown_footer_lists_all_three_providers(self, formatter, sample_formatted_repos):
+        report = formatter.generate_all(sample_formatted_repos)["markdown"]
+        for provider in ("SenseNova", "OpenRouter", "SiliconFlow"):
+            assert provider in report
+
+    def test_no_personal_signature_in_report(self, formatter, sample_formatted_repos):
+        """intermediate 画像硬约束：产出里不得出现具体个人姓名。"""
+        report = formatter.generate_all(sample_formatted_repos)["markdown"]
+        for name in ("Haining", "海宁", "Designed with"):
+            assert name not in report
+
+    def test_candidate_total_replaces_config_placeholder(self, formatter, sample_formatted_repos):
+        """报告分母必须是真实抓取数,不是 max_trending_repos=15。"""
+        report = formatter.generate_all(sample_formatted_repos, candidate_total=238)["markdown"]
+        assert "已从 238 个候选项目中筛选出 2 个" in report
+        assert "15" not in report.split("精选指标")[1].split("\n")[0]
+
+    def test_repos_without_bucket_land_in_deep_dive(self, formatter, sample_formatted_repos):
+        """分桶引擎关闭时 _bucket 缺失,看板不该三栏全空。"""
+        bare = [{k: v for k, v in r.items() if k != "_bucket"} for r in sample_formatted_repos]
+        report = formatter.generate_all(bare)["markdown"]
+        section = report.split("Deep Dive 技术深潜")[1].split("</summary>")[0]
+        assert "共计 2 个项目" in section

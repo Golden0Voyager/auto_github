@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Add project root to path to ensure modules are importable
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.config import load_config
+from src.config import BASE_DIR, load_config
 from src.llm import LLMClient
 from src.notifier import ReportNotifier
 from src.pipeline import CurationPipeline
@@ -74,10 +74,27 @@ def main():
     if args.discord:
         config.notifications.discord_webhook_url = args.discord
 
+    if args.mock:
+        # mock 是离线沙盒：把去重记忆和报告都写到 reports_mock/，
+        # 不碰 reports/ 下线上管线依赖的 repo_history / archive / cycles。
+        sandbox = BASE_DIR / "reports_mock"
+        sandbox.mkdir(exist_ok=True)
+        config.dedup.history_file = str(sandbox / "repo_history.json")
+        config.dedup.archive_file = str(sandbox / "high_star_archive.json")
+        config.dedup.cycles_file = str(sandbox / "repo_cycles.json")
+        config.notifications.local_report_dir = str(sandbox)
+        print(f"[Init] Mock 模式：状态与报告隔离到 {sandbox}/")
+
     print("[Init] Configuration loaded successfully.")
-    print(f"[Init] LLM Provider: {config.ai.default_provider.upper()} (API: {'Configured' if any(os.getenv(f'{p.upper()}_API_KEY') for p in ('openrouter', 'sensenova', 'openai')) else 'Missing'})")
-    roles = getattr(config.ai, "roles", {})
-    print(f"[Init] Classifier: {roles.get('classifier',{}).model if hasattr(roles.get('classifier'),'model') else '?'} | Writer: {roles.get('writer',{}).model if hasattr(roles.get('writer'),'model') else '?'}")
+    roles = config.ai.roles
+    used_providers = sorted({r.provider or config.ai.default_provider for r in roles.values()})
+    missing = [p for p in used_providers if not os.getenv(f"{p.upper()}_API_KEY")]
+    print(f"[Init] LLM providers required by roles: {', '.join(used_providers)}")
+    if missing:
+        print(f"[Init] ⚠️ Missing API keys: {', '.join(f'{p.upper()}_API_KEY' for p in missing)} → 对应角色会走降级路径")
+    for role in ("classifier", "writer", "translator_a", "translator_b", "reviewer"):
+        cfg = roles.get(role)
+        print(f"[Init] {role}: {(cfg.provider or config.ai.default_provider)}/{cfg.model}" if cfg else f"[Init] {role}: <未配置>")
     print(f"[Init] Notification Webhooks: "
           f"Feishu={'Configured' if config.notifications.feishu_webhook_url else 'None'}, "
           f"Slack={'Configured' if config.notifications.slack_webhook_url else 'None'}, "
@@ -104,7 +121,7 @@ def main():
         print("🎉 Execution Completed Successfully!")
         print("=" * 60)
         print(f"Timeframe: {args.since} | Persona: {args.persona}")
-        print(f"Report size: {len(curated_data['repos'])} repositories matching criteria.")
+        print(f"Report size: {len(curated_data.get('repos', []))} repositories matching criteria.")
 
         # Dedup 状态
         meta = curated_data.get("meta", {})

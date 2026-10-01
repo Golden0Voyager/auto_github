@@ -24,13 +24,19 @@
       },
       ...
     }
-    —— 高星项目出现次数 ≥ archive_threshold 后被永久存档，
-       30 天内（cooldown_until 之前）不再出现在日报中。
+    —— 高星项目出现次数 ≥ archive_threshold 后进入存档，冷却期内不再出现在日报中。
+
+  reports/repo_cycles.json
+    {"owner/repo": 2}
+    —— 归档轮次；steps_cooldown 开启时冷却天数 =
+       archive_cooldown_days × max(1, 1 + 0.5×(cycle-1))，封顶 max_cooldown_days。
+       冷却到期只删存档标记，轮次保留，所以同一项目每次回归被关得更久。
 """
 
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 from src.config import BASE_DIR, AppConfig
 
@@ -44,16 +50,24 @@ def _parse_date(s: str) -> datetime:
     return datetime.strptime(s, "%Y-%m-%d")
 
 
+def _parse_date_or_none(s: Any) -> datetime | None:
+    """Parse a stored date, tolerating hand-edited or legacy state files."""
+    try:
+        return _parse_date(str(s))
+    except (TypeError, ValueError):
+        return None
+
+
 class RepoHistoryTracker:
-    """高星项目追踪：去重 + 存档 + 30 天冷却。
+    """高星项目追踪：去重 + 存档 + 阶梯冷却。
 
     典型用法（在 pipeline 中）：
 
         tracker = RepoHistoryTracker(config)
         # 1. 过滤掉仍在冷却期内的存档项目
-        filtered = tracker.filter_active(raw_repos)
-        # 2. 跑完 6-stage 后，把本次出现的项目计入历史
-        archived_now = tracker.record_occurrences(filtered)
+        active, cooled, first_seen_map = tracker.filter_active(raw_repos)
+        # 2. 跑完管线后，把本次入选的项目计入历史并晋升满足条件者到存档
+        archived_now = tracker.record_occurrences(active)
     """
 
     def __init__(self, config: AppConfig):
@@ -77,9 +91,15 @@ class RepoHistoryTracker:
         if not path.exists():
             return default
         try:
-            return json.loads(path.read_text(encoding="utf-8"))
-        except Exception:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as e:
+            # Silent reset here would erase the system's dedup memory with no trace.
+            print(f"[Dedup Warning] {path.name} is unreadable ({e}); starting from empty state.")
             return default
+        if not isinstance(data, dict):
+            print(f"[Dedup Warning] {path.name} is not a JSON object; ignoring its contents.")
+            return default
+        return data
 
     def _save(self) -> None:
         """原子写入历史与存档（先写临时文件再 rename，避免半写状态）。"""
@@ -106,9 +126,8 @@ class RepoHistoryTracker:
         info = self._archive.get(full_name)
         if not info:
             return False
-        try:
-            until = _parse_date(info["cooldown_until"])
-        except (KeyError, ValueError):
+        until = _parse_date_or_none(info.get("cooldown_until"))
+        if until is None:
             return False
         return _parse_date(_today()) < until
 
@@ -131,7 +150,11 @@ class RepoHistoryTracker:
             else:
                 active.append(r)
             dates = self._history.get(name, [])
-            first_seen_map[name] = not any(_parse_date(d) >= cutoff for d in dates)
+            seen_in_window = any(
+                (parsed := _parse_date_or_none(raw)) is not None and parsed >= cutoff
+                for raw in dates
+            )
+            first_seen_map[name] = not seen_in_window
         return active, cooled, first_seen_map
 
     # ------------------------------------------------------------------
@@ -202,7 +225,7 @@ class RepoHistoryTracker:
         """裁剪超出 TTL 的历史记录，防止 repo_history.json 无限膨胀。"""
         cutoff = _parse_date(_today()) - timedelta(days=self.history_ttl_days)
         for name, dates in list(self._history.items()):
-            keep = [d for d in dates if _parse_date(d) >= cutoff]
+            keep = [d for d in dates if (parsed := _parse_date_or_none(d)) is not None and parsed >= cutoff]
             if keep:
                 self._history[name] = keep
             else:
@@ -212,23 +235,19 @@ class RepoHistoryTracker:
         """清理过期的存档项目（cooldown_until < 今天）。
 
         过期项目允许重新进入策展管线（如果它们再次进入 trending 列表）。
+        只移除「仍在冷却中」这一标记：出现历史与归档轮次必须保留，否则
+        下次归档又从 cycle 1 重新计起，阶梯冷却永远停在基础 30 天。
         Returns:
             被清理的存档项数量。
         """
         today = _parse_date(_today())
         expired = []
         for name, info in self._archive.items():
-            try:
-                until = _parse_date(info["cooldown_until"])
-            except (KeyError, ValueError):
-                expired.append(name)
-                continue
-            if until < today:
+            until = _parse_date_or_none(info.get("cooldown_until") if isinstance(info, dict) else None)
+            if until is None or until < today:
                 expired.append(name)
         for name in expired:
             del self._archive[name]
-            self._history.pop(name, None)
-            self._cycle_counter.pop(name, None)
         if expired:
             self._save()
         return len(expired)

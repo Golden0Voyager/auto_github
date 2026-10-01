@@ -56,21 +56,20 @@ auto_github/
 │   ├── high_star_archive.json  # 冷却中的高🌟项目存档 (dedup 状态)
 │   └── repo_cycles.json        # 归档轮次计数 (阶梯冷却用,dedup 状态)
 ├── src/
+│   ├── __init__.py             # 包标记 (mypy 需要)
 │   ├── config.py               # Pydantic 配置引擎 + 多 provider 路由表
 │   ├── crawler.py              # GitHub Trend HTML 爬虫 & API 客户端
 │   ├── dedup.py                # 高🌟项目存档追踪器 (阶梯冷却 + 留展位)
-│   ├── llm.py                  # LLM 网关 (多 provider + 429 指数退避 + fallback 模型)
-│   ├── pipeline.py             # 多阶段编排 (分桶/翻译竞稿/评审 + JSON 容错)
-│   ├── formatter.py            # 排版渲染器 (飞书/Slack/Markdown)
+│   ├── llm.py                  # LLM 网关 (多 provider + LLMError 契约 + 429 退避 + fallback)
+│   ├── pipeline.py             # 多阶段编排 (分桶/写作反思/翻译竞稿/评审)
+│   ├── formatter.py            # 排版渲染器 (Markdown/Slack 走 Jinja,飞书卡片在 Python 构造)
 │   ├── notifier.py             # Webhook 分发与本地写入
-│   └── main.py                 # CLI 入口
+│   └── main.py                 # CLI 入口 (--mock 状态隔离到 reports_mock/)
 ├── templates/
-│   ├── feishu_card.json.j2     # 飞书卡片 Jinja2 模板
 │   ├── slack_blocks.json.j2    # Slack blocks Jinja2 模板
 │   └── report.md.j2            # Markdown 报告 Jinja2 模板
-├── pyproject.toml              # 依赖声明 + ruff/pytest/coverage 配置
-├── uv.lock                     # uv 锁定文件 (Dependabot 扫描对象)
-├── requirements.txt            # CI 安装清单
+├── pyproject.toml              # 依赖声明 + ruff/mypy/bandit/pytest/coverage 配置
+├── uv.lock                     # uv 锁定文件 (Dependabot 与 pip-audit 扫描对象)
 └── README.md                   # 本说明文档
 ```
 
@@ -92,8 +91,11 @@ auto_github/
 # 一键装依赖(uv 自动建 venv 并按 uv.lock 锁版本)
 uv sync
 
-# 跑测试套件(~310 用例,coverage 门槛 85%)
+# 跑测试套件(~340 用例,coverage 门槛 85%;测试与 CI 都只吃 uv.lock)
 uv run pytest tests/ --cov
+
+# CI 同等门禁(ruff / mypy / bandit 都要零告警)
+uv run ruff check src/ tests/ && uv run mypy src/ && uv tool run bandit -q -r src/
 ```
 
 ### 2. 配置环境变量
@@ -116,7 +118,7 @@ GITHUB_TOKEN="your-github-token"
 ### 3. 本地命令行运行
 
 ```bash
-# 1. 以中阶画像运行一次离线沙盒模拟 (0 消耗 token，快速验证排版与通知链路)
+# 1. 以中阶画像运行一次离线沙盒模拟 (0 token / 0 网络,报告与状态写到 reports_mock/)
 python src/main.py --mock --persona intermediate
 
 # 2. 真实抓取数据并调用 LLM 进行 S/A/B 级策展总结
@@ -126,14 +128,23 @@ python src/main.py --since daily --persona intermediate
 python src/main.py --since weekly --persona advanced
 ```
 
+> `--mock` 完全隔离:不抓 trending、不抓 README、不调 LLM,去重记忆与报告都落在
+> gitignore 的 `reports_mock/`,不会污染 `reports/` 下线上管线依赖的状态文件。
+
 ---
 
 ## 🚀 GitHub Actions 线上定时自动运行
 
-本仓库已布设好 GitHub Actions 工作流：
+本仓库已布设好 GitHub Actions 工作流 (`.github/workflows/daily_trending.yml`)：
 1. **定时触发**：每天 UTC 02:00 (北京时间上午 10:00) 自动运行。
-2. **Git 归档日志**:生成报告后,工作流会将 Markdown 报告以 `[skip ci]` 方式自动 commit 并 push 到 **`auto-docs` 孤儿分支**(`reports/latest_daily.md` 常驻该分支),main 保留历史报告,形成不可篡改的开源技术史记看板。
-3. **推送 Webhook**：自动向绑定的飞书、Slack 或 Discord 机器人推送经过视觉美化排版的互动消息。
+2. **三段 job**：`test` (ruff + mypy + bandit + pytest/coverage，门禁) →
+   `curate-and-notify` (`needs: [test]`，跑完整管线并推送) ；
+   `supply-chain` (`uv lock --check` + `pip-audit`，红叉可见但不拦日报)。
+3. **Git 归档日志**:生成报告后,工作流会将 Markdown 报告与三个 dedup 状态文件以 `[skip ci]`
+   方式 commit 并 push 到 **`auto-docs` 孤儿分支**(`reports/latest_daily.md` 常驻该分支)。
+   下次运行前会先**从 `auto-docs` 读回状态文件**,保证阶梯冷却的记忆跨运行连续。
+4. **推送 Webhook**：自动向绑定的飞书、Slack 或 Discord 机器人推送经过视觉美化排版的互动消息。
+5. **产物兜底**：`upload-artifact` 保存整份 `reports/`，push 失败也不会丢报告。
 
 ### 配置 Actions 密钥 (GitHub Secrets)
 在 GitHub 仓库的 `Settings` -> `Secrets and variables` -> `Actions` 下添加以下机密信息：

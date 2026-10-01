@@ -1,10 +1,14 @@
+{#
+  Slack Block Kit payload. 每段文本先拼成 Jinja 字符串,再整体过 tojson,
+  避免手写 replace 转义漏掉反斜杠/控制字符导致 json.loads 失败。
+#}
 {
   "blocks": [
     {
       "type": "header",
       "text": {
         "type": "plain_text",
-        "text": "🌌 GitHub Trend & Activity ({{ persona.name }}) - {{ timeframe | capitalize }}",
+        "text": {% set header_text = "🌌 GitHub Trend & Activity (" ~ persona.name ~ ") - " ~ timeframe | capitalize %}{{ header_text | tojson }},
         "emoji": true
       }
     },
@@ -12,35 +16,34 @@
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text": "*🎯 Target Persona*: {{ persona.name }} | *Time*: {{ timestamp }}\nSelected *{{ repos | length }}* high-value updates out of {{ total_input }} repositories."
+        "text": {% set intro_text = "*🎯 Target Persona*: " ~ persona.name ~ " | *Time*: " ~ timestamp ~ "\nSelected *" ~ (repos | length) ~ "* high-value updates out of " ~ total_input ~ " candidates." %}{{ intro_text | tojson }}
       }
     },
     {
       "type": "divider"
     },
-    {% for r in repos %}
+{%- for r in repos %}
+{%- set depth = "👑 [S]" if r.rating == 'S' else "🔥 [A]" if r.rating == 'A' else "🔹 [" ~ r.rating ~ "]" %}
+{%- set body = depth ~ " <" ~ r.url ~ "|" ~ r.full_name ~ ">*\n" %}
+{%- if r.description %}{%- set body = body ~ "📝 _" ~ (r.description | truncate(120, true)) ~ "_\n" %}{% endif %}
+{%- set body = body ~ "*Tags*: " ~ (r.tags | join(' ')) ~ " | *Depth*: `" ~ r.tds ~ "` | *Lang*: `" ~ r.language ~ "` | *Stars*: " ~ (r.period_stars if r.period_stars else "⭐️ " ~ r.stars) ~ "\n\n_" ~ r.selection_reason ~ "_\n\n" ~ r.chinese_summary %}
     {
       "type": "section",
       "text": {
         "type": "mrkdwn",
-        "text": "*{% if r.rating == 'S' %}👑 [S] {% elif r.rating == 'A' %}🔥 [A] {% else %}🔹 [{{ r.rating }}] {% endif %} <{{ r.url }}|{{ r.full_name }}>*\n{% if r.description %}📝 _{{ r.description | truncate(120) }}_\n{% endif %}*Tags*: {% for t in r.tags %}`{{ t }}` {% endfor %} | *Lang*: `{{ r.language }}` | *Stars*: {% if r.period_stars %}{{ r.period_stars }}{% else %}⭐️ {{ r.stars }}{% endif %}\n\n_Reason: {{ r.selection_reason }}_\n\n{{ r.chinese_summary | replace('\"', '\\\"') | replace('\n', '\\n') }}"
+        "text": {{ body | tojson }}
       }
-    }
-    {% if not loop.last %}
-    ,{
-      "type": "divider"
     },
-    {% endif %}
-    {% endfor %},
     {
       "type": "divider"
     },
+{%- endfor %}
     {
       "type": "context",
       "elements": [
         {
           "type": "mrkdwn",
-          "text": "Multi-model pipeline via OpenRouter + SenseNova."
+          "text": {{ provider_footer | tojson }}
         }
       ]
     }

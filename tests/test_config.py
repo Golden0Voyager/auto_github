@@ -9,8 +9,12 @@ Covers:
 
 from pathlib import Path
 
+import yaml
+
 # Project root is already added by conftest
 from src.config import (
+    _PROVIDER_ENV,
+    BASE_DIR,
     AIConfig,
     AppConfig,
     DedupConfig,
@@ -44,8 +48,9 @@ class TestAppConfigDefaults:
         assert cfg.ai.temperature == 0.3
         assert cfg.ai.max_tokens == 8192
         assert cfg.ai.rate_limit_delay == 4.0
-        assert cfg.ai.api_key is None
-        assert cfg.ai.base_url is None
+        assert cfg.ai.roles["classifier"].provider == "sensenova"
+        assert cfg.ai.roles["translator_a"].provider == "siliconflow"
+        assert cfg.ai.roles["translator_b"].provider == "siliconflow"
 
     def test_dedup_defaults(self):
         cfg = AppConfig()
@@ -149,13 +154,28 @@ class TestModelValidation:
         assert cfg.monitored_orgs == []
         assert cfg.monitored_users == []
 
-    def test_aiconfig_no_key_by_default(self):
+    def test_aiconfig_roles_cover_all_five(self):
         cfg = AIConfig()
-        assert cfg.api_key is None
+        assert set(cfg.roles) == {"classifier", "writer", "translator_a", "translator_b", "reviewer"}
+        for role, role_cfg in cfg.roles.items():
+            assert role_cfg.model, role
+            assert role_cfg.provider in _PROVIDER_ENV, role
 
-    def test_aiconfig_with_key(self):
-        cfg = AIConfig(api_key="sk-test")
-        assert cfg.api_key == "sk-test"
+    def test_code_role_defaults_mirror_config_yaml(self):
+        """config.py 的 roles 默认值必须与 config/config.yaml 一致。
+
+        AGENTS.md 要求两处同步；历史上 translator 通道就是因此漂过，
+        把 "Error: no client..." 写进了报告正文。
+        """
+        yaml_path = BASE_DIR / "config" / "config.yaml"
+        yaml_roles = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))["ai"]["roles"]
+        cfg = AIConfig()
+        for role, expected in yaml_roles.items():
+            actual = cfg.roles[role]
+            assert actual.model == expected["model"], role
+            assert actual.provider == expected["provider"], role
+            assert actual.fallback_model == expected.get("fallback_model"), role
+            assert actual.fallback_provider == expected.get("fallback_provider"), role
 
     def test_empty_config_yaml_fails_gracefully(self):
         """An empty dict should produce a valid AppConfig with defaults."""

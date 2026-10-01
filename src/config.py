@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -26,19 +26,15 @@ class AIConfig(BaseModel):
     temperature: float = 0.3
     max_tokens: int = 8192
     rate_limit_delay: float = 4.0
-    api_key: str | None = None
-    base_url: str | None = None
+    # Mirror of config/config.yaml `ai.roles` for runs without that file; keep in sync.
     roles: dict[str, RoleConfig] = Field(default_factory=lambda: {
         "classifier": RoleConfig(model="sensenova-6.8-flash-lite", provider="sensenova"),
         "writer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter"),
-        "translator_a": RoleConfig(model="sensenova-6.8-flash-lite", provider="sensenova"),
-        "translator_b": RoleConfig(model="google/gemma-4-31b-it:free", provider="openrouter",
-                                   fallback_model="nvidia/nemotron-3-ultra-550b-a55b:free", fallback_provider="openrouter"),
+        "translator_a": RoleConfig(model="tencent/Hunyuan-MT-7B", provider="siliconflow"),
+        "translator_b": RoleConfig(model="Qwen/Qwen2.5-7B-Instruct", provider="siliconflow"),
         "reviewer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter",
                                fallback_model="nvidia/nemotron-3-super-120b-a12b:free", fallback_provider="openrouter"),
     })
-    model_v3: str | None = Field(default=None, exclude=True)
-    model_r1: str | None = Field(default=None, exclude=True)
 
 
 _PROVIDER_ENV = {
@@ -70,6 +66,17 @@ class BucketAllocationConfig(BaseModel):
     deep_dive: int = 3
     diversity_enabled: bool = True
     diversity_max_ratio: float = 0.4
+
+    @model_validator(mode="after")
+    def check_quota_sum(self) -> "BucketAllocationConfig":
+        # _bucket_allocate fills/trims against total_slots; a mismatch silently
+        # changes the intended per-bucket exposure.
+        allocated = self.early_bird + self.high_star_hot + self.deep_dive
+        if allocated != self.total_slots:
+            raise ValueError(
+                f"bucket_allocation quotas sum to {allocated}, must equal total_slots={self.total_slots}"
+            )
+        return self
 
 
 class Stage2PreFilterConfig(BaseModel):

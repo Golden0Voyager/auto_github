@@ -1,11 +1,11 @@
-"""Tests for src/llm.py (multi-provider, stats sync, edge cases)."""
+"""Tests for src/llm.py role routing, stats sync, and provider edge cases."""
 
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from src.config import AIConfig, AppConfig, RoleConfig
-from src.llm import LLMClient
+from src.llm import LLMClient, LLMError
 
 
 @pytest.fixture
@@ -21,7 +21,6 @@ def llm_config(monkeypatch) -> AppConfig:
                 "reviewer": RoleConfig(model="gpt-4o-mini", provider="openai"),
             },
             rate_limit_delay=0.01,
-            api_key="sk-test-key",
         )
     )
 
@@ -57,12 +56,13 @@ class TestCallLLMEdgeCases:
         for role in ("classifier", "writer", "translator_a", "translator_b", "reviewer"):
             assert c.call_llm([{"role": "user", "content": "test"}], role=role)["content"] == "ok"
 
-    def test_no_key_returns_error(self, monkeypatch):
+    def test_no_key_raises(self, monkeypatch):
         monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
         monkeypatch.delenv("SENSENOVA_API_KEY", raising=False)
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        r = LLMClient(AppConfig()).call_llm([{"role": "user", "content": "Hi"}])
-        assert "Error:" in r.get("content", "")
+        monkeypatch.delenv("SILICONFLOW_API_KEY", raising=False)
+        with pytest.raises(LLMError, match="no client for provider"):
+            LLMClient(AppConfig()).call_llm([{"role": "user", "content": "Hi"}])
 
 
 class TestStats:
