@@ -119,7 +119,12 @@ class LLMClient:
                 response = client.chat.completions.create(
                     model=model, messages=messages, max_tokens=max_tokens, temperature=temperature, timeout=timeout,
                 )
-                choice = response.choices[0]
+                choices = getattr(response, "choices", None)
+                if not choices:
+                    # 部分 provider 在限流/审核/空补全时返回没有 choices 的 200,
+                    # 直接下标会炸 'NoneType' object is not subscriptable
+                    raise LLMError(f"{provider}/{model} returned no choices")
+                choice = choices[0]
                 content = choice.message.content or ""
 
                 reasoning: str | None = None

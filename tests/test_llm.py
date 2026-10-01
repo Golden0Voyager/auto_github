@@ -344,3 +344,29 @@ class TestRoleCircuitBreaker:
             client.call_llm([{"role": "user", "content": "Hi"}], role="translator_a", retries=1, backoff_factor=1.0)
         assert client.has_role("translator_a") is False
         assert client.has_role("writer") is True
+
+
+class TestEmptyChoicesResponse:
+    """provider 返回没有 choices 的 200 响应时不能 'NoneType' object is not subscriptable。
+
+    真实 CI 跑里 openrouter 出现过一次,靠重试才蒙混过去。
+    """
+
+    def test_missing_choices_counts_as_failed_attempt(self, llm_config, mock_openai):
+        mock_client = mock_openai.return_value
+        mock_client.chat.completions.create.return_value = MagicMock(choices=None)
+        client = LLMClient(llm_config)
+
+        # 空 choices 被当成一次失败重试，耗尽后由 call_llm 统一抛"失败后熔断"
+        with pytest.raises(LLMError, match="failed after"):
+            client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=1, backoff_factor=1.0)
+        assert client.get_stats()["failed_attempt_count"] == 1
+
+    def test_empty_choices_list_is_retried_then_raises(self, llm_config, mock_openai):
+        mock_client = mock_openai.return_value
+        mock_client.chat.completions.create.return_value = MagicMock(choices=[])
+        client = LLMClient(llm_config)
+
+        with pytest.raises(LLMError, match="failed after"):
+            client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=2, backoff_factor=1.0)
+        assert mock_client.chat.completions.create.call_count == 2
