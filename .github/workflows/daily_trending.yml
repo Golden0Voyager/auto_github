@@ -257,13 +257,15 @@ jobs:
             # -f 必需：reports/*.json 刚被合并+管线改过,不带 -f 会 "local changes would be
             # overwritten by checkout" 直接失败(新生成的内容已存在 /tmp/auto-docs-save,不会丢)
             git checkout -q -f -B _docs origin/auto-docs
-            rm -rf reports/
           else
             git checkout -q --orphan _docs
             # orphan 检出会带着 main 的全部索引，只保留 reports/
             git rm -r --cached -q .
             rm -rf reports/
           fi
+          # 不要清空 reports/：直接覆盖同名文件,让历史 daily_<日期>.md 留在分支上。
+          # 早先的 `rm -rf reports/` 会让分支只保得住最近一份报告,历史只活在
+          # 保留期 90 天的 Actions artifact 里。
           mkdir -p reports
           cp -a /tmp/auto-docs-save/. reports/
           rm -rf /tmp/auto-docs-save
