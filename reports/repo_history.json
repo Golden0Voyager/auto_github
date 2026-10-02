@@ -1,104 +1,123 @@
 {
+  "NousResearch/hermes-agent": [
+    "2026-09-30",
+    "2026-10-01"
+  ],
+  "comfyanonymous/ComfyUI_examples": [
+    "2026-09-30"
+  ],
+  "stablyai/orca": [
+    "2026-09-30"
+  ],
+  "vllm-project/llm-compressor": [
+    "2026-10-01"
+  ],
+  "THUDM/AgentBench": [
+    "2026-10-01"
+  ],
+  "google-research/sima": [
+    "2026-06-27"
+  ],
+  "openai/openai-dotnet": [
+    "2026-10-01"
+  ],
+  "meta-llama/llama3": [
+    "2026-06-27"
+  ],
   "QwenLM/Qwen-MM-Plugins": [
     "2026-10-01"
   ],
   "lucidrains/MLA-pytorch": [
     "2026-06-27"
   ],
-  "jonbarron/jonbarron.github.io": [
-    "2026-10-01"
-  ],
-  "google-research/sima": [
+  "anthropics/claude-code": [
     "2026-06-27"
-  ],
-  "deepseek-ai/DeepSeek-V3": [
-    "2026-06-27"
-  ],
-  "modelcontextprotocol/servers": [
-    "2026-10-01"
-  ],
-  "patriciogonzalezvivo/lygia": [
-    "2026-10-01"
-  ],
-  "vercel/next.js": [
-    "2026-09-30",
-    "2026-10-01"
-  ],
-  "microsoft/AutoDev": [
-    "2026-06-27"
-  ],
-  "vllm-project/llm-compressor": [
-    "2026-10-01"
-  ],
-  "openai/whisper": [
-    "2026-06-27"
-  ],
-  "deepseek-ai/FlashMLA": [
-    "2026-09-30",
-    "2026-10-01"
-  ],
-  "mistralai/mistral-inference": [
-    "2026-06-27"
-  ],
-  "affaan-m/ECC": [
-    "2026-09-30",
-    "2026-10-01"
   ],
   "deepseek-ai/DeepSeek-R1": [
     "2026-01-01",
     "2026-01-02",
     "2026-06-27"
   ],
-  "modelcontextprotocol/typescript-sdk": [
+  "jonbarron/jonbarron.github.io": [
+    "2026-10-01"
+  ],
+  "microsoft/react-native-macos": [
     "2026-09-30"
   ],
-  "meta-llama/llama3": [
-    "2026-06-27"
+  "modelcontextprotocol/servers": [
+    "2026-10-01"
   ],
   "openclaw/openclaw": [
     "2026-10-01"
   ],
-  "THUDM/AgentBench": [
-    "2026-10-01"
-  ],
-  "NVIDIA/OpenShell": [
+  "ggerganov/imtui": [
     "2026-10-01"
   ],
   "meta-llama/PurpleLlama": [
     "2026-09-30"
   ],
-  "stablyai/orca": [
-    "2026-09-30"
-  ],
-  "microsoft/react-native-macos": [
-    "2026-09-30"
-  ],
-  "mattpocock/skills": [
+  "patriciogonzalezvivo/lygia": [
     "2026-10-01"
   ],
-  "NousResearch/hermes-agent": [
-    "2026-09-30",
-    "2026-10-01"
-  ],
-  "anthropics/claude-code": [
+  "deepseek-ai/DeepSeek-V3": [
     "2026-06-27"
   ],
-  "comfyanonymous/ComfyUI_examples": [
-    "2026-09-30"
+  "vercel/next.js": [
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02"
   ],
-  "ggerganov/imtui": [
-    "2026-10-01"
+  "mistralai/mistral-inference": [
+    "2026-06-27"
   ],
   "tiangolo/uvicorn-gunicorn-fastapi-docker": [
     "2026-10-01"
   ],
-  "openai/openai-dotnet": [
+  "mattpocock/skills": [
+    "2026-10-01",
+    "2026-10-02"
+  ],
+  "deepseek-ai/FlashMLA": [
+    "2026-09-30",
     "2026-10-01"
+  ],
+  "microsoft/AutoDev": [
+    "2026-06-27"
+  ],
+  "affaan-m/ECC": [
+    "2026-09-30",
+    "2026-10-01"
+  ],
+  "openai/whisper": [
+    "2026-06-27"
+  ],
+  "modelcontextprotocol/typescript-sdk": [
+    "2026-09-30",
+    "2026-10-02"
   ],
   "huggingface/huggingface.js": [
     "2026-10-01"
   ],
+  "NVIDIA/OpenShell": [
+    "2026-10-01",
+    "2026-10-02"
+  ],
   "modelcontextprotocol/python-sdk": [
     "2026-10-01"
+  ],
+  "modelcontextprotocol/rust-sdk": [
+    "2026-10-02"
+  ],
+  "huggingface/huggingface_hub": [
+    "2026-10-02"
+  ],
+  "microsoft/WindowsDeveloperConfig": [
+    "2026-10-02"
+  ],
+  "obra/superpowers": [
+    "2026-10-02"
+  ],
+  "microsoft/markitdown": [
+    "2026-10-02"
   ]
 }

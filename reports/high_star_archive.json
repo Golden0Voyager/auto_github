@@ -1,1 +1,9 @@
-{}
+{
+  "vercel/next.js": {
+    "first_seen": "2026-09-30",
+    "archived_at": "2026-10-02",
+    "cooldown_until": "2026-11-01",
+    "stars": 142999,
+    "occurrences": 3
+  }
+}
