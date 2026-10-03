@@ -1,5 +1,8 @@
 {
+  "vercel/next.js": 1,
   "deepseek-ai/DeepSeek-R1": 3,
   "highstar/repo": 3,
-  "vercel/next.js": 1
+  "NVIDIA/OpenShell": 1,
+  "mattpocock/skills": 1,
+  "affaan-m/ECC": 1
 }

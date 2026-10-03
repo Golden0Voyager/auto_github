@@ -5,5 +5,26 @@
     "cooldown_until": "2026-11-01",
     "stars": 142999,
     "occurrences": 3
+  },
+  "NVIDIA/OpenShell": {
+    "first_seen": "2026-10-01",
+    "archived_at": "2026-10-03",
+    "cooldown_until": "2026-11-02",
+    "stars": 14526,
+    "occurrences": 3
+  },
+  "mattpocock/skills": {
+    "first_seen": "2026-10-01",
+    "archived_at": "2026-10-03",
+    "cooldown_until": "2026-11-02",
+    "stars": 274875,
+    "occurrences": 3
+  },
+  "affaan-m/ECC": {
+    "first_seen": "2026-09-30",
+    "archived_at": "2026-10-03",
+    "cooldown_until": "2026-11-02",
+    "stars": 271564,
+    "occurrences": 3
   }
 }
