@@ -19,6 +19,7 @@ import pytest
 from src.config import AIConfig, AppConfig, GitHubConfig, Stage2PreFilterConfig
 from src.llm import LLMError
 from src.pipeline import (
+    REVIEW_MAX_TOKENS,
     WRITER_SECTIONS,
     CurationPipeline,
     _analysis_complete,
@@ -233,12 +234,14 @@ class _FakeLLM:
         self.available = available
         self.responder = responder
         self.calls: list[str] = []
+        self.call_kwargs: list[dict] = []
 
     def has_role(self, role: str) -> bool:
         return role in self.available
 
     def call_llm(self, messages, role="writer", **kwargs):
         self.calls.append(role)
+        self.call_kwargs.append(kwargs)
         return self.responder(role, messages)
 
 
@@ -303,12 +306,14 @@ class _TrippingLLM:
         self.available = set(available)
         self.failing = failing
         self.calls: list[str] = []
+        self.call_kwargs: list[dict] = []
 
     def has_role(self, role: str) -> bool:
         return role in self.available
 
     def call_llm(self, messages, role="writer", **kwargs):
         self.calls.append(role)
+        self.call_kwargs.append(kwargs)
         if role == self.failing:
             self.available.discard(role)
             raise LLMError(f"role '{role}' failed; channel tripped off")
@@ -375,6 +380,14 @@ class TestReviewDegradation:
         pipeline._stage_review(repos)
         assert "### 要解决的核心痛点" in repos[0]["chinese_summary"]
         assert llm.calls == []
+
+    def test_reviewer_gets_reasoning_headroom(self, batch_config):
+        """max_tokens 不能只够一个字母：推理型模型会把 reasoning 算进同一预算。"""
+        llm = _FakeLLM({"reviewer"}, lambda role, msg: {"content": "A"})
+        pipeline = _batch_pipeline(batch_config, llm)
+        pipeline._stage_review(self._repos(_TRANSLATED_A, _TRANSLATED_B))
+        assert llm.call_kwargs[0]["max_tokens"] == REVIEW_MAX_TOKENS
+        assert REVIEW_MAX_TOKENS >= 32
 
 
 class TestPipelineRunEdgeCases:

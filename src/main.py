@@ -94,7 +94,11 @@ def main():
         print(f"[Init] ⚠️ Missing API keys: {', '.join(f'{p.upper()}_API_KEY' for p in missing)} → 对应角色会走降级路径")
     for role in ("classifier", "writer", "translator_a", "translator_b", "reviewer"):
         cfg = roles.get(role)
-        print(f"[Init] {role}: {(cfg.provider or config.ai.default_provider)}/{cfg.model}" if cfg else f"[Init] {role}: <未配置>")
+        if not cfg:
+            print(f"[Init] {role}: <未配置>")
+            continue
+        tag = f"  [变体 {config.ai.writer_variant}]" if role == "writer" else ""
+        print(f"[Init] {role}: {(cfg.provider or config.ai.default_provider)}/{cfg.model}{tag}")
     print(f"[Init] Notification Webhooks: "
           f"Feishu={'Configured' if config.notifications.feishu_webhook_url else 'None'}, "
           f"Slack={'Configured' if config.notifications.slack_webhook_url else 'None'}, "

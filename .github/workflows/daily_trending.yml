@@ -43,6 +43,14 @@ on:
           - intermediate
           - beginner
           - advanced
+      writer_variant:
+        description: 'Writer model A/B (a=current, b=candidate)'
+        required: true
+        default: 'a'
+        type: choice
+        options:
+          - a
+          - b
 
 # 同一 ref 串行：并发跑会让两次 curate 争抢 auto-docs 上的去重记忆
 concurrency:
@@ -218,13 +226,16 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
 
+          # writer A/B：走 env 而不是把 ${{ }} 内插进命令行,避开 Actions 脚本注入面
+          WRITER_VARIANT: ${{ github.event.inputs.writer_variant || 'a' }}
+
           # Actions 日志按块缓冲会让 per-stage 成本归因挤在一起
           PYTHONUNBUFFERED: 1
         run: |
           TIMEFRAME="${{ github.event.inputs.since || 'daily' }}"
           PERSONA="${{ github.event.inputs.persona || 'intermediate' }}"
 
-          echo "Running pipeline with timeframe=$TIMEFRAME and persona=$PERSONA..."
+          echo "Running pipeline with timeframe=$TIMEFRAME, persona=$PERSONA, writer_variant=$WRITER_VARIANT..."
           uv run python src/main.py --since "$TIMEFRAME" --persona "$PERSONA"
 
       - name: Upload report artifacts

@@ -20,6 +20,10 @@ RATING_ORDER = {"S": 0, "A": 1, "B": 2, "C": 3}
 
 # 短于该长度的正文不值得翻译（多半是 stub 或失败产物）
 MIN_TRANSLATABLE_CHARS = 50
+# Review 只回一个字母,但推理型模型会把 reasoning_content 算进同一个预算,
+# 10 token 可能全被思考吃掉、正文返回空。64 token 换掉这个风险,
+# 代价是每次多约 54 个 output token（免费模型不计费,可忽略）。
+REVIEW_MAX_TOKENS = 64
 # 喂给 writer 的 README 摘录预算：够判断项目实际做什么，又不吃掉整个 input 配额
 README_CONTEXT_CHARS = 1200
 
@@ -658,7 +662,7 @@ class CurationPipeline:
             try:
                 res = self.llm.call_llm(
                     [{"role": "user", "content": REVIEW_PROMPT.format(ta=ta, tb=tb)}],
-                    role="reviewer", temperature=0.1, max_tokens=10,
+                    role="reviewer", temperature=0.1, max_tokens=REVIEW_MAX_TOKENS,
                 )
             except Exception as e:
                 print(f"  [Review Fail] {r['full_name']}: {e} → 采用 A 通道")

@@ -60,6 +60,7 @@ ai:
       model: sensenova-6.8-flash-lite
       provider: sensenova
     writer:
+      # A 案（现役）。B 案见下方 writer_variants.b
       model: nvidia/nemotron-3-ultra-550b-a55b:free
       provider: openrouter
       # writer 原本没有 fallback：ultra 连续返回空 choices 时只剩重试,没有第二条腿
@@ -75,6 +76,17 @@ ai:
       model: nvidia/nemotron-3-ultra-550b-a55b:free
       provider: openrouter
       fallback_model: nvidia/nemotron-3-super-120b-a12b:free
+      fallback_provider: openrouter
+
+  # writer 的 A/B：'a' 即上面 roles.writer 本身；改成 'b' 就换用候选模型跑一轮对比质量。
+  # 也可以不改这里,用环境变量 WRITER_VARIANT=b（workflow_dispatch 的下拉框走这条）。
+  # b 用新一代 lightning 做主模型时,降级方向反过来指向 ultra,两案互为兜底。
+  writer_variant: a
+  writer_variants:
+    b:
+      model: nvidia/nemotron-3.5-lightning:free
+      provider: openrouter
+      fallback_model: nvidia/nemotron-3-ultra-550b-a55b:free
       fallback_provider: openrouter
 
 # 高星项目去重配置（节省算力 + 给新兴项目留展位）

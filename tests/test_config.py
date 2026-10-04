@@ -182,3 +182,54 @@ class TestModelValidation:
         cfg = AppConfig(**{})
         assert cfg.ai.default_provider == "openrouter"
         assert cfg.dedup.archive_threshold == 3
+
+
+ULTRA = "nvidia/nemotron-3-ultra-550b-a55b:free"
+LIGHTNING = "nvidia/nemotron-3.5-lightning:free"
+
+
+class TestWriterVariant:
+    """writer 的 A/B 开关：'a' 就是 roles.writer,变体表只放替代方案。"""
+
+    def test_default_variant_keeps_current_writer(self):
+        cfg = AIConfig()
+        assert cfg.writer_variant == "a"
+        assert cfg.roles["writer"].model == ULTRA
+
+    def test_variant_b_swaps_writer_and_reverses_fallback(self):
+        cfg = AIConfig(writer_variant="b")
+        writer = cfg.roles["writer"]
+        assert writer.model == LIGHTNING
+        assert writer.fallback_model == ULTRA
+
+    def test_other_roles_untouched_by_variant(self):
+        cfg = AIConfig(writer_variant="b")
+        assert cfg.roles["reviewer"].model == ULTRA
+        assert cfg.roles["classifier"].provider == "sensenova"
+
+    def test_unknown_variant_falls_back_to_a(self):
+        cfg = AIConfig(writer_variant="nope")
+        assert cfg.writer_variant == "a"
+        assert cfg.roles["writer"].model == ULTRA
+
+    def test_env_var_overrides_yaml_variant(self, monkeypatch):
+        monkeypatch.setenv("WRITER_VARIANT", "b")
+        cfg = load_config()
+        assert cfg.ai.writer_variant == "b"
+        assert cfg.ai.roles["writer"].model == LIGHTNING
+
+    def test_env_var_is_case_insensitive(self, monkeypatch):
+        monkeypatch.setenv("WRITER_VARIANT", "B")
+        assert load_config().ai.roles["writer"].model == LIGHTNING
+
+    def test_yaml_variant_block_matches_code_default(self):
+        """变体表也有 drift 风险：yaml 的 writer_variants 必须与代码默认一致。"""
+        yaml_ai = yaml.safe_load((BASE_DIR / "config" / "config.yaml").read_text(encoding="utf-8"))["ai"]
+        yaml_variants = yaml_ai.get("writer_variants", {})
+        code_variants = AIConfig().writer_variants
+        assert set(yaml_variants) == set(code_variants)
+        for name, expected in yaml_variants.items():
+            actual = code_variants[name]
+            assert actual.model == expected["model"], name
+            assert actual.provider == expected["provider"], name
+            assert actual.fallback_model == expected.get("fallback_model"), name

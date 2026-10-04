@@ -36,6 +36,31 @@ class AIConfig(BaseModel):
         "reviewer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter",
                                fallback_model="nvidia/nemotron-3-super-120b-a12b:free", fallback_provider="openrouter"),
     })
+    # writer 的 A/B：'a' 就是上面 roles.writer 本身（不重复定义）,
+    # 这里只放替代方案。切换 = 把 writer_variant 改成 'b',
+    # 或设 WRITER_VARIANT 环境变量（workflow_dispatch 走这条）。
+    writer_variant: str = "a"
+    writer_variants: dict[str, RoleConfig] = Field(default_factory=lambda: {
+        "b": RoleConfig(model="nvidia/nemotron-3.5-lightning:free", provider="openrouter",
+                        fallback_model="nvidia/nemotron-3-ultra-550b-a55b:free", fallback_provider="openrouter"),
+    })
+
+    def apply_writer_variant(self) -> None:
+        """把选中的变体写进 roles['writer'],下游所有读取路径不变。"""
+        if self.writer_variant in ("", "a"):
+            return
+        chosen = self.writer_variants.get(self.writer_variant)
+        if chosen is None:
+            options = ", ".join(["a", *sorted(self.writer_variants)])
+            print(f"[Config Warning] writer_variant='{self.writer_variant}' 未定义 (可选: {options}),回退到 a。")
+            self.writer_variant = "a"
+            return
+        self.roles["writer"] = chosen.model_copy()
+
+    @model_validator(mode="after")
+    def _resolve_writer_variant(self) -> "AIConfig":
+        self.apply_writer_variant()
+        return self
 
 
 _PROVIDER_ENV = {
@@ -127,4 +152,9 @@ def load_config() -> AppConfig:
         val = os.getenv(env_key)
         if val:
             setattr(config.notifications, attr, val)
+
+    env_variant = os.getenv("WRITER_VARIANT")
+    if env_variant:
+        config.ai.writer_variant = env_variant.strip().lower()
+        config.ai.apply_writer_variant()
     return config

@@ -108,6 +108,15 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 | `translator_b` | Stage 5 翻译 B 通道 | siliconflow | `Qwen/Qwen2.5-7B-Instruct` |
 | `reviewer` | Stage 5.5 二选一比稿 | openrouter | nemotron-ultra,降级 `nemotron-3-super-120b-a12b:free` |
 
+- **writer 的 A/B 开关**:`ai.roles.writer` 就是 A 案(现役);`ai.writer_variants.b` 只放替代方案,
+  `ai.writer_variant: a|b` 一处切换,或设环境变量 `WRITER_VARIANT=b`(workflow_dispatch 的下拉框走这条)。
+  解析在 `AIConfig.apply_writer_variant()` —— 选中 b 时直接覆写 `roles["writer"]`,下游读取路径不变,
+  所以 b 案的反向降级指向 ultra。非法变体会打印 `[Config Warning]` 并回退 a。
+  日志里的 `[Init] writer: … [变体 b]` 用来确认当前跑的是哪一案。
+- **Review 的 `max_tokens=64`**(`pipeline.REVIEW_MAX_TOKENS`):输出只要一个字母,但推理型模型把
+  `reasoning_content` 算进同一预算,10 token 可能全被思考吃掉导致正文为空。免费模型不计费,
+  多给 54 token 换掉这个风险可以忽略。
+
 - 三家 provider 全部走 OpenAI SDK 兼容协议(`src/llm.py`)。
 - **节流**:全局 `rate_limit_delay: 4.0s`(每次成功后再睡 delay/2);per-provider 重试间隔与
   超时见 `llm.py` 内字典;`call_llm` 默认 `retries=3, backoff_factor=2.0`,429 时指数退避;
