@@ -26,5 +26,19 @@
     "cooldown_until": "2026-11-02",
     "stars": 271564,
     "occurrences": 3
+  },
+  "deepseek-ai/FlashMLA": {
+    "first_seen": "2026-09-30",
+    "archived_at": "2026-10-04",
+    "cooldown_until": "2026-11-03",
+    "stars": 13033,
+    "occurrences": 3
+  },
+  "NousResearch/hermes-agent": {
+    "first_seen": "2026-09-30",
+    "archived_at": "2026-10-04",
+    "cooldown_until": "2026-11-03",
+    "stars": 251033,
+    "occurrences": 3
   }
 }

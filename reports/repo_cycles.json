@@ -1,8 +1,10 @@
 {
+  "NVIDIA/OpenShell": 1,
+  "affaan-m/ECC": 1,
   "vercel/next.js": 1,
   "deepseek-ai/DeepSeek-R1": 3,
   "highstar/repo": 3,
-  "NVIDIA/OpenShell": 1,
   "mattpocock/skills": 1,
-  "affaan-m/ECC": 1
+  "deepseek-ai/FlashMLA": 1,
+  "NousResearch/hermes-agent": 1
 }
