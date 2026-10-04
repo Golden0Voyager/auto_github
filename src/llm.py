@@ -165,8 +165,10 @@ class LLMClient:
         provider, fallback = self._resolve_providers(role)
         if role in self._unavailable_roles:
             raise LLMError(f"role '{role}' already tripped off this run")
-        if not self.has_provider(provider) and fallback is None:
-            raise LLMError(f"no client for provider '{provider}' (role={role})")
+        if not self.has_role(role):
+            # 配了 fallback 的 role 也要报"没 client",否则会被误诊成"重试耗尽"
+            wanted = [p for p in (provider, fallback) if p]
+            raise LLMError(f"no client for provider(s) {wanted} (role={role})")
 
         temp = temperature if temperature is not None else self.config.ai.temperature
         max_t = max_tokens if max_tokens is not None else self.config.ai.max_tokens

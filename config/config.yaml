@@ -62,6 +62,9 @@ ai:
     writer:
       model: nvidia/nemotron-3-ultra-550b-a55b:free
       provider: openrouter
+      # writer 原本没有 fallback：ultra 连续返回空 choices 时只剩重试,没有第二条腿
+      fallback_model: nvidia/nemotron-3-super-120b-a12b:free
+      fallback_provider: openrouter
     translator_a:
       model: tencent/Hunyuan-MT-7B
       provider: siliconflow

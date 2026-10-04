@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.config import AIConfig, AppConfig, RoleConfig
+from src.config import AIConfig, AppConfig, RoleConfig, load_config
 from src.llm import MIN_RETRY_DELAY, LLMClient, LLMError
 
 
@@ -95,6 +95,15 @@ class TestCallLLMNoKey:
         client = LLMClient(llm_config)
         with pytest.raises(LLMError, match="unknown role"):
             client.call_llm([{"role": "user", "content": "Hi"}], role="nonexistent")
+
+    def test_role_with_fallback_reports_missing_client(self, monkeypatch):
+        """配了 fallback 的 role 在完全没 key 时要报"没有 client"，不能被误诊成重试耗尽。"""
+        for key in ("OPENROUTER_API_KEY", "SENSENOVA_API_KEY", "SILICONFLOW_API_KEY", "OPENAI_API_KEY"):
+            monkeypatch.delenv(key, raising=False)
+        client = LLMClient(load_config())  # writer 带 fallback_model
+        assert client.has_role("writer") is False
+        with pytest.raises(LLMError, match="no client for provider"):
+            client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=1)
 
     def test_has_role_reflects_provider_availability(self, llm_config, monkeypatch, mock_openai):
         """has_role 让上层在没有 key 时直接跳过通道，不浪费请求。"""

@@ -103,7 +103,7 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 | 角色 | 管线阶段 | provider | 当前模型 |
 | :--- | :--- | :--- | :--- |
 | `classifier` | Stage 2 批量分类评级 | sensenova | `sensenova-6.8-flash-lite`(6.7 已下架,404) |
-| `writer` | Stage 3+4 逐仓库写作+反思 | openrouter | `nvidia/nemotron-3-ultra-550b-a55b:free` |
+| `writer` | Stage 3+4 逐仓库写作+反思 | openrouter | nemotron-ultra,降级 `nemotron-3-super-120b-a12b:free` |
 | `translator_a` | Stage 5 翻译 A 通道 | siliconflow | `tencent/Hunyuan-MT-7B` |
 | `translator_b` | Stage 5 翻译 B 通道 | siliconflow | `Qwen/Qwen2.5-7B-Instruct` |
 | `reviewer` | Stage 5.5 二选一比稿 | openrouter | nemotron-ultra,降级 `nemotron-3-super-120b-a12b:free` |

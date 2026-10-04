@@ -29,7 +29,8 @@ class AIConfig(BaseModel):
     # Mirror of config/config.yaml `ai.roles` for runs without that file; keep in sync.
     roles: dict[str, RoleConfig] = Field(default_factory=lambda: {
         "classifier": RoleConfig(model="sensenova-6.8-flash-lite", provider="sensenova"),
-        "writer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter"),
+        "writer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter",
+                             fallback_model="nvidia/nemotron-3-super-120b-a12b:free", fallback_provider="openrouter"),
         "translator_a": RoleConfig(model="tencent/Hunyuan-MT-7B", provider="siliconflow"),
         "translator_b": RoleConfig(model="Qwen/Qwen2.5-7B-Instruct", provider="siliconflow"),
         "reviewer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter",
