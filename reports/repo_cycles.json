@@ -1,12 +1,13 @@
 {
   "deepseek-ai/FlashMLA": 1,
-  "deepseek-ai/DeepSeek-R1": 3,
-  "modelcontextprotocol/servers": 1,
-  "mattpocock/skills": 1,
   "highstar/repo": 3,
+  "modelcontextprotocol/servers": 1,
   "affaan-m/ECC": 1,
-  "vercel/next.js": 1,
   "NousResearch/hermes-agent": 1,
   "NVIDIA/OpenShell": 1,
-  "DietrichGebert/ponytail": 1
+  "mattpocock/skills": 1,
+  "vercel/next.js": 1,
+  "DietrichGebert/ponytail": 1,
+  "deepseek-ai/DeepSeek-R1": 3,
+  "huggingface/transformers": 1
 }

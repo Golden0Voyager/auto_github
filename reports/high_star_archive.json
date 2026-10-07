@@ -54,5 +54,12 @@
     "cooldown_until": "2026-11-05",
     "stars": 156251,
     "occurrences": 3
+  },
+  "huggingface/transformers": {
+    "first_seen": "2026-10-04",
+    "archived_at": "2026-10-07",
+    "cooldown_until": "2026-11-06",
+    "stars": 167014,
+    "occurrences": 3
   }
 }
