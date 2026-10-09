@@ -75,5 +75,19 @@
     "cooldown_until": "2026-11-07",
     "stars": 149818,
     "occurrences": 3
+  },
+  "openai/codex": {
+    "first_seen": "2026-10-05",
+    "archived_at": "2026-10-09",
+    "cooldown_until": "2026-11-08",
+    "stars": 128303,
+    "occurrences": 3
+  },
+  "deepseek-ai/deepseek-harness": {
+    "first_seen": "2026-10-05",
+    "archived_at": "2026-10-09",
+    "cooldown_until": "2026-11-08",
+    "stars": 245989,
+    "occurrences": 3
   }
 }
