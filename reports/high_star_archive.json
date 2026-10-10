@@ -89,5 +89,12 @@
     "cooldown_until": "2026-11-08",
     "stars": 245989,
     "occurrences": 3
+  },
+  "paperclipai/paperclip": {
+    "first_seen": "2026-10-05",
+    "archived_at": "2026-10-10",
+    "cooldown_until": "2026-11-09",
+    "stars": 99384,
+    "occurrences": 3
   }
 }

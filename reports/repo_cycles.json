@@ -1,17 +1,18 @@
 {
+  "DietrichGebert/ponytail": 1,
+  "affaan-m/ECC": 1,
+  "modelcontextprotocol/typescript-sdk": 1,
+  "deepseek-ai/deepseek-harness": 1,
+  "NousResearch/hermes-agent": 1,
+  "modelcontextprotocol/servers": 1,
+  "NVIDIA/OpenShell": 1,
+  "anthropics/claude-code": 1,
+  "huggingface/transformers": 1,
   "highstar/repo": 3,
   "vercel/next.js": 1,
-  "DietrichGebert/ponytail": 1,
-  "NVIDIA/OpenShell": 1,
-  "modelcontextprotocol/typescript-sdk": 1,
-  "anthropics/claude-code": 1,
-  "modelcontextprotocol/servers": 1,
-  "NousResearch/hermes-agent": 1,
-  "huggingface/transformers": 1,
   "mattpocock/skills": 1,
-  "deepseek-ai/FlashMLA": 1,
   "deepseek-ai/DeepSeek-R1": 3,
-  "affaan-m/ECC": 1,
+  "deepseek-ai/FlashMLA": 1,
   "openai/codex": 1,
-  "deepseek-ai/deepseek-harness": 1
+  "paperclipai/paperclip": 1
 }
