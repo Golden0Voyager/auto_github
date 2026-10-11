@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -44,16 +44,29 @@ class AIConfig(BaseModel):
         "b": RoleConfig(model="nvidia/nemotron-3.5-lightning:free", provider="openrouter",
                         fallback_model="nvidia/nemotron-3-ultra-550b-a55b:free", fallback_provider="openrouter"),
     })
+    # roles.writer 的原始定义（A 案）,供可逆切换
+    _writer_base: RoleConfig | None = PrivateAttr(default=None)
 
     def apply_writer_variant(self) -> None:
-        """把选中的变体写进 roles['writer'],下游所有读取路径不变。"""
+        """把选中的变体写进 roles['writer'],下游所有读取路径不变。
+
+        'a' 不是"什么都不做"：roles.writer 可能已经被上一轮变体覆写过,
+        必须回到构造时留存的原始定义,否则 env 覆盖不回 A 案。
+        """
+        if self._writer_base is None:
+            self._writer_base = self.roles.get("writer", RoleConfig()).model_copy()
+        base = self._writer_base.model_copy()
+
         if self.writer_variant in ("", "a"):
+            self.roles["writer"] = base
             return
+
         chosen = self.writer_variants.get(self.writer_variant)
         if chosen is None:
             options = ", ".join(["a", *sorted(self.writer_variants)])
             print(f"[Config Warning] writer_variant='{self.writer_variant}' 未定义 (可选: {options}),回退到 a。")
             self.writer_variant = "a"
+            self.roles["writer"] = base
             return
         self.roles["writer"] = chosen.model_copy()
 

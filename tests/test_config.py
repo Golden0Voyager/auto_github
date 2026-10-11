@@ -142,7 +142,9 @@ class TestLoadConfig:
         """When no API key is set, the config still works with defaults."""
         config = load_config()
         assert isinstance(config, AppConfig)
-        assert config.ai.roles["writer"].model == "nvidia/nemotron-3-ultra-550b-a55b:free"
+        # 不写死具体型号：仓库可以随时切到 B 案，这里只验证 writer 被正确解析
+        assert config.ai.roles["writer"].provider == "openrouter"
+        assert config.ai.roles["writer"].model in {ULTRA, LIGHTNING}
 
 
 class TestModelValidation:
@@ -196,6 +198,18 @@ class TestWriterVariant:
         assert cfg.writer_variant == "a"
         assert cfg.roles["writer"].model == ULTRA
 
+    def test_variant_switch_is_reversible_on_one_instance(self):
+        """同一实例反复切换时，roles.writer 必须跟着走，不能粘在最后一次覆写上。"""
+        cfg = AIConfig(writer_variant="a")
+        assert cfg.roles["writer"].model == ULTRA
+        cfg.writer_variant = "b"
+        cfg.apply_writer_variant()
+        assert cfg.roles["writer"].model == LIGHTNING
+        cfg.writer_variant = "a"
+        cfg.apply_writer_variant()
+        assert cfg.roles["writer"].model == ULTRA
+        assert cfg.roles["writer"].fallback_model == "nvidia/nemotron-3-super-120b-a12b:free"
+
     def test_variant_b_swaps_writer_and_reverses_fallback(self):
         cfg = AIConfig(writer_variant="b")
         writer = cfg.roles["writer"]
@@ -217,6 +231,15 @@ class TestWriterVariant:
         cfg = load_config()
         assert cfg.ai.writer_variant == "b"
         assert cfg.ai.roles["writer"].model == LIGHTNING
+
+    def test_env_var_can_override_back_to_a(self, monkeypatch):
+        """env 必须能双向覆盖 yaml，否则 yaml 切到 b 之后这条就变成空跑。"""
+        yaml_variant = yaml.safe_load(
+            (BASE_DIR / "config" / "config.yaml").read_text(encoding="utf-8")
+        )["ai"]["writer_variant"]
+        monkeypatch.setenv("WRITER_VARIANT", "a" if yaml_variant == "b" else "b")
+        expected = ULTRA if yaml_variant == "b" else LIGHTNING
+        assert load_config().ai.roles["writer"].model == expected
 
     def test_env_var_is_case_insensitive(self, monkeypatch):
         monkeypatch.setenv("WRITER_VARIANT", "B")
