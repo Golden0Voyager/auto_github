@@ -96,5 +96,12 @@
     "cooldown_until": "2026-11-09",
     "stars": 99384,
     "occurrences": 3
+  },
+  "thedotmack/claude-mem": {
+    "first_seen": "2026-10-09",
+    "archived_at": "2026-10-12",
+    "cooldown_until": "2026-11-11",
+    "stars": 99863,
+    "occurrences": 3
   }
 }
