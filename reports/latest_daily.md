@@ -1,8 +1,8 @@
 # 🌌 GitHub 开源趋势 & LLM 大厂动态日报
 
 > **分析画像**: 中阶实践者 (`有一定工程基础的 LLM 应用开发者，能写代码但不追求 CS 学位。日常用 Agent 和自动化工具提升效率，关心「这东西我跑不跑得动、能不能调、坏了怎么修」，对 Token 成本和响应延迟敏感。喜欢看到设计决策背后的权衡，反感空洞的概念堆砌。`)  
-> **生成时间**: 2026-10-13 09:00  
-> **精选指标**: 已从 191 个候选项目中筛选出 9 个硬核更新。
+> **生成时间**: 2026-10-14 07:09  
+> **精选指标**: 已从 189 个候选项目中筛选出 9 个硬核更新。
 
 ---
 
@@ -18,11 +18,11 @@
 
 | 评级 | 深度 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
-| **`A`** | **`T`** | [lucidrains/vector-quantize-pytorch](https://github.com/lucidrains/vector-quantize-pytorch) | `Python` | ⭐️ 4,012 () | `#VQ` `#GenerativeModels` `#PyTorch`  | Vector (and Scalar) Quantization, in Pytorch |
+| **`A`** | **`E`** | [huggingface/OpenEnv](https://github.com/huggingface/OpenEnv) | `Python` | ⭐️ 2,709 () | `#RLTraining` `#LLMPostTraining` `#Environment`  | An interface library for RL post training with environments. |
 
-| **`B`** | **`T`** | [vllm-project/vllm-ascend](https://github.com/vllm-project/vllm-ascend) | `Python` | ⭐️ 2,963 () | `#Inference` `#vLLM` `#Ascend`  | Community maintained hardware plugin for vLLM on Huawei Ascend |
+| **`B`** | **`T`** | [Tencent-Hunyuan/HunyuanDiT](https://github.com/Tencent-Hunyuan/HunyuanDiT) | `Jupyter Notebook` | ⭐️ 4,290 () | `#DiffusionTransformer` `#MultiResolution` `#ChineseNLP`  | Hunyuan-DiT : A Powerful Multi-Resolution Diffusion Transformer with Fine-Graine… |
 
-| **`C`** | **`E`** | [tiangolo/uvicorn-gunicorn-fastapi-docker](https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker) | `Python` | ⭐️ 2,913 () | `#FastAPI` `#Docker` `#Deployment`  | Docker image with Uvicorn managed by Gunicorn for high-performance FastAPI web a… |
+| **`B`** | **`E`** | [tiangolo/uvicorn-gunicorn-fastapi-docker](https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker) | `Python` | ⭐️ 2,914 () | `#FastAPI` `#Docker` `#Deployment`  | Docker image with Uvicorn managed by Gunicorn for high-performance FastAPI web a… |
 
   <br>
 </details>
@@ -32,13 +32,13 @@
 
 | 评级 | 深度 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
-| **`S`** | **`E`** | [karpathy/autoresearch](https://github.com/karpathy/autoresearch) | `Python` | ⭐️ 97,803 () | `#Agent` `#ResearchAutomation` `#LLMTraining`  | AI agents running research on single-GPU nanochat training automatically |
+| **`S`** | **`E`** | [morluto/rea](https://github.com/morluto/rea) | `TypeScript` | ⭐️ 218,401 (54,679 stars today) | `#Agent` `#ReverseEngineering` `#Vibecoding`  | Reverse engineer anything with agents, from app behavior down to native binaries… |
 
-| **`S`** | **`T`** | [vllm-project/vllm](https://github.com/vllm-project/vllm) | `Python` | ⭐️ 93,694 () | `#Inference` `#vLLM` `#LLMServing`  | A high-throughput and memory-efficient inference and serving engine for LLMs |
+| **`A`** | **`E`** | [unslothai/unsloth](https://github.com/unslothai/unsloth) | `Python` | ⭐️ 77,970 () | `#LLMTraining` `#LocalInference` `#Quantization`  | Local UI to run and train LLMs and diffusion models. Supports GGUF, MLX, Qwen3.8… |
 
-| **`S`** | **`E`** | [modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk) | `Python` | ⭐️ 24,558 () | `#MCP` `#Agent` `#Protocol`  | The official Python SDK for Model Context Protocol servers and clients |
+| **`A`** | **`T`** | [microsoft/onnxruntime](https://github.com/microsoft/onnxruntime) | `C++` | ⭐️ 22,077 () | `#Inference` `#ONNX` `#CrossPlatform`  | ONNX Runtime: cross-platform, high performance ML inferencing and training accel… |
 
-| **`A`** | **`E`** | [morluto/rea](https://github.com/morluto/rea) | `TypeScript` | ⭐️ 178,922 (45,327 stars today) | `#Agent` `#ReverseEngineering` `#Automation`  | Reverse engineer anything with agents, from app behavior down to native binaries… |
+| **`C`** | **`S`** | [danielmiessler/SecLists](https://github.com/danielmiessler/SecLists) | `PHP` | ⭐️ 74,171 () | `#Security` `#PenetrationTesting` `#Lists`  | SecLists is the security tester's companion. It's a collection of multiple types… |
 
   <br>
 </details>
@@ -48,93 +48,24 @@
 
 | 评级 | 深度 | 项目名称 | 主要语言 | 社区热度 | 核心技术标签 | 项目简介 |
 | :---: | :---: | :--- | :---: | :---: | :--- | :--- |
-| **`A`** | **`E`** | [modelcontextprotocol/go-sdk](https://github.com/modelcontextprotocol/go-sdk) | `Go` | ⭐️ 5,207 () | `#MCP` `#Protocol` `#Go`  | The official Go SDK for Model Context Protocol servers and clients. Maintained i… |
+| **`A`** | **`T`** | [lucidrains/x-transformers](https://github.com/lucidrains/x-transformers) | `Python` | ⭐️ 5,959 () | `#Transformer` `#Attention` `#Architecture`  | A concise but complete full-attention transformer with a set of promising experi… |
 
-| **`C`** | **`T`** | [patriciogonzalezvivo/lygia](https://github.com/patriciogonzalezvivo/lygia) | `GLSL` | ⭐️ 3,461 () | `#GPU` `#Shader` `#GLSL`  | LYGIA, it's a granular and multi-language (GLSL, HLSL, Metal,  WGSL,  WEGL and C… |
+| **`A`** | **`T`** | [modelcontextprotocol/rust-sdk](https://github.com/modelcontextprotocol/rust-sdk) | `Rust` | ⭐️ 4,015 () | `#MCP` `#Agent` `#Rust`  | The official Rust SDK for the Model Context Protocol |
 
   <br>
 </details>
 
 > [!NOTE]
-> 🌟 **高🌟项目存档**: 今日 12 个高星项目处于阶梯冷却期（mattpocock/skills、thedotmack/claude-mem、paperclipai/paperclip、affaan-m/ECC、anthropics/claude-code、deepseek-ai/deepseek-harness、deepseek-ai/FlashMLA、openai/codex、huggingface/transformers、NousResearch/hermes-agent、modelcontextprotocol/typescript-sdk、modelcontextprotocol/servers）；累计存档 15 个。
+> 🌟 **高🌟项目存档**: 今日 11 个高星项目处于阶梯冷却期（mattpocock/skills、thedotmack/claude-mem、paperclipai/paperclip、affaan-m/ECC、anthropics/claude-code、deepseek-ai/deepseek-harness、deepseek-ai/FlashMLA、openai/codex、huggingface/transformers、NousResearch/hermes-agent、karpathy/autoresearch）；累计存档 17 个。
 
 ---
 
 ## 🔍 深度项目解析
 
-### 👑 [S · 深度 E] karpathy/autoresearch
-- **项目地址**: [https://github.com/karpathy/autoresearch](https://github.com/karpathy/autoresearch)
-- **基本数据**: `Python` | ⭐️ 97,803 () | **来源**: `llm_giant` | **分桶**: `high_star`
-- **入选理由**: *让 Agent 在单卡上自动跑 nanochat 训练实验并迭代改进，是 AI 驱动 AI 研究的标杆实践，对理解 Agent 自主决策循环有极高参考价值。*
-
-### 要解决的核心痛点
-
-AI agents running research on single-GPU nanochat training automatically
-
-### 设计巧思与架构取舍
-
-标准实现，社区驱动的设计决策。本轮分析暂由兜底策略生成，待后续迭代完善。
-
-### 工程启示与可迁移经验
-
-请参考项目 README 和 Issue Tracker 获取工程讨论详情。
-
-### 关联生态与延展阅读
-
-通过依赖关系图和 GitHub Topics 页面探索相关生态项目。
-
----
-
-### 👑 [S · 深度 T] vllm-project/vllm
-- **项目地址**: [https://github.com/vllm-project/vllm](https://github.com/vllm-project/vllm)
-- **基本数据**: `Python` | ⭐️ 93,694 () | **来源**: `llm_giant` | **分桶**: `high_star`
-- **入选理由**: *PagedAttention 和连续批处理让 LLM 推理吞吐提升数倍，是当前生产级 LLM 服务的事实标准引擎。*
-
-### 要解决的核心痛点
-
-A high-throughput and memory-efficient inference and serving engine for LLMs
-
-### 设计巧思与架构取舍
-
-标准实现，社区驱动的设计决策。本轮分析暂由兜底策略生成，待后续迭代完善。
-
-### 工程启示与可迁移经验
-
-请参考项目 README 和 Issue Tracker 获取工程讨论详情。
-
-### 关联生态与延展阅读
-
-通过依赖关系图和 GitHub Topics 页面探索相关生态项目。
-
----
-
-### 👑 [S · 深度 E] modelcontextprotocol/python-sdk
-- **项目地址**: [https://github.com/modelcontextprotocol/python-sdk](https://github.com/modelcontextprotocol/python-sdk)
-- **基本数据**: `Python` | ⭐️ 24,558 () | **来源**: `llm_giant` | **分桶**: `high_star`
-- **入选理由**: *MCP 正在成为 AI 工具调用的事实标准协议，这个 SDK 是构建 Agent 工具链的核心依赖，理解它的 transport 和 capability 协商机制对做 Agent 系统至关重要。*
-
-### 要解决的核心痛点
-
-The official Python SDK for Model Context Protocol servers and clients
-
-### 设计巧思与架构取舍
-
-标准实现，社区驱动的设计决策。本轮分析暂由兜底策略生成，待后续迭代完善。
-
-### 工程启示与可迁移经验
-
-请参考项目 README 和 Issue Tracker 获取工程讨论详情。
-
-### 关联生态与延展阅读
-
-通过依赖关系图和 GitHub Topics 页面探索相关生态项目。
-
----
-
-### 🔥 [A · 深度 E] morluto/rea
+### 👑 [S · 深度 E] morluto/rea
 - **项目地址**: [https://github.com/morluto/rea](https://github.com/morluto/rea)
-- **基本数据**: `TypeScript` | ⭐️ 178,922 (45,327 stars today) | **来源**: `trending` | **分桶**: `high_star`
-- **入选理由**: *用 Agent 自动完成逆向工程全流程，从行为分析到二进制反编译，展示了多 Agent 协作在安全领域的落地形态。*
+- **基本数据**: `TypeScript` | ⭐️ 218,401 (54,679 stars today) | **来源**: `trending` | **分桶**: `high_star`
+- **入选理由**: *Agent-driven reverse engineering tool with massive community traction; represents a paradigm shift in how developers interact with unfamiliar codebases.*
 
 ### 要解决的核心痛点
 
@@ -154,14 +85,14 @@ Reverse engineer anything with agents, from app behavior down to native binaries
 
 ---
 
-### 🔥 [A · 深度 E] modelcontextprotocol/go-sdk
-- **项目地址**: [https://github.com/modelcontextprotocol/go-sdk](https://github.com/modelcontextprotocol/go-sdk)
-- **基本数据**: `Go` | ⭐️ 5,207 () | **来源**: `llm_giant` | **分桶**: `deep_dive`
-- **入选理由**: *MCP 的 Go 实现，适合在 Go 生态中构建高性能 MCP Server，与 Python SDK 互补覆盖主流语言栈。*
+### 🔥 [A · 深度 E] unslothai/unsloth
+- **项目地址**: [https://github.com/unslothai/unsloth](https://github.com/unslothai/unsloth)
+- **基本数据**: `Python` | ⭐️ 77,970 () | **来源**: `llm_giant` | **分桶**: `high_star`
+- **入选理由**: *Local-first LLM and diffusion model training/inference toolkit with GGUF/MLX support; essential for practitioners who want to fine-tune without cloud dependency.*
 
 ### 要解决的核心痛点
 
-The official Go SDK for Model Context Protocol servers and clients. Maintained in collaboration with Google.
+Local UI to run and train LLMs and diffusion models. Supports GGUF, MLX, Qwen3.8, DeepSeek-V4, MiniMax-H3, Gemma 4, FLUX and more.
 
 ### 设计巧思与架构取舍
 
@@ -177,14 +108,14 @@ The official Go SDK for Model Context Protocol servers and clients. Maintained i
 
 ---
 
-### 🔥 [A · 深度 T] lucidrains/vector-quantize-pytorch
-- **项目地址**: [https://github.com/lucidrains/vector-quantize-pytorch](https://github.com/lucidrains/vector-quantize-pytorch)
-- **基本数据**: `Python` | ⭐️ 4,012 () | **来源**: `llm_giant` | **分桶**: `early_bird`
-- **入选理由**: *VQ 是 VQ-VAE、VQGAN、SoundStream 等架构的底层积木，这个库把量化、EMA 更新、commit loss 等细节封装干净，是理解离散表征学习的最佳入口。*
+### 🔥 [A · 深度 T] microsoft/onnxruntime
+- **项目地址**: [https://github.com/microsoft/onnxruntime](https://github.com/microsoft/onnxruntime)
+- **基本数据**: `C++` | ⭐️ 22,077 () | **来源**: `llm_giant` | **分桶**: `high_star`
+- **入选理由**: *Core cross-platform inference engine with graph optimization and hardware acceleration; foundational for deploying LLMs and diffusion models on diverse hardware.*
 
 ### 要解决的核心痛点
 
-Vector (and Scalar) Quantization, in Pytorch
+ONNX Runtime: cross-platform, high performance ML inferencing and training accelerator
 
 ### 设计巧思与架构取舍
 
@@ -200,14 +131,14 @@ Vector (and Scalar) Quantization, in Pytorch
 
 ---
 
-### 🔹 [B · 深度 T] vllm-project/vllm-ascend
-- **项目地址**: [https://github.com/vllm-project/vllm-ascend](https://github.com/vllm-project/vllm-ascend)
-- **基本数据**: `Python` | ⭐️ 2,963 () | **来源**: `llm_giant` | **分桶**: `early_bird`
-- **入选理由**: *把 vLLM 的 PagedAttention 和调度逻辑移植到华为昇腾 NPU 上，对国产化推理部署有直接参考价值。*
+### 🔥 [A · 深度 T] lucidrains/x-transformers
+- **项目地址**: [https://github.com/lucidrains/x-transformers](https://github.com/lucidrains/x-transformers)
+- **基本数据**: `Python` | ⭐️ 5,959 () | **来源**: `llm_giant` | **分桶**: `deep_dive`
+- **入选理由**: *Reference implementation of full-attention transformer with experimental features from multiple papers; invaluable for understanding and extending transformer internals.*
 
 ### 要解决的核心痛点
 
-Community maintained hardware plugin for vLLM on Huawei Ascend
+A concise but complete full-attention transformer with a set of promising experimental features from various papers
 
 ### 设计巧思与架构取舍
 
@@ -223,14 +154,14 @@ Community maintained hardware plugin for vLLM on Huawei Ascend
 
 ---
 
-### 🔹 [C · 深度 T] patriciogonzalezvivo/lygia
-- **项目地址**: [https://github.com/patriciogonzalezvivo/lygia](https://github.com/patriciogonzalezvivo/lygia)
-- **基本数据**: `GLSL` | ⭐️ 3,461 () | **来源**: `llm_giant` | **分桶**: `deep_dive`
-- **入选理由**: *多语言着色器库，技术质量高但与 LLM/AI 工程无直接关联，仅对 GPU 底层有参考价值。*
+### 🔥 [A · 深度 T] modelcontextprotocol/rust-sdk
+- **项目地址**: [https://github.com/modelcontextprotocol/rust-sdk](https://github.com/modelcontextprotocol/rust-sdk)
+- **基本数据**: `Rust` | ⭐️ 4,015 () | **来源**: `llm_giant` | **分桶**: `deep_dive`
+- **入选理由**: *Official Rust SDK for MCP protocol; critical for building high-performance agent tool integrations and understanding the protocol substrate.*
 
 ### 要解决的核心痛点
 
-LYGIA, it's a granular and multi-language (GLSL, HLSL, Metal,  WGSL,  WEGL and CUDA) shader library designed for performance and flexibility
+The official Rust SDK for the Model Context Protocol
 
 ### 设计巧思与架构取舍
 
@@ -246,14 +177,83 @@ LYGIA, it's a granular and multi-language (GLSL, HLSL, Metal,  WGSL,  WEGL and C
 
 ---
 
-### 🔹 [C · 深度 E] tiangolo/uvicorn-gunicorn-fastapi-docker
+### 🔥 [A · 深度 E] huggingface/OpenEnv
+- **项目地址**: [https://github.com/huggingface/OpenEnv](https://github.com/huggingface/OpenEnv)
+- **基本数据**: `Python` | ⭐️ 2,709 () | **来源**: `llm_giant` | **分桶**: `early_bird`
+- **入选理由**: *Standardized environment interface for RL post-training of LLMs; directly relevant to anyone building RLHF or agentic training pipelines.*
+
+### 要解决的核心痛点
+
+An interface library for RL post training with environments. 
+
+### 设计巧思与架构取舍
+
+标准实现，社区驱动的设计决策。本轮分析暂由兜底策略生成，待后续迭代完善。
+
+### 工程启示与可迁移经验
+
+请参考项目 README 和 Issue Tracker 获取工程讨论详情。
+
+### 关联生态与延展阅读
+
+通过依赖关系图和 GitHub Topics 页面探索相关生态项目。
+
+---
+
+### 🔹 [B · 深度 T] Tencent-Hunyuan/HunyuanDiT
+- **项目地址**: [https://github.com/Tencent-Hunyuan/HunyuanDiT](https://github.com/Tencent-Hunyuan/HunyuanDiT)
+- **基本数据**: `Jupyter Notebook` | ⭐️ 4,290 () | **来源**: `llm_giant` | **分桶**: `early_bird`
+- **入选理由**: *Multi-resolution DiT architecture with fine-grained Chinese understanding; interesting model design but not directly in the agent/RAG/vibecoding sweet spot.*
+
+### 要解决的核心痛点
+
+Hunyuan-DiT : A Powerful Multi-Resolution Diffusion Transformer with Fine-Grained Chinese Understanding
+
+### 设计巧思与架构取舍
+
+标准实现，社区驱动的设计决策。本轮分析暂由兜底策略生成，待后续迭代完善。
+
+### 工程启示与可迁移经验
+
+请参考项目 README 和 Issue Tracker 获取工程讨论详情。
+
+### 关联生态与延展阅读
+
+通过依赖关系图和 GitHub Topics 页面探索相关生态项目。
+
+---
+
+### 🔹 [B · 深度 E] tiangolo/uvicorn-gunicorn-fastapi-docker
 - **项目地址**: [https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker](https://github.com/tiangolo/uvicorn-gunicorn-fastapi-docker)
-- **基本数据**: `Python` | ⭐️ 2,913 () | **来源**: `llm_giant` | **分桶**: `early_bird`
-- **入选理由**: *FastAPI 生产部署的省心方案，但属于通用 Web 基础设施，与 AI/LLM 工程关联度有限。*
+- **基本数据**: `Python` | ⭐️ 2,914 () | **来源**: `llm_giant` | **分桶**: `early_bird`
+- **入选理由**: *Production-ready FastAPI deployment template with auto-tuning; useful for serving AI inference endpoints but not LLM-specific.*
 
 ### 要解决的核心痛点
 
 Docker image with Uvicorn managed by Gunicorn for high-performance FastAPI web applications in Python with performance auto-tuning.
+
+### 设计巧思与架构取舍
+
+标准实现，社区驱动的设计决策。本轮分析暂由兜底策略生成，待后续迭代完善。
+
+### 工程启示与可迁移经验
+
+请参考项目 README 和 Issue Tracker 获取工程讨论详情。
+
+### 关联生态与延展阅读
+
+通过依赖关系图和 GitHub Topics 页面探索相关生态项目。
+
+---
+
+### 🔹 [C · 深度 S] danielmiessler/SecLists
+- **项目地址**: [https://github.com/danielmiessler/SecLists](https://github.com/danielmiessler/SecLists)
+- **基本数据**: `PHP` | ⭐️ 74,171 () | **来源**: `llm_giant` | **分桶**: `high_star`
+- **入选理由**: *Comprehensive security testing resource collection; high star count but tangentially relevant to LLM/agent engineering workflows.*
+
+### 要解决的核心痛点
+
+SecLists is the security tester's companion. It's a collection of multiple types of lists used during security assessments, collected in one place. List types include usernames, passwords, URLs, sensitive data patterns, fuzzing payloads, web shells, and many more.
 
 ### 设计巧思与架构取舍
 
@@ -274,4 +274,4 @@ Docker image with Uvicorn managed by Gunicorn for high-performance FastAPI web a
 
 ---
 
-🤖 LLM 调用: 10 次成功 / 6 重试失败 · 31,046 tokens (14,508 in / 16,538 out)
+🤖 LLM 调用: 10 次成功 / 6 重试失败 · 30,702 tokens (14,722 in / 15,980 out)

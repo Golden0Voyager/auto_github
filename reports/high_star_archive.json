@@ -117,5 +117,19 @@
     "cooldown_until": "2026-11-12",
     "stars": 97803,
     "occurrences": 3
+  },
+  "microsoft/onnxruntime": {
+    "first_seen": "2026-10-03",
+    "archived_at": "2026-10-14",
+    "cooldown_until": "2026-11-13",
+    "stars": 22077,
+    "occurrences": 3
+  },
+  "morluto/rea": {
+    "first_seen": "2026-10-12",
+    "archived_at": "2026-10-14",
+    "cooldown_until": "2026-11-13",
+    "stars": 218401,
+    "occurrences": 3
   }
 }
