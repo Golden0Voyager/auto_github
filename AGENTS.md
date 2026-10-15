@@ -134,6 +134,11 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
   `tencent/Hunyuan-MT-7B` 每次 30s 超时,9 个仓库各烧 3 次重试 ≈ 14 分钟,整条 curate job
   撞上 `timeout-minutes` 被取消,一份报告都没出。所以同时把 siliconflow 超时提到 90s
   (同 provider 的 Qwen2.5 只要 ~22s,说明是模型慢不是通道死)。
+- **不可重试的状态码**(`llm.NON_RETRYABLE_STATUS`):401/402/403 是**账户级**闸门
+  (欠费/密钥失效/权限),第一次就把整个 provider 拉黑 —— `has_provider`/`has_role` 之后一律
+  False,同 provider 的其它 role 也不再发请求;404 是**模型级**,只停掉该模型的重试,
+  provider 留给别的 role,并照走跨 provider 降级腿。先例:10/12 起 siliconflow 欠费 402,
+  响应 0.2s 就返回(根本没进推理),却仍按 3 次重试 × 2 个 role 白烧 6 次请求。
 - **改通道配置后必须验证**:CI 日志里 `[LLM Init] Providers with keys:` 包含该 provider,
   且对应 stage 的 `+N 成功调用` > 0。free tier 模型随时可能下架(classifier 的 6.7→404 就是先例)。
 

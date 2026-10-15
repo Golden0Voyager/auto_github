@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from src.config import AIConfig, AppConfig, RoleConfig, load_config
-from src.llm import MIN_RETRY_DELAY, LLMClient, LLMError
+from src.llm import MIN_RETRY_DELAY, LLMClient, LLMError, _error_status
 
 
 @pytest.fixture
@@ -353,6 +353,74 @@ class TestRoleCircuitBreaker:
             client.call_llm([{"role": "user", "content": "Hi"}], role="translator_a", retries=1, backoff_factor=1.0)
         assert client.has_role("translator_a") is False
         assert client.has_role("writer") is True
+
+
+class TestNonRetryableErrors:
+    """402/401/403 是账户级闸门，404 是单个模型下架：两者都不该付重试的失败税。
+
+    真实事故：硅基流动欠费 402 后，两个 translator 各烧 3 次重试（响应只花 0.2s，
+    根本没进推理），翻译层整条死掉时白跑 6 次请求。
+    """
+
+    def test_error_status_reads_attr_and_message_shape(self):
+        err = Exception("billing gate")
+        err.status_code = 402  # type: ignore[attr-defined]
+        assert _error_status(err) == 402
+        assert _error_status(Exception("Error code: 404 - {'message': 'no model'}")) == 404
+        assert _error_status(Exception("Error code: 429 - Too Many Requests")) == 429
+        assert _error_status(Exception("Request timed out.")) is None
+
+    def test_402_stops_after_one_attempt_and_bans_provider(self, llm_config, mock_openai):
+        mock_client = mock_openai.return_value
+        mock_client.chat.completions.create.side_effect = Exception(
+            "Error code: 402 - {'code': 30001, 'message': 'Sorry, your account balance is insufficient'}"
+        )
+        client = LLMClient(llm_config)
+
+        with pytest.raises(LLMError, match="failed after 1 attempt"):
+            client.call_llm([{"role": "user", "content": "Hi"}], role="translator_a", retries=3, backoff_factor=1.0)
+
+        assert mock_client.chat.completions.create.call_count == 1
+        # 同 provider 的其它通道也被账户闸门拦着，一次请求都不该再发
+        assert client.has_provider("openai") is False
+        assert client.has_role("translator_b") is False
+
+        with pytest.raises(LLMError, match="already tripped off"):
+            client.call_llm([{"role": "user", "content": "again"}], role="translator_a", retries=3)
+        assert mock_client.chat.completions.create.call_count == 1
+
+    def test_404_trips_role_but_keeps_provider(self, llm_config, mock_openai):
+        """404 只说明这个模型没了：provider 还要留给别的 role，但不能重试同一个模型。"""
+        mock_client = mock_openai.return_value
+        mock_client.chat.completions.create.side_effect = Exception("Error code: 404 - model removed")
+        client = LLMClient(llm_config)
+
+        with pytest.raises(LLMError, match="failed after 1 attempt"):
+            client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=3, backoff_factor=1.0)
+
+        assert mock_client.chat.completions.create.call_count == 1
+        assert client.has_provider("openai") is True
+        assert client.has_role("writer") is False
+        assert client.has_role("reviewer") is True
+
+    def test_account_ban_still_allows_other_provider_fallback(self, llm_config, mock_openai, monkeypatch):
+        """openai 欠费不该顺手打死 openrouter 的降级腿。"""
+        monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test")
+        llm_config.ai.roles["writer"] = RoleConfig(
+            model="primary-dead", provider="openai",
+            fallback_model="fallback-alive", fallback_provider="openrouter",
+        )
+        ok = MagicMock(
+            choices=[MagicMock(message=MagicMock(content="翻译结果", reasoning_content=None, model_extra=None))],
+            usage=MagicMock(prompt_tokens=5, completion_tokens=2),
+        )
+        mock_client = mock_openai.return_value
+        mock_client.chat.completions.create.side_effect = [Exception("Error code: 402 - insufficient balance"), ok]
+
+        client = LLMClient(llm_config)
+        result = client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=2, backoff_factor=1.0)
+        assert result["content"] == "翻译结果"
+        assert result["model"] == "fallback-alive"
 
 
 class TestEmptyChoicesResponse:

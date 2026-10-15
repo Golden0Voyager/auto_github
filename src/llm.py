@@ -1,3 +1,4 @@
+import re
 import time
 from typing import Any
 
@@ -6,6 +7,22 @@ from src.config import _PROVIDER_ENV, AppConfig, resolve_api_key, resolve_base_u
 # Retry waits are multiplicative on this floor. Free-tier providers answer 429
 # within milliseconds, so a zero floor turns retries into a hammering storm.
 MIN_RETRY_DELAY = 2.0
+
+# 401/402/403 是账户级闸门：欠费、密钥失效、权限问题重试都不会变好，而且同 provider
+# 的其它模型走同一个闸门（硅基流动 402 时 Hunyuan 与 Qwen2.5 报同一个错）。
+ACCOUNT_LEVEL_STATUS = (401, 402, 403)
+# 404 只说明这一个模型下架了（免费档随时下架,sensenova 6.7 是前例),provider 本身仍可用。
+MODEL_LEVEL_STATUS = (404,)
+NON_RETRYABLE_STATUS = ACCOUNT_LEVEL_STATUS + MODEL_LEVEL_STATUS
+
+
+def _error_status(exc: Exception) -> int | None:
+    """从 SDK 异常里取 HTTP 状态码；取不到就返回 None（按可重试处理）。"""
+    status = getattr(exc, "status_code", None)
+    if isinstance(status, int):
+        return status
+    match = re.search(r"Error code:\s*(\d{3})", str(exc))
+    return int(match.group(1)) if match else None
 
 
 class LLMError(RuntimeError):
@@ -32,6 +49,7 @@ class LLMClient:
         self.total_completion_tokens: int = 0
         self._clients: dict[str, Any] = {}
         self._unavailable_roles: set[str] = set()
+        self._banned_providers: set[str] = set()
         self._init_clients()
 
         if not self._clients:
@@ -54,6 +72,8 @@ class LLMClient:
         print(f"[LLM Init] Providers with keys: {ready}")
 
     def _get_client(self, provider: str):
+        if provider in self._banned_providers:
+            return None
         return self._clients.get(provider)
 
     @property
@@ -61,7 +81,7 @@ class LLMClient:
         return next(iter(self._clients.values()), None)
 
     def has_provider(self, provider: str) -> bool:
-        return provider in self._clients
+        return provider in self._clients and provider not in self._banned_providers
 
     def has_role(self, role: str) -> bool:
         """True when the role has at least one reachable provider.
@@ -146,6 +166,15 @@ class LLMClient:
             except Exception as e:
                 self.failed_attempt_count += 1
                 print(f"[LLM Warning] Attempt {attempt + 1} failed: {e}")
+                status = _error_status(e)
+                if status in NON_RETRYABLE_STATUS:
+                    if status in ACCOUNT_LEVEL_STATUS:
+                        # 一次就够：整个 provider 对本次运行拉黑,剩余仓库不再付重试税
+                        self._banned_providers.add(provider)
+                        print(f"[LLM] {provider} 账户级错误 (HTTP {status}) → 本次运行不再调用该 provider")
+                    else:
+                        print(f"[LLM] {provider}/{model} 模型不可用 (HTTP {status}) → 不再重试该模型")
+                    return None
                 if "429" in str(e).lower() or "rate limit" in str(e).lower():
                     continue
                 if attempt == retries - 1:
@@ -173,6 +202,7 @@ class LLMClient:
         temp = temperature if temperature is not None else self.config.ai.temperature
         max_t = max_tokens if max_tokens is not None else self.config.ai.max_tokens
         role_cfg = self.config.ai.roles[role]
+        attempts_before = self.failed_attempt_count
 
         if self.has_provider(provider):
             result = self._try_model(
@@ -201,8 +231,9 @@ class LLMClient:
 
         # 熔断：本次运行剩余仓库不再为该 role 付重试的失败税
         self._unavailable_roles.add(role)
+        attempts_used = self.failed_attempt_count - attempts_before
         raise LLMError(
-            f"role '{role}' failed after {retries} attempts (primary + fallback); "
+            f"role '{role}' failed after {attempts_used} attempt(s) (primary + fallback); "
             f"channel tripped off for the rest of this run."
         )
 
