@@ -138,5 +138,12 @@
     "cooldown_until": "2026-11-14",
     "stars": 93810,
     "occurrences": 3
+  },
+  "obra/superpowers": {
+    "first_seen": "2026-10-02",
+    "archived_at": "2026-10-15",
+    "cooldown_until": "2026-11-14",
+    "stars": 299592,
+    "occurrences": 3
   }
 }
