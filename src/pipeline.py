@@ -26,6 +26,8 @@ MIN_TRANSLATABLE_CHARS = 50
 REVIEW_MAX_TOKENS = 64
 # 喂给 writer 的 README 摘录预算：够判断项目实际做什么，又不吃掉整个 input 配额
 README_CONTEXT_CHARS = 1200
+# 翻译通道全断时，报告里的英文原文要带这行说明
+UNTRANSLATED_NOTICE = "> 中文翻译通道本轮不可用，以下为 writer 英文原文。"
 
 TRANSLATE_PROMPT = (
     "Translate the following English technical analysis into natural Chinese. "
@@ -645,12 +647,18 @@ class CurationPipeline:
                 r[key] = (res.get("content") or "").strip()
 
     def _stage_review(self, repos: list[dict[str, Any]]) -> None:
-        """逐仓库二选一；只有一边有译文时直接采用，两边都缺则用中文 stub。"""
+        """逐仓库二选一；只有一边有译文时直接采用，两边都缺则回退到英文原文。"""
         print("\n=== Review（比稿选优）===")
         for r in repos:
             ta, tb = r.get("translation_a", ""), r.get("translation_b", "")
             if not ta and not tb:
-                r["chinese_summary"] = self._chinese_stub(r)
+                # writer 的 4 小节产物是本轮最贵的 token，不能因为翻译层死了就丢掉
+                english = (r.get("refined_summary", "") or "").strip()
+                if _analysis_complete(english):
+                    print(f"  [Review Fallback] {r['full_name']} 双语通道皆空 → 保留英文原文")
+                    r["chinese_summary"] = f"{UNTRANSLATED_NOTICE}\n\n{english}"
+                else:
+                    r["chinese_summary"] = self._chinese_stub(r)
                 continue
             if not ta or not tb:
                 r["chinese_summary"] = ta or tb

@@ -381,6 +381,28 @@ class TestReviewDegradation:
         assert "### 要解决的核心痛点" in repos[0]["chinese_summary"]
         assert llm.calls == []
 
+    def test_both_channels_missing_keeps_english_analysis(self, batch_config):
+        """翻译层整条死了也不能扔 writer 的 4 段分析——那是本轮最贵的 output token。"""
+        llm = _FakeLLM({"reviewer"}, lambda role, msg: pytest.fail("双语皆空时不该比稿"))
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = self._repos("", "")
+        repos[0]["refined_summary"] = _full_analysis("Real evidence-backed prose.")
+        pipeline._stage_review(repos)
+        body = repos[0]["chinese_summary"]
+        assert "### Core Pain Point Solved" in body
+        assert "writer 英文原文" in body
+        assert "兜底策略生成" not in body
+        assert llm.calls == []
+
+    def test_partial_english_falls_back_to_chinese_stub(self, batch_config):
+        """过不了完整性门的英文残稿仍走中文 stub，不把半份产物端给读者。"""
+        llm = _FakeLLM({"reviewer"}, lambda role, msg: {"content": "A"})
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = self._repos("", "")
+        repos[0]["refined_summary"] = "### Core Pain Point Solved\nonly one section"
+        pipeline._stage_review(repos)
+        assert "### 要解决的核心痛点" in repos[0]["chinese_summary"]
+
     def test_reviewer_gets_reasoning_headroom(self, batch_config):
         """max_tokens 不能只够一个字母：推理型模型会把 reasoning 算进同一预算。"""
         llm = _FakeLLM({"reviewer"}, lambda role, msg: {"content": "A"})

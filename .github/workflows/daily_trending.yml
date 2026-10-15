@@ -44,11 +44,12 @@ on:
           - beginner
           - advanced
       writer_variant:
-        description: 'Writer model A/B (a=current, b=candidate)'
+        description: 'Writer model A/B (config=按 config.yaml 的 writer_variant)'
         required: true
-        default: 'a'
+        default: 'config'
         type: choice
         options:
+          - config
           - a
           - b
 
@@ -227,7 +228,9 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
 
           # writer A/B：走 env 而不是把 ${{ }} 内插进命令行,避开 Actions 脚本注入面
-          WRITER_VARIANT: ${{ github.event.inputs.writer_variant || 'a' }}
+          # schedule 触发时 inputs 为空 → env 空 → config.yaml 的 writer_variant 生效；
+          # dispatch 的 'config' 同样表示不覆盖（见 src/config.py 的 load_config）
+          WRITER_VARIANT: ${{ github.event.inputs.writer_variant }}
 
           # Actions 日志按块缓冲会让 per-stage 成本归因挤在一起
           PYTHONUNBUFFERED: 1
@@ -235,7 +238,7 @@ jobs:
           TIMEFRAME="${{ github.event.inputs.since || 'daily' }}"
           PERSONA="${{ github.event.inputs.persona || 'intermediate' }}"
 
-          echo "Running pipeline with timeframe=$TIMEFRAME, persona=$PERSONA, writer_variant=$WRITER_VARIANT..."
+          echo "Running pipeline with timeframe=$TIMEFRAME, persona=$PERSONA, writer_variant=${WRITER_VARIANT:-config}..."
           uv run python src/main.py --since "$TIMEFRAME" --persona "$PERSONA"
 
       - name: Upload report artifacts

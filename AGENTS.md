@@ -109,10 +109,13 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 | `reviewer` | Stage 5.5 二选一比稿 | openrouter | nemotron-ultra,降级 `nemotron-3-super-120b-a12b:free` |
 
 - **writer 的 A/B 开关**:`ai.roles.writer` 就是 A 案(现役);`ai.writer_variants.b` 只放替代方案,
-  `ai.writer_variant: a|b` 一处切换,或设环境变量 `WRITER_VARIANT=b`(workflow_dispatch 的下拉框走这条)。
+  `ai.writer_variant: a|b` 一处切换,或设环境变量 `WRITER_VARIANT=b` 临时覆盖。
   解析在 `AIConfig.apply_writer_variant()` —— 选中 b 时直接覆写 `roles["writer"]`,下游读取路径不变,
   所以 b 案的反向降级指向 ultra。非法变体会打印 `[Config Warning]` 并回退 a。
-  日志里的 `[Init] writer: … [变体 b]` 用来确认当前跑的是哪一案。
+  **workflow 的下拉框默认是 `config`(= 不覆盖)**,schedule 触发时 `WRITER_VARIANT` 为空,
+  所以定时跑走 `config.yaml` 的值;env 空值与 `config` 一律视为"不覆盖"(`load_config()`)。
+  日志里的 `[Init] writer: … [变体 b]` 用来确认当前跑的是哪一案 —— 10/11 把 YAML 改成 b 后
+  连续三天日志仍是 `[变体 a]`,原因就是你当时在这行加了 `|| 'a'` 兜底。
 - **Review 的 `max_tokens=64`**(`pipeline.REVIEW_MAX_TOKENS`):输出只要一个字母,但推理型模型把
   `reasoning_content` 算进同一预算,10 token 可能全被思考吃掉导致正文为空。免费模型不计费,
   多给 54 token 换掉这个风险可以忽略。
@@ -147,7 +150,9 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 
 - **降级路径**:classifier batch 失败 → 静态 `infer_tags/rating` **保留全部候选**(不再截 top 6);
   Write 失败或产物缺 4 个 `###` 小节 → **英文** stub(再由翻译层出中文);Translate 通道不可用 →
-  该通道留空且**一次请求都不发**;Review 缺一边 → 用另一边,两边都缺 → 中文 stub。
+  该通道留空且**一次请求都不发**;Review 缺一边 → 用另一边;**两边都缺 → 保留 writer 的英文原文**
+  (加一行 `UNTRANSLATED_NOTICE` 说明),只有英文产物也过不了完整性门才落中文 stub ——
+  翻译层死了不该把 Write 阶段那 ~14k output token 一起扔进 stub。
 - **代码入口**:`pipeline._stage_analyze`(batch)/ `_stage_summarize_and_reflect`(per-repo)/
   `_stage_translate` / `_stage_review`(后两者已从 `run()` 内联提取为可测方法)。
 - **Write&Reflect 的 reflect 是真的**:writer 在同一调用内先输出 `SELF-CHECK:` 一行

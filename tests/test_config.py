@@ -245,6 +245,29 @@ class TestWriterVariant:
         monkeypatch.setenv("WRITER_VARIANT", "B")
         assert load_config().ai.roles["writer"].model == LIGHTNING
 
+    def test_env_sentinel_defers_to_yaml_variant(self, monkeypatch):
+        """空值和 'config' 都表示“不覆盖”：schedule 触发时 env 就是空的，
+        一旦被当成 'a'，config.yaml 里的切换永远不会生效。"""
+        yaml_variant = yaml.safe_load(
+            (BASE_DIR / "config" / "config.yaml").read_text(encoding="utf-8")
+        )["ai"]["writer_variant"]
+        expected = LIGHTNING if yaml_variant == "b" else ULTRA
+        for sentinel in ("", "config", "  CONFIG  "):
+            monkeypatch.setenv("WRITER_VARIANT", sentinel)
+            cfg = load_config()
+            assert cfg.ai.writer_variant == yaml_variant, sentinel
+            assert cfg.ai.roles["writer"].model == expected, sentinel
+
+    def test_workflow_leaves_writer_variant_to_config_yaml(self):
+        """workflow 不能把 writer_variant 钉死成 'a'，否则 A/B 开关对定时跑是死的。"""
+        wf_text = (BASE_DIR / ".github" / "workflows" / "daily_trending.yml").read_text(encoding="utf-8")
+        assert "WRITER_VARIANT: ${{ github.event.inputs.writer_variant }}" in wf_text
+        assert "writer_variant || 'a'" not in wf_text
+        wf = yaml.safe_load(wf_text)
+        inputs = wf[True]["workflow_dispatch"]["inputs"]["writer_variant"]
+        assert inputs["default"] == "config"
+        assert set(inputs["options"]) == {"config", "a", "b"}
+
     def test_yaml_variant_block_matches_code_default(self):
         """变体表也有 drift 风险：yaml 的 writer_variants 必须与代码默认一致。"""
         yaml_ai = yaml.safe_load((BASE_DIR / "config" / "config.yaml").read_text(encoding="utf-8"))["ai"]

@@ -38,7 +38,7 @@ class AIConfig(BaseModel):
     })
     # writer 的 A/B：'a' 就是上面 roles.writer 本身（不重复定义）,
     # 这里只放替代方案。切换 = 把 writer_variant 改成 'b',
-    # 或设 WRITER_VARIANT 环境变量（workflow_dispatch 走这条）。
+    # 或设 WRITER_VARIANT 环境变量覆盖（'config'/空值表示不覆盖）。
     writer_variant: str = "a"
     writer_variants: dict[str, RoleConfig] = Field(default_factory=lambda: {
         "b": RoleConfig(model="nvidia/nemotron-3.5-lightning:free", provider="openrouter",
@@ -166,8 +166,10 @@ def load_config() -> AppConfig:
         if val:
             setattr(config.notifications, attr, val)
 
-    env_variant = os.getenv("WRITER_VARIANT")
-    if env_variant:
-        config.ai.writer_variant = env_variant.strip().lower()
+    # workflow_dispatch 的默认项是 'config'（= 不覆盖），schedule 触发时 env 为空。
+    # 这两种情况都必须让 config.yaml 的 writer_variant 说话。
+    env_variant = (os.getenv("WRITER_VARIANT") or "").strip().lower()
+    if env_variant and env_variant != "config":
+        config.ai.writer_variant = env_variant
         config.ai.apply_writer_variant()
     return config
