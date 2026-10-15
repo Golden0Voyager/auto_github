@@ -652,9 +652,10 @@ class CurationPipeline:
         for r in repos:
             ta, tb = r.get("translation_a", ""), r.get("translation_b", "")
             if not ta and not tb:
-                # writer 的 4 小节产物是本轮最贵的 token，不能因为翻译层死了就丢掉
+                # writer 的 4 小节产物是本轮最贵的 token，不能因为翻译层死了就丢掉；
+                # 但英文 stub 本身就是占位符，标成"英文原文"会骗读者，仍走中文 stub。
                 english = (r.get("refined_summary", "") or "").strip()
-                if _analysis_complete(english):
+                if _analysis_complete(english) and not r.get("analysis_is_stub"):
                     print(f"  [Review Fallback] {r['full_name']} 双语通道皆空 → 保留英文原文")
                     r["chinese_summary"] = f"{UNTRANSLATED_NOTICE}\n\n{english}"
                 else:
@@ -942,6 +943,7 @@ class CurationPipeline:
             # 单仓库失败不能拖垮整份报告（降级三层兜底之一）
             print(f"[Write Fail] {r['full_name']}: {e}")
             rc["refined_summary"] = self._english_stub(r)
+            rc["analysis_is_stub"] = True
             rc["reflection_trace"] = ""
             return rc
 
@@ -949,8 +951,10 @@ class CurationPipeline:
         if not _analysis_complete(analysis):
             print(f"[Write Gate] {r['full_name']} 缺少规定的 ### 小节 → 落到英文 stub")
             rc["refined_summary"] = self._english_stub(r)
+            rc["analysis_is_stub"] = True
         else:
             rc["refined_summary"] = analysis
+            rc["analysis_is_stub"] = False
         rc["reflection_trace"] = reflection
         if reflection:
             print(f"  [{r['full_name']}] {reflection[:100]}")

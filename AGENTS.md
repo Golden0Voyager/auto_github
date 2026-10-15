@@ -149,10 +149,11 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 | Stage 5.5 Review | N (per-repo) | 比对 A/B,输出 "A" 或 "B" |
 
 - **降级路径**:classifier batch 失败 → 静态 `infer_tags/rating` **保留全部候选**(不再截 top 6);
-  Write 失败或产物缺 4 个 `###` 小节 → **英文** stub(再由翻译层出中文);Translate 通道不可用 →
-  该通道留空且**一次请求都不发**;Review 缺一边 → 用另一边;**两边都缺 → 保留 writer 的英文原文**
-  (加一行 `UNTRANSLATED_NOTICE` 说明),只有英文产物也过不了完整性门才落中文 stub ——
-  翻译层死了不该把 Write 阶段那 ~14k output token 一起扔进 stub。
+  Write 失败或产物缺 4 个 `###` 小节 → **英文** stub(再由翻译层出中文,并打 `analysis_is_stub=True`);
+  Translate 通道不可用 → 该通道留空且**一次请求都不发**;Review 缺一边 → 用另一边;
+  **两边都缺 → 若是真产物(完整性门过 + `analysis_is_stub` 为假)则保留 writer 英文原文**
+  (加一行 `UNTRANSLATED_NOTICE`),否则仍落中文 stub —— 翻译层死了不该把 Write 阶段那上万
+  output token 一起扔进 stub,但英文 stub 齐 4 小节也只是占位符,不能冒充"原文"骗读者。
 - **代码入口**:`pipeline._stage_analyze`(batch)/ `_stage_summarize_and_reflect`(per-repo)/
   `_stage_translate` / `_stage_review`(后两者已从 `run()` 内联提取为可测方法)。
 - **Write&Reflect 的 reflect 是真的**:writer 在同一调用内先输出 `SELF-CHECK:` 一行

@@ -150,6 +150,7 @@ class TestSummarizeReflectPerRepo:
         assert _analysis_complete(result["refined_summary"])
         assert "SELF-CHECK" not in result["refined_summary"]
         assert result["reflection_trace"] == "The KV-cache trade-off is the sharpest claim here."
+        assert result["analysis_is_stub"] is False
 
     def test_incomplete_analysis_hits_gate(self, batch_config):
         """缺小节的产物不能进报告，落英文 stub 由翻译层出中文。"""
@@ -160,6 +161,7 @@ class TestSummarizeReflectPerRepo:
         result = pipeline._summarize_reflect_per_repo(repo)
         assert "Deeper LLM analysis pending" in result["refined_summary"]
         assert result["reflection_trace"] == "thin"
+        assert result["analysis_is_stub"] is True
 
     def test_per_repo_failure_uses_english_stub(self, batch_config):
         """写作失败返回英文 stub（不是中文），保证翻译层语义一致。"""
@@ -170,6 +172,7 @@ class TestSummarizeReflectPerRepo:
         result = pipeline._summarize_reflect_per_repo(repo)
         assert "### Core Pain Point Solved" in result["refined_summary"]
         assert "要解决的核心痛点" not in result["refined_summary"]
+        assert result["analysis_is_stub"] is True
 
     def test_readme_excerpt_reaches_the_writer(self, batch_config):
         """scraped_readme 必须进入 prompt，否则 Scrape 阶段是纯浪费。"""
@@ -387,6 +390,7 @@ class TestReviewDegradation:
         pipeline = _batch_pipeline(batch_config, llm)
         repos = self._repos("", "")
         repos[0]["refined_summary"] = _full_analysis("Real evidence-backed prose.")
+        repos[0]["analysis_is_stub"] = False
         pipeline._stage_review(repos)
         body = repos[0]["chinese_summary"]
         assert "### Core Pain Point Solved" in body
@@ -401,6 +405,17 @@ class TestReviewDegradation:
         repos = self._repos("", "")
         repos[0]["refined_summary"] = "### Core Pain Point Solved\nonly one section"
         pipeline._stage_review(repos)
+        assert "### 要解决的核心痛点" in repos[0]["chinese_summary"]
+
+    def test_english_stub_is_not_marked_as_writer_original(self, batch_config):
+        """英文 stub 本身齐 4 个小节，但它是占位符，标成"writer 英文原文"会骗读者。"""
+        llm = _FakeLLM({"reviewer"}, lambda role, msg: {"content": "A"})
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = self._repos("", "")
+        repos[0]["refined_summary"] = pipeline._english_stub(repos[0])
+        repos[0]["analysis_is_stub"] = True
+        pipeline._stage_review(repos)
+        assert "writer 英文原文" not in repos[0]["chinese_summary"]
         assert "### 要解决的核心痛点" in repos[0]["chinese_summary"]
 
     def test_reviewer_gets_reasoning_headroom(self, batch_config):
