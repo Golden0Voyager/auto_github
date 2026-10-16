@@ -70,8 +70,11 @@ ai:
       model: tencent/Hunyuan-MT-7B
       provider: siliconflow
     translator_b:
-      model: Qwen/Qwen2.5-7B-Instruct
-      provider: siliconflow
+      # 故意与 translator_a 跨 provider：两通道同账户时，一次欠费/限流就把中文层
+      # 和 Review 一起带走（10/12-10/15 的事故）。Gemma 与 Nvidia 也不同家族，
+      # 比稿才有区分度。openrouter 的 key、workflow env 与 _PROVIDER_ENV 都已就绪。
+      model: google/gemma-4-31b-it:free
+      provider: openrouter
     reviewer:
       model: nvidia/nemotron-3-ultra-550b-a55b:free
       provider: openrouter

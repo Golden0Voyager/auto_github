@@ -50,7 +50,11 @@ class TestAppConfigDefaults:
         assert cfg.ai.rate_limit_delay == 4.0
         assert cfg.ai.roles["classifier"].provider == "sensenova"
         assert cfg.ai.roles["translator_a"].provider == "siliconflow"
-        assert cfg.ai.roles["translator_b"].provider == "siliconflow"
+        # 两通道跨 provider 是硬约束：同账户时一次欠费/限流会同时带走 A/B 与 Review
+        # （10/12-10/15 siliconflow 402 就是这么让中文层消失了四天）。
+        assert cfg.ai.roles["translator_b"].provider == "openrouter"
+        assert cfg.ai.roles["translator_b"].model == "google/gemma-4-31b-it:free"
+        assert cfg.ai.roles["translator_a"].provider != cfg.ai.roles["translator_b"].provider
 
     def test_dedup_defaults(self):
         cfg = AppConfig()

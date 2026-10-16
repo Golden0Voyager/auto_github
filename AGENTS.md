@@ -105,9 +105,14 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 | `classifier` | Stage 2 批量分类评级 | sensenova | `sensenova-6.8-flash-lite`(6.7 已下架,404) |
 | `writer` | Stage 3+4 逐仓库写作+反思 | openrouter | nemotron-ultra,降级 `nemotron-3-super-120b-a12b:free` |
 | `translator_a` | Stage 5 翻译 A 通道 | siliconflow | `tencent/Hunyuan-MT-7B` |
-| `translator_b` | Stage 5 翻译 B 通道 | siliconflow | `Qwen/Qwen2.5-7B-Instruct` |
+| `translator_b` | Stage 5 翻译 B 通道 | openrouter | `google/gemma-4-31b-it:free` |
 | `reviewer` | Stage 5.5 二选一比稿 | openrouter | nemotron-ultra,降级 `nemotron-3-super-120b-a12b:free` |
 
+- **翻译两通道必须跨 provider**:`translator_a`=siliconflow,`translator_b`=openrouter(Gemma)。
+  两条都挂在 siliconflow 同一账户时,A/B 竞稿毫无独立性 —— 10/12 那次欠费 402 一把带走
+  两个通道 + Review,日报连续四天只有英文/中文 stub。换模型可以,把两条搬回同一家不行。
+  openrouter 免费档限额是 **20 请求/分钟 + 1000 请求/天**(累计购额 ≥$10;<$10 只有 50/天),
+  一轮完整管线约 37 次请求,三班/天也才 ~110 次,余量足够 —— 但**别把天数的重试堆出来**。
 - **writer 的 A/B 开关**:`ai.roles.writer` 就是 A 案(现役);`ai.writer_variants.b` 只放替代方案,
   `ai.writer_variant: a|b` 一处切换,或设环境变量 `WRITER_VARIANT=b` 临时覆盖。
   解析在 `AIConfig.apply_writer_variant()` —— 选中 b 时直接覆写 `roles["writer"]`,下游读取路径不变,
