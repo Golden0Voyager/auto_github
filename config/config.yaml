@@ -61,10 +61,13 @@ ai:
       provider: sensenova
     writer:
       # A 案（现役）。B 案见下方 writer_variants.b
-      model: nvidia/nemotron-3-ultra-550b-a55b:free
+      # 2026-10-16: ultra 反复 returned no choices（10/15 两班实测 6 次、4+2 次重试失败），
+      # 主写手换成 super-vl（120B/12B 激活、max_completion 131k、免费 Nvidia 里唯一支持
+      # structured_outputs）；ultra 转为第二条腿。RoleConfig 只有一级 fallback,
+      # 所以链路是 super-vl → ultra → 英文 stub。
+      model: nvidia/nemotron-3.5-super-vl:free
       provider: openrouter
-      # writer 原本没有 fallback：ultra 连续返回空 choices 时只剩重试,没有第二条腿
-      fallback_model: nvidia/nemotron-3-super-120b-a12b:free
+      fallback_model: nvidia/nemotron-3-ultra-550b-a55b:free
       fallback_provider: openrouter
     translator_a:
       model: tencent/Hunyuan-MT-7B
@@ -84,7 +87,7 @@ ai:
   # writer 的 A/B：'a' 即上面 roles.writer 本身；改成 'b' 就换用候选模型跑一轮对比质量。
   # 也可以不改这里,用环境变量 WRITER_VARIANT=b 临时覆盖（空值或 'config' = 不覆盖,
   # schedule 触发的定时跑就是空值,所以这行说了算）。
-  # b 用新一代 lightning 做主模型时,降级方向反过来指向 ultra,两案互为兜底。
+  # b 用新一代 lightning 做候选时,降级方向反过来指向 A 案,两案互为兜底。
   # 2026-10-15 A/B 实测（同为 9 仓库、同一份 prompt）：
   #   b 的 Write output tokens 58,038 vs a 的 14,004（4.1x），
   #   且 4/9 产物过不了 WRITER_SECTIONS 完整性门（a 为 0/9）——花得多、能用的少,回 A 案。
@@ -93,7 +96,7 @@ ai:
     b:
       model: nvidia/nemotron-3.5-lightning:free
       provider: openrouter
-      fallback_model: nvidia/nemotron-3-ultra-550b-a55b:free
+      fallback_model: nvidia/nemotron-3.5-super-vl:free
       fallback_provider: openrouter
 
 # 高星项目去重配置（节省算力 + 给新兴项目留展位）

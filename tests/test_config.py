@@ -42,9 +42,10 @@ class TestAppConfigDefaults:
     def test_ai_defaults(self):
         cfg = AppConfig()
         assert cfg.ai.default_provider == "openrouter"
-        assert cfg.ai.roles["writer"].model == "nvidia/nemotron-3-ultra-550b-a55b:free"
+        assert cfg.ai.roles["writer"].model == "nvidia/nemotron-3.5-super-vl:free"
+        assert cfg.ai.roles["writer"].fallback_model == "nvidia/nemotron-3-ultra-550b-a55b:free"
         assert cfg.ai.roles["reviewer"].model == "nvidia/nemotron-3-ultra-550b-a55b:free"
-        assert cfg.ai.roles["reviewer"].fallback_model == "nvidia/nemotron-3-super-120b-a12b:free"
+        assert cfg.ai.roles["reviewer"].fallback_model == SUPER_120B
         assert cfg.ai.temperature == 0.3
         assert cfg.ai.max_tokens == 8192
         assert cfg.ai.rate_limit_delay == 4.0
@@ -148,7 +149,7 @@ class TestLoadConfig:
         assert isinstance(config, AppConfig)
         # 不写死具体型号：仓库可以随时切到 B 案，这里只验证 writer 被正确解析
         assert config.ai.roles["writer"].provider == "openrouter"
-        assert config.ai.roles["writer"].model in {ULTRA, LIGHTNING}
+        assert config.ai.roles["writer"].model in {ULTRA, LIGHTNING, SUPER_VL}
 
 
 class TestModelValidation:
@@ -191,7 +192,9 @@ class TestModelValidation:
 
 
 ULTRA = "nvidia/nemotron-3-ultra-550b-a55b:free"
+SUPER_VL = "nvidia/nemotron-3.5-super-vl:free"
 LIGHTNING = "nvidia/nemotron-3.5-lightning:free"
+SUPER_120B = "nvidia/nemotron-3-super-120b-a12b:free"
 
 
 class TestWriterVariant:
@@ -200,25 +203,26 @@ class TestWriterVariant:
     def test_default_variant_keeps_current_writer(self):
         cfg = AIConfig()
         assert cfg.writer_variant == "a"
-        assert cfg.roles["writer"].model == ULTRA
+        assert cfg.roles["writer"].model == SUPER_VL
 
     def test_variant_switch_is_reversible_on_one_instance(self):
         """同一实例反复切换时，roles.writer 必须跟着走，不能粘在最后一次覆写上。"""
         cfg = AIConfig(writer_variant="a")
-        assert cfg.roles["writer"].model == ULTRA
+        assert cfg.roles["writer"].model == SUPER_VL
         cfg.writer_variant = "b"
         cfg.apply_writer_variant()
         assert cfg.roles["writer"].model == LIGHTNING
         cfg.writer_variant = "a"
         cfg.apply_writer_variant()
-        assert cfg.roles["writer"].model == ULTRA
-        assert cfg.roles["writer"].fallback_model == "nvidia/nemotron-3-super-120b-a12b:free"
+        assert cfg.roles["writer"].model == SUPER_VL
+        assert cfg.roles["writer"].fallback_model == ULTRA
 
     def test_variant_b_swaps_writer_and_reverses_fallback(self):
+        """b 案的降级腿指向 A 案，两案互为兜底。"""
         cfg = AIConfig(writer_variant="b")
         writer = cfg.roles["writer"]
         assert writer.model == LIGHTNING
-        assert writer.fallback_model == ULTRA
+        assert writer.fallback_model == SUPER_VL
 
     def test_other_roles_untouched_by_variant(self):
         cfg = AIConfig(writer_variant="b")
@@ -228,7 +232,7 @@ class TestWriterVariant:
     def test_unknown_variant_falls_back_to_a(self):
         cfg = AIConfig(writer_variant="nope")
         assert cfg.writer_variant == "a"
-        assert cfg.roles["writer"].model == ULTRA
+        assert cfg.roles["writer"].model == SUPER_VL
 
     def test_env_var_overrides_yaml_variant(self, monkeypatch):
         monkeypatch.setenv("WRITER_VARIANT", "b")
@@ -242,7 +246,7 @@ class TestWriterVariant:
             (BASE_DIR / "config" / "config.yaml").read_text(encoding="utf-8")
         )["ai"]["writer_variant"]
         monkeypatch.setenv("WRITER_VARIANT", "a" if yaml_variant == "b" else "b")
-        expected = ULTRA if yaml_variant == "b" else LIGHTNING
+        expected = SUPER_VL if yaml_variant == "b" else LIGHTNING
         assert load_config().ai.roles["writer"].model == expected
 
     def test_env_var_is_case_insensitive(self, monkeypatch):
@@ -255,7 +259,7 @@ class TestWriterVariant:
         yaml_variant = yaml.safe_load(
             (BASE_DIR / "config" / "config.yaml").read_text(encoding="utf-8")
         )["ai"]["writer_variant"]
-        expected = LIGHTNING if yaml_variant == "b" else ULTRA
+        expected = LIGHTNING if yaml_variant == "b" else SUPER_VL
         for sentinel in ("", "config", "  CONFIG  "):
             monkeypatch.setenv("WRITER_VARIANT", sentinel)
             cfg = load_config()

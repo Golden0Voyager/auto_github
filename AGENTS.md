@@ -103,7 +103,7 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 | 角色 | 管线阶段 | provider | 当前模型 |
 | :--- | :--- | :--- | :--- |
 | `classifier` | Stage 2 批量分类评级 | sensenova | `sensenova-6.8-flash-lite`(6.7 已下架,404) |
-| `writer` | Stage 3+4 逐仓库写作+反思 | openrouter | nemotron-ultra,降级 `nemotron-3-super-120b-a12b:free` |
+| `writer` | Stage 3+4 逐仓库写作+反思 | openrouter | `nemotron-3.5-super-vl:free`,降级 `nemotron-3-ultra-550b-a55b:free` |
 | `translator_a` | Stage 5 翻译 A 通道 | siliconflow | `tencent/Hunyuan-MT-7B` |
 | `translator_b` | Stage 5 翻译 B 通道 | openrouter | `google/gemma-4-31b-it:free` |
 | `reviewer` | Stage 5.5 二选一比稿 | openrouter | nemotron-ultra,降级 `nemotron-3-super-120b-a12b:free` |
@@ -116,7 +116,10 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 - **writer 的 A/B 开关**:`ai.roles.writer` 就是 A 案(现役);`ai.writer_variants.b` 只放替代方案,
   `ai.writer_variant: a|b` 一处切换,或设环境变量 `WRITER_VARIANT=b` 临时覆盖。
   解析在 `AIConfig.apply_writer_variant()` —— 选中 b 时直接覆写 `roles["writer"]`,下游读取路径不变,
-  所以 b 案的反向降级指向 ultra。非法变体会打印 `[Config Warning]` 并回退 a。
+  所以 b 案(lightning)的反向降级指向 A 案(super-vl),两案互为兜底。非法变体会打印 `[Config Warning]` 并回退 a。
+  **A 案在 2026-10-16 从 ultra 换成 `nemotron-3.5-super-vl:free`**(ultra 反复 `returned no choices`,
+  10/15 两班实测烧掉 6 次与 4+2 次重试);`RoleConfig` 只支持一级 fallback,所以写作链路是
+  **super-vl → ultra → 英文 stub**,super-120b 不再是 writer 的兜底腿(它仍服务 reviewer)。
   **workflow 的下拉框默认是 `config`(= 不覆盖)**,schedule 触发时 `WRITER_VARIANT` 为空,
   所以定时跑走 `config.yaml` 的值;env 空值与 `config` 一律视为"不覆盖"(`load_config()`)。
   日志里的 `[Init] writer: … [变体 b]` 用来确认当前跑的是哪一案 —— 10/11 把 YAML 改成 b 后
