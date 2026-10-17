@@ -193,7 +193,9 @@ def probe_t4(client: Any, model: str) -> str:
 PROBES = (("T1", probe_t1, 0.2), ("T2", probe_t2, 0.3), ("T3", probe_t3, 0.1), ("T4", probe_t4, 0.2))
 
 
-def run(model_filter: str | None) -> int:
+def run(model_filter: str | None, probe_filter: str | None) -> int:
+    wanted = {p.strip().upper() for p in probe_filter.split(",")} if probe_filter else None
+    probes = [p for p in PROBES if wanted is None or p[0] in wanted]
     rows: list[dict[str, Any]] = []
     for provider, model in CANDIDATES:
         if model_filter and model_filter.lower() not in f"{provider}/{model}".lower():
@@ -205,7 +207,7 @@ def run(model_filter: str | None) -> int:
             continue
         record: dict[str, Any] = {"model": f"{provider}/{model}"}
         latencies: list[float] = []
-        for label, fn, _temp in PROBES:
+        for label, fn, _temp in probes:
             try:
                 started = time.monotonic()
                 record[label] = fn(client, model)
@@ -218,21 +220,25 @@ def run(model_filter: str | None) -> int:
         print(f"[done] {record['model']} → " + " | ".join(f"{k}={v}" for k, v in record.items() if k not in ("model",)),
               flush=True)
 
+    labels = [p[0] for p in probes]
     print("\n## 探测结果\n")
-    print("| 模型 | T1 判别JSON | T2 写作结构 | T3 字母裁判 | T4 翻译锚点 | 单次p50 |")
-    print("| :--- | :--- | :--- | :--- | :--- | :--- |")
+    print("| 模型 | " + " | ".join(labels) + " | 单次p50 |")
+    print("| :--- | " + " | ".join(":---" for _ in labels) + " | :--- |")
     for r in rows:
         if "error" in r:
-            print(f"| {r['model']} | 无 key/跳过: {r['error']} | | | | |")
+            print(f"| {r['model']} | 无 key/跳过: {r['error']} | |")
             continue
-        print(f"| {r['model']} | {r.get('T1','-')} | {r.get('T2','-')} | {r.get('T3','-')} | {r.get('T4','-')} | {r.get('p50','-')} |")
+        cells = " | ".join(str(r.get(label, "-")) for label in labels)
+        print(f"| {r['model']} | {cells} | {r.get('p50', '-')} |")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--only", help="只测包含该子串的模型", default=None)
-    return run(parser.parse_args(argv).only)
+    parser.add_argument("--probes", help="只跑这些探针，逗号分隔，如 T3,T4", default=None)
+    args = parser.parse_args(argv)
+    return run(args.only, args.probes)
 
 
 if __name__ == "__main__":

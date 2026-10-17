@@ -8,6 +8,10 @@ on:
         description: '只测模型名包含该子串的（留空 = 测全部候选）'
         required: false
         default: ''
+      probes:
+        description: '只跑这些探针（逗号分隔，如 T3,T4；留空 = 全跑）'
+        required: false
+        default: ''
 
 concurrency:
   group: model-probe
@@ -37,10 +41,10 @@ jobs:
           SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
           # 走 env 而不是把 ${{ }} 内插进命令行，避开 Actions 脚本注入面
           PROBE_ONLY: ${{ github.event.inputs.only }}
+          PROBE_PROBES: ${{ github.event.inputs.probes }}
           PYTHONUNBUFFERED: 1
         run: |
-          if [ -n "$PROBE_ONLY" ]; then
-            uv run python scripts/probe_models.py --only "$PROBE_ONLY"
-          else
-            uv run python scripts/probe_models.py
-          fi
+          ARGS=()
+          if [ -n "$PROBE_ONLY" ]; then ARGS+=(--only "$PROBE_ONLY"); fi
+          if [ -n "$PROBE_PROBES" ]; then ARGS+=(--probes "$PROBE_PROBES"); fi
+          uv run python scripts/probe_models.py "${ARGS[@]}"
