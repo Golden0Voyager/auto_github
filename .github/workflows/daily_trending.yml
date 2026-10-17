@@ -218,6 +218,8 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           SENSENOVA_API_KEY: ${{ secrets.SENSENOVA_API_KEY }}
           SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          # 比稿判断通道（TypeSafe Jev）。没配就自动退回 ultra 字母裁判，不影响管线
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
 
           # GitHub API Token (automatically provided by GitHub to bypass API limits)
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -97,6 +97,17 @@ ai:
       fallback_model: nvidia/nemotron-3-super-120b-a12b:free
       fallback_provider: openrouter
 
+  # 比稿判断通道（TypeSafe System One）。这是本项目第一个付费依赖：
+  # $42 / 1B input token、output 免费，一轮 Review 约 2.5 万 input ≈ $0.001。
+  # 凭证走环境变量 TYPESAFE_API_KEY；没配就直接退回 ultra 字母裁判，不影响管线。
+  # 一次请求里并行问 Choice(better_draft) + Noul(draft_incomplete)，
+  # 后者专门抓"译文丢了小节/整段漏译"这种只看文笔抓不到的失效。
+  jev:
+    model: jev-latest
+    confidence_threshold: 0.6
+    incomplete_threshold: 0.5
+    timeout: 30.0
+
   # writer 的 A/B：'a' 即上面 roles.writer 本身；改成 'b' 就换用候选模型跑一轮对比质量。
   # 也可以不改这里,用环境变量 WRITER_VARIANT=b 临时覆盖（空值或 'config' = 不覆盖,
   # schedule 触发的定时跑就是空值,所以这行说了算）。

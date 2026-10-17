@@ -42,6 +42,25 @@ REVIEW_PROMPT = (
     "--- Translation A ---\n{ta}\n\n--- Translation B ---\n{tb}"
 )
 
+# Jev（TypeSafe System One）比稿问题。一次请求并行问两个判断，不多花轮次：
+# Choice 选更好的译文，Noul 专抓"丢小节/整段漏译"——只看文笔的裁判抓不到这个。
+JEV_CHOICE_INSTRUCTIONS = (
+    "Two Chinese translations of the same English technical analysis are provided as "
+    "`translation_a` and `translation_b`; `english_original` is the source. Pick the "
+    "translation that better serves intermediate LLM engineers reading a Chinese daily "
+    "report: accurate terminology, natural Chinese phrasing, and all four '###' section "
+    "headers kept. Choose A or B."
+)
+JEV_CHOICE_CRITERIA = {
+    "A": "the draft under `translation_a`",
+    "B": "the draft under `translation_b`",
+}
+JEV_INCOMPLETE_INSTRUCTIONS = (
+    "Compared with `english_original`, does either `translation_a` or `translation_b` "
+    "drop one of the four '###' section headers, or skip a whole paragraph of the "
+    "original?"
+)
+
 
 TAG_KEYWORDS = {
     "#LLM":        ["llm", "language model", "gpt", "inference", "transformer", "tokenizer", "embedding"],
@@ -646,6 +665,52 @@ class CurationPipeline:
                     continue
                 r[key] = (res.get("content") or "").strip()
 
+    def _jev_verdict(self, r: dict[str, Any], ta: str, tb: str) -> str | None:
+        """比稿前置判断：Jev 给出可信答案就返回 "A"/"B"，否则返回 None 交给 ultra。
+
+        退回条件：通道未配置/调用失败、答案不是 A 或 B、漏译概率过高、置信度不足。
+        """
+        if not self.llm.has_judgment():
+            return None
+
+        from typesafe_sdk import Choice, Noul
+
+        jev = self.config.ai.jev
+        try:
+            answers = self.llm.call_judgment(
+                state={
+                    "english_original": r.get("refined_summary", "") or "",
+                    "translation_a": ta,
+                    "translation_b": tb,
+                },
+                questions={
+                    "better_draft": Choice(
+                        instructions=JEV_CHOICE_INSTRUCTIONS, criteria=JEV_CHOICE_CRITERIA,
+                    ),
+                    "draft_incomplete": Noul(instructions=JEV_INCOMPLETE_INSTRUCTIONS),
+                },
+            )
+        except Exception as e:
+            # 付费通道报错就整条运行停用（llm 内部已做），这里退回字母裁判继续比稿
+            print(f"  [Review Jev Fail] {r['full_name']}: {e} → 交给 ultra")
+            return None
+        pick = str(answers.get("better_draft", {}).get("choice", "") or "").strip().upper()
+        confidence = answers.get("better_draft", {}).get("confidence")
+        incomplete = answers.get("draft_incomplete", {}).get("noul")
+
+        if pick not in ("A", "B"):
+            print(f"  [Review Jev] {r['full_name']} 未给出 A/B → 交给 ultra")
+            return None
+        if isinstance(incomplete, (int, float)) and incomplete > jev.incomplete_threshold:
+            print(f"  [Review Escalate] {r['full_name']} 漏译概率 {incomplete:.2f} → 交给 ultra")
+            return None
+        if isinstance(confidence, (int, float)) and confidence < jev.confidence_threshold:
+            print(f"  [Review Escalate] {r['full_name']} 置信度 {confidence:.2f} → 交给 ultra")
+            return None
+        conf = f"{confidence:.2f}" if isinstance(confidence, (int, float)) else "n/a"
+        print(f"  [Review Jev] {r['full_name']} 选 {pick}（置信度 {conf}）")
+        return pick
+
     def _stage_review(self, repos: list[dict[str, Any]]) -> None:
         """逐仓库二选一；只有一边有译文时直接采用，两边都缺则回退到英文原文。"""
         print("\n=== Review（比稿选优）===")
@@ -663,6 +728,10 @@ class CurationPipeline:
                 continue
             if not ta or not tb:
                 r["chinese_summary"] = ta or tb
+                continue
+            verdict = self._jev_verdict(r, ta, tb)
+            if verdict is not None:
+                r["chinese_summary"] = ta if verdict == "A" else tb
                 continue
             if not self.llm.has_role("reviewer"):
                 print(f"  [Review Skip] reviewer 不可用 → {r['full_name']} 直接采用 A 通道")

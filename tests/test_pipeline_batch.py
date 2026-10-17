@@ -247,6 +247,9 @@ class _FakeLLM:
         self.call_kwargs.append(kwargs)
         return self.responder(role, messages)
 
+    def has_judgment(self) -> bool:
+        return False
+
 
 def _batch_pipeline(batch_config, llm):
     pipeline = CurationPipeline(batch_config, llm)
@@ -313,6 +316,9 @@ class _TrippingLLM:
 
     def has_role(self, role: str) -> bool:
         return role in self.available
+
+    def has_judgment(self) -> bool:
+        return False
 
     def call_llm(self, messages, role="writer", **kwargs):
         self.calls.append(role)
@@ -601,3 +607,84 @@ class TestPipelineRunEdgeCases:
         result = pipeline.run(since="daily", use_mock=True)
         # Should return meta with 0 curated repos
         assert result.get("meta", {}).get("total_curated_repos", -1) == 0
+
+
+class _JevLLM:
+    """Jev 前置判断 + ultra 字母裁判的双通道 fake。"""
+
+    def __init__(self, verdict="B", confidence=0.9, incomplete=0.0, raises=False):
+        self.verdict = verdict
+        self.confidence = confidence
+        self.incomplete = incomplete
+        self.raises = raises
+        self.jev_calls = 0
+        self.reviewer_calls = 0
+
+    def has_role(self, role: str) -> bool:
+        return role == "reviewer"
+
+    def has_judgment(self) -> bool:
+        return True
+
+    def call_judgment(self, state, questions):
+        self.jev_calls += 1
+        if self.raises:
+            raise LLMError("jev judgment failed: 429 rate limited")
+        return {
+            "better_draft": {
+                "type": "choice", "choice": self.verdict,
+                "confidence": self.confidence, "probabilities": {},
+            },
+            "draft_incomplete": {"type": "noul", "noul": self.incomplete},
+        }
+
+    def call_llm(self, messages, role="reviewer", **kwargs):
+        self.reviewer_calls += 1
+        return {"content": "B"}
+
+
+class TestJevReviewRouting:
+    """比稿先问 Jev，只有拿不准/漏译/通道故障才升级到 ultra。"""
+
+    def _repos(self):
+        return [{"full_name": "a/b", "description": "d", "refined_summary": "english",
+                 "translation_a": _TRANSLATED_A, "translation_b": _TRANSLATED_B}]
+
+    def test_high_confidence_jev_decides_without_calling_reviewer(self, batch_config):
+        llm = _JevLLM(verdict="A", confidence=0.88)
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = self._repos()
+        pipeline._stage_review(repos)
+        assert repos[0]["chinese_summary"] == _TRANSLATED_A
+        assert (llm.jev_calls, llm.reviewer_calls) == (1, 0)
+
+    def test_low_confidence_escalates_to_reviewer(self, batch_config):
+        llm = _JevLLM(verdict="A", confidence=0.31)
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = self._repos()
+        pipeline._stage_review(repos)
+        assert (llm.jev_calls, llm.reviewer_calls) == (1, 1)
+        assert repos[0]["chinese_summary"] == _TRANSLATED_B
+
+    def test_dropped_section_probability_escalates_even_when_confident(self, batch_config):
+        llm = _JevLLM(verdict="A", confidence=0.95, incomplete=0.8)
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = self._repos()
+        pipeline._stage_review(repos)
+        assert (llm.jev_calls, llm.reviewer_calls) == (1, 1)
+
+    def test_jev_failure_still_produces_a_verdict(self, batch_config):
+        """付费通道挂了不能拖垮比稿：退回 ultra，报告照常出。"""
+        llm = _JevLLM(raises=True)
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = self._repos()
+        pipeline._stage_review(repos)
+        assert (llm.jev_calls, llm.reviewer_calls) == (1, 1)
+        assert repos[0]["chinese_summary"] == _TRANSLATED_B
+
+    def test_jev_garbage_answer_escalates(self, batch_config):
+        llm = _JevLLM(verdict="也许是 B 的改写", confidence=0.99)
+        pipeline = _batch_pipeline(batch_config, llm)
+        repos = self._repos()
+        pipeline._stage_review(repos)
+        assert llm.reviewer_calls == 1

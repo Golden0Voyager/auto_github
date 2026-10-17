@@ -296,3 +296,17 @@ class TestWriterVariant:
             assert actual.model == expected["model"], name
             assert actual.provider == expected["provider"], name
             assert actual.fallback_model == expected.get("fallback_model"), name
+
+    def test_jev_yaml_matches_code_default(self):
+        """Jev 通道也有 drift 风险：YAML 的判断参数必须与代码默认一致。"""
+        yaml_jev = yaml.safe_load(
+            (BASE_DIR / "config" / "config.yaml").read_text(encoding="utf-8")
+        )["ai"]["jev"]
+        assert AIConfig().jev.model_dump() == yaml_jev
+
+    def test_jev_thresholds_gate_the_escalation(self):
+        """阈值是升级判据，不能漂到 0（等于永远相信 Jev）或 >1（等于永远复判）。"""
+        jev = AIConfig().jev
+        assert 0.0 < jev.confidence_threshold < 1.0
+        assert 0.0 < jev.incomplete_threshold < 1.0
+        assert jev.timeout > 0

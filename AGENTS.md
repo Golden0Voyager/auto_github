@@ -88,10 +88,11 @@ python src/main.py --since weekly --persona advanced
 - **CLI 选项**:`--since {daily,weekly,monthly}`、`--persona {beginner,intermediate,advanced}`、
   `--mock`、`--feishu/--slack/--discord <webhook>`(覆盖 config/env)。
 - **真实运行需要 3 个 API key**(缺一即对应通道静默降级,**不会中断管线**):
-  - `OPENROUTER_API_KEY` — writer + reviewer
-  - `SENSENOVA_API_KEY` — classifier(Token Plan 端点)
-  - `SILICONFLOW_API_KEY` — translator_a/b
-  可选:`FEISHU_WEBHOOK_URL` / `SLACK_WEBHOOK_URL` / `DISCORD_WEBHOOK_URL` / `GITHUB_TOKEN`。
+  - `OPENROUTER_API_KEY` — writer + reviewer + translator_b + classifier
+  - `SENSENOVA_API_KEY` — classifier/translator 的降级腿(Token Plan 端点)
+  - `SILICONFLOW_API_KEY` — translator_a
+  第四个是**可选**的 `TYPESAFE_API_KEY`(比稿 Jev 判断通道,见下),没有就退回 ultra 字母裁判。
+  其余可选:`FEISHU_WEBHOOK_URL` / `SLACK_WEBHOOK_URL` / `DISCORD_WEBHOOK_URL` / `GITHUB_TOKEN`。
 - `python-dotenv` 通过 `load_dotenv()`(main.py:58)从 CWD 加载 `.env`。
 
 ### LLM 引擎:五角色多供应商
@@ -106,7 +107,7 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 | `writer` | Stage 3+4 逐仓库写作+反思 | openrouter | `nemotron-3.5-super-vl:free`,降级 `nemotron-3-ultra-550b-a55b:free` |
 | `translator_a` | Stage 5 翻译 A 通道 | siliconflow | `tencent/Hunyuan-MT-7B`,**跨 provider 降级** sensenova `sensenova-6.8-flash-lite` |
 | `translator_b` | Stage 5 翻译 B 通道 | openrouter | `google/gemma-4-31b-it:free`,**跨 provider 降级** sensenova `sensenova-6.8-flash-lite` |
-| `reviewer` | Stage 5.5 二选一比稿 | openrouter | nemotron-ultra,降级 `nemotron-3-super-120b-a12b:free` |
+| `reviewer` | Stage 5.5 二选一比稿 | **Jev 前置**(TypeSafe) | 拿不准才落 openrouter nemotron-ultra,降级 `nemotron-3-super-120b-a12b:free` |
 
 - **翻译两通道必须跨 provider**:`translator_a`=siliconflow,`translator_b`=openrouter(Gemma)。
   两条都挂在 siliconflow 同一账户时,A/B 竞稿毫无独立性 —— 10/12 那次欠费 402 一把带走
@@ -130,12 +131,25 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 - **Review 的 `max_tokens=64`**(`pipeline.REVIEW_MAX_TOKENS`):输出只要一个字母,但推理型模型把
   `reasoning_content` 算进同一预算,10 token 可能全被思考吃掉导致正文为空。免费模型不计费,
   多给 54 token 换掉这个风险可以忽略。
+- **比稿先问 Jev(TypeSafe System One)**,这是本项目**第一个付费依赖**($42/B input、output
+  免费,一轮 Review 约 2.5 万 input ≈ $0.001)。`pipeline._jev_verdict` 在**一次** `system_one`
+  请求里并行问两个判断:`Choice(better_draft)` 选 A/B(带 `confidence` 与 `probabilities`),
+  `Noul(draft_incomplete)` 专抓"丢小节/整段漏译" —— 只看文笔的字母裁判抓不到这个。
+  **升级回 ultra 的条件**(任一命中即复判):通道未配置或调用失败、答案不是 A/B、
+  `confidence < ai.jev.confidence_threshold`(默认 0.6)、`noul > incomplete_threshold`(默认 0.5)。
+  它**不走 `_PROVIDER_ENV`**(不是 OpenAI 兼容协议),凭证是 `TYPESAFE_API_KEY`,
+  client 在 `LLMClient._get_jev_client` 里懒建;`call_judgment` 一旦失败就把通道停用
+  到本次运行结束(`has_judgment()` 转 False),绝不逐仓库继续敲门烧钱。
 
-- 三家 provider 全部走 OpenAI SDK 兼容协议(`src/llm.py`)。
+- 三家 provider 全部走 OpenAI SDK 兼容协议(`src/llm.py`),**Jev 判断通道除外**(独立 client)。
 - **节流**:全局 `rate_limit_delay: 4.0s`(每次成功后再睡 delay/2);per-provider 重试间隔与
   超时见 `llm.py` 内字典;`call_llm` 默认 `retries=3, backoff_factor=2.0`,429 时指数退避;
   主模型耗尽后自动切 fallback。退避有下限 `MIN_RETRY_DELAY = 2.0` —— sensenova/siliconflow
   配的 delay 是 0.0/0.1,不兜底就等于 429 后原地猛重。
+  **两个 SDK 的内置重试都必须显式归零**:`OpenAI(..., max_retries=0)`、
+  `TypeSafeClient(retry=RetryPolicy(max_retries=0))`。默认值都是 2,会把我们的 `retries=3`
+  乘成 9 次 HTTP —— 10/16 那班 openrouter 逐仓库超时,单模型耗掉 ~135s(3×45s),
+  整条 curate 撞上 `timeout-minutes: 45` 被杀,当天报告直接没出。
 - **错误契约**:`call_llm` 拿不到内容时 **raise `LLMError`**,不再返回
   `{"content": "Error: no client..."}`。旧实现会把错误字符串当正文一路写进报告
   (历史上真发生过)。上层用 `llm.has_role(role)` 预判通道可用性 → 不可用就**跳过、不发请求**;
@@ -162,7 +176,7 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 | Stage 2 Analyze | 1 (batch) | N 个 repo 一次性分类 + 评级 |
 | Stage 3+4 Write&Reflect | N (per-repo) | 每仓库 1 次;batch 化曾尝试后**回退**(batch JSON 解析失败率过高) |
 | Stage 5 Translate | 2N (per-repo) | A/B 双模型各 1 次 |
-| Stage 5.5 Review | N (per-repo) | 比对 A/B,输出 "A" 或 "B" |
+| Stage 5.5 Review | ≤2N (per-repo) | 先 1 次 Jev(同一请求问 Choice + Noul);拿不准才升级 ultra(再 1 次)。Jev 没配 = 全部走 ultra,仍是 N |
 
 - **降级路径**:classifier batch 失败 → 静态 `infer_tags/rating` **保留全部候选**(不再截 top 6);
   Write 失败或产物缺 4 个 `###` 小节 → **英文** stub(再由翻译层出中文,并打 `analysis_is_stub=True`);

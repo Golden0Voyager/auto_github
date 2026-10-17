@@ -21,11 +21,25 @@ class RoleConfig(BaseModel):
     fallback_provider: str | None = None
 
 
+class JevConfig(BaseModel):
+    """比稿判断通道（TypeSafe System One）。
+
+    不是 OpenAI 兼容协议，走独立 client；凭证是环境变量 TYPESAFE_API_KEY。
+    """
+
+    model: str = "jev-latest"
+    # 低于 confidence_threshold 或漏译概率高于 incomplete_threshold 时,升级给 ultra 复判
+    confidence_threshold: float = 0.6
+    incomplete_threshold: float = 0.5
+    timeout: float = 30.0
+
+
 class AIConfig(BaseModel):
     default_provider: str = "openrouter"
     temperature: float = 0.3
     max_tokens: int = 8192
     rate_limit_delay: float = 4.0
+    jev: JevConfig = Field(default_factory=JevConfig)
     # Mirror of config/config.yaml `ai.roles` for runs without that file; keep in sync.
     roles: dict[str, RoleConfig] = Field(default_factory=lambda: {
         "classifier": RoleConfig(model="nvidia/nemotron-3.5-super-vl:free", provider="openrouter",
@@ -146,6 +160,11 @@ class AppConfig(BaseModel):
 def resolve_api_key(provider: str) -> str | None:
     entry = _PROVIDER_ENV.get(provider)
     return os.getenv(entry[0]) if entry else None
+
+
+def resolve_jev_api_key() -> str | None:
+    """Jev 只有一个固定环境变量，不属于 _PROVIDER_ENV（非 OpenAI 协议）。"""
+    return os.getenv("TYPESAFE_API_KEY")
 
 
 def resolve_base_url(provider: str) -> str | None:

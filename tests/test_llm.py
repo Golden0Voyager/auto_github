@@ -447,3 +447,76 @@ class TestEmptyChoicesResponse:
         with pytest.raises(LLMError, match="failed after"):
             client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=2, backoff_factor=1.0)
         assert mock_client.chat.completions.create.call_count == 2
+
+
+def _jev_response(choice="B", confidence=0.82, noul=0.05):
+    """按 SDK 的真实字段形状造假响应：answers 按问题 ID 索引，type 区分 choice/noul。"""
+    return MagicMock(
+        answers={
+            "better_draft": MagicMock(
+                type="choice", choice=choice, confidence=confidence,
+                probabilities={"A": 1 - confidence, "B": confidence},
+            ),
+            "draft_incomplete": MagicMock(type="noul", noul=noul),
+        },
+        usage=MagicMock(input_tokens=1200, output_tokens=7),
+    )
+
+
+class TestJevJudgmentChannel:
+    """比稿判断通道：付费、独立 client，失败必须能整条运行停用并退回字母裁判。"""
+
+    def test_has_judgment_requires_key(self, llm_config, mock_openai, monkeypatch):
+        monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+        client = LLMClient(llm_config)
+        assert client.has_judgment() is False
+        with pytest.raises(LLMError, match="unavailable"):
+            client.call_judgment(state={"a": "x"}, questions={})
+
+    def test_call_judgment_normalizes_answers_and_counts_stats(
+        self, llm_config, mock_openai, monkeypatch
+    ):
+        monkeypatch.setenv("TYPESAFE_API_KEY", "ts-test")
+        fake = MagicMock()
+        fake.system_one.return_value = _jev_response()
+        client = LLMClient(llm_config)
+        with patch.object(LLMClient, "_get_jev_client", return_value=fake):
+            answers = client.call_judgment(state={"translation_a": "A"}, questions={"q": 1})
+
+        assert answers["better_draft"]["choice"] == "B"
+        assert answers["better_draft"]["confidence"] == 0.82
+        assert answers["draft_incomplete"]["noul"] == 0.05
+        stats = client.get_stats()
+        assert stats["call_count"] == 1
+        # Jev 的 usage 是 input/output 命名，必须并进同一套 token 口径
+        assert stats["total_prompt_tokens"] == 1200
+        assert stats["total_completion_tokens"] == 7
+
+    def test_jev_failure_disables_channel_for_the_rest_of_the_run(
+        self, llm_config, mock_openai, monkeypatch
+    ):
+        monkeypatch.setenv("TYPESAFE_API_KEY", "ts-test")
+        fake = MagicMock()
+        fake.system_one.side_effect = Exception("402 payment required")
+        client = LLMClient(llm_config)
+        with patch.object(LLMClient, "_get_jev_client", return_value=fake):
+            with pytest.raises(LLMError, match="jev judgment failed"):
+                client.call_judgment(state={"a": "x"}, questions={"q": 1})
+            assert client.has_judgment() is False
+            with pytest.raises(LLMError, match="unavailable"):
+                client.call_judgment(state={"a": "x"}, questions={"q": 1})
+        assert fake.system_one.call_count == 1
+
+    def test_openai_clients_disable_sdk_internal_retries(self, llm_config, mock_openai):
+        """SDK 默认 max_retries=2 会把我们的 retries=3 乘成 9 次 HTTP。"""
+        LLMClient(llm_config)
+        assert mock_openai.call_args.kwargs["max_retries"] == 0
+
+    def test_jev_client_disables_sdk_internal_retries(self, llm_config, mock_openai, monkeypatch):
+        monkeypatch.setenv("TYPESAFE_API_KEY", "ts-test")
+        client = LLMClient(llm_config)
+        with patch("typesafe_sdk.TypeSafeClient") as ts_client:
+            client._get_jev_client()
+        retry = ts_client.call_args.kwargs["retry"]
+        assert retry.max_retries == 0
+        assert ts_client.call_args.kwargs["model"] == "jev-latest"

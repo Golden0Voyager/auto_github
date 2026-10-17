@@ -2,7 +2,13 @@ import re
 import time
 from typing import Any
 
-from src.config import _PROVIDER_ENV, AppConfig, resolve_api_key, resolve_base_url
+from src.config import (
+    _PROVIDER_ENV,
+    AppConfig,
+    resolve_api_key,
+    resolve_base_url,
+    resolve_jev_api_key,
+)
 
 # Retry waits are multiplicative on this floor. Free-tier providers answer 429
 # within milliseconds, so a zero floor turns retries into a hammering storm.
@@ -50,6 +56,8 @@ class LLMClient:
         self._clients: dict[str, Any] = {}
         self._unavailable_roles: set[str] = set()
         self._banned_providers: set[str] = set()
+        self._jev_client: Any = None
+        self._jev_disabled = False
         self._init_clients()
 
         if not self._clients:
@@ -65,7 +73,10 @@ class LLMClient:
                 continue
             url = resolve_base_url(provider)
             try:
-                self._clients[provider] = OpenAI(api_key=key, base_url=url)
+                # max_retries 必须显式归零：SDK 默认 2,会把我们的 retries=3 乘成
+                # 9 次 HTTP —— 10/16 那班 openrouter 逐仓库超时,单模型耗掉 ~135s
+                # (3×45s 超时 + 退避),整条 curate 撞上 timeout-minutes 被杀,当天没出报告。
+                self._clients[provider] = OpenAI(api_key=key, base_url=url, max_retries=0)
             except Exception as e:
                 print(f"[LLM Error] Failed to initialize provider '{provider}': {e}")
         ready = ", ".join(sorted(self._clients)) or "none"
@@ -236,6 +247,63 @@ class LLMClient:
             f"role '{role}' failed after {attempts_used} attempt(s) (primary + fallback); "
             f"channel tripped off for the rest of this run."
         )
+
+    def has_judgment(self) -> bool:
+        """Jev 判断通道是否可用：有凭证，且本次运行尚未因失败停用。"""
+        return bool(resolve_jev_api_key()) and not self._jev_disabled
+
+    def _get_jev_client(self) -> Any:
+        if self._jev_client is None:
+            from typesafe_sdk import RetryPolicy, TypeSafeClient
+
+            jev = self.config.ai.jev
+            # RetryPolicy 默认 max_retries=2，和 OpenAI SDK 一样会在我们之下再乘一层
+            # HTTP 重试 —— 归零，让退避只有我们这一层
+            self._jev_client = TypeSafeClient(
+                api_key=resolve_jev_api_key(),
+                model=jev.model,
+                retry=RetryPolicy(max_retries=0),
+                timeout=jev.timeout,
+            )
+        return self._jev_client
+
+    def call_judgment(self, state: dict[str, str],
+                      questions: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        """一次 System One 调用，返回 {问题ID: {type, ...}}。
+
+        Choice → choice/confidence/probabilities；Noul → noul（yes 的概率）。
+        失败一律抛 LLMError 并在本次运行内停用该通道：付费通道报错后继续逐仓库
+        敲门只是白烧预算，调用方必须显式降级（比稿这里退回 ultra 字母裁判）。
+        """
+        if not self.has_judgment():
+            raise LLMError("judgment channel unavailable (no TYPESAFE_API_KEY, or disabled)")
+
+        try:
+            response = self._get_jev_client().system_one(state=state, questions=questions)
+        except Exception as e:
+            self.failed_attempt_count += 1
+            self._jev_disabled = True
+            raise LLMError(f"jev judgment failed: {e}") from e
+
+        usage = getattr(response, "usage", None)
+        if usage:
+            self.total_prompt_tokens += getattr(usage, "input_tokens", 0) or 0
+            self.total_completion_tokens += getattr(usage, "output_tokens", 0) or 0
+        self.call_count += 1
+
+        answers: dict[str, dict[str, Any]] = {}
+        for qid, ans in (getattr(response, "answers", None) or {}).items():
+            kind = getattr(ans, "type", None)
+            if kind == "choice":
+                answers[qid] = {
+                    "type": kind,
+                    "choice": ans.choice,
+                    "confidence": ans.confidence,
+                    "probabilities": dict(ans.probabilities or {}),
+                }
+            elif kind == "noul":
+                answers[qid] = {"type": kind, "noul": ans.noul}
+        return answers
 
     def get_stats(self) -> dict[str, int]:
         return {
