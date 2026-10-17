@@ -28,7 +28,8 @@ class AIConfig(BaseModel):
     rate_limit_delay: float = 4.0
     # Mirror of config/config.yaml `ai.roles` for runs without that file; keep in sync.
     roles: dict[str, RoleConfig] = Field(default_factory=lambda: {
-        "classifier": RoleConfig(model="sensenova-6.8-flash-lite", provider="sensenova"),
+        "classifier": RoleConfig(model="nvidia/nemotron-3.5-super-vl:free", provider="openrouter",
+                                 fallback_model="deepseek-flash", fallback_provider="sensenova"),
         "writer": RoleConfig(model="nvidia/nemotron-3.5-super-vl:free", provider="openrouter",
                              fallback_model="nvidia/nemotron-3-ultra-550b-a55b:free", fallback_provider="openrouter"),
         "translator_a": RoleConfig(model="tencent/Hunyuan-MT-7B", provider="siliconflow"),

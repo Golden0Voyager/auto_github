@@ -102,7 +102,7 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 
 | 角色 | 管线阶段 | provider | 当前模型 |
 | :--- | :--- | :--- | :--- |
-| `classifier` | Stage 2 批量分类评级 | sensenova | `sensenova-6.8-flash-lite`(6.7 已下架,404) |
+| `classifier` | Stage 2 批量分类评级 | openrouter | `nemotron-3.5-super-vl:free`(支持 `structured_outputs`),**跨 provider 降级** sensenova `deepseek-flash`(上一代主模型 `sensenova-6.8-flash-lite`;6.7 已下架,404) |
 | `writer` | Stage 3+4 逐仓库写作+反思 | openrouter | `nemotron-3.5-super-vl:free`,降级 `nemotron-3-ultra-550b-a55b:free` |
 | `translator_a` | Stage 5 翻译 A 通道 | siliconflow | `tencent/Hunyuan-MT-7B` |
 | `translator_b` | Stage 5 翻译 B 通道 | openrouter | `google/gemma-4-31b-it:free` |

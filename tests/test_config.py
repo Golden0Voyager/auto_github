@@ -19,6 +19,7 @@ from src.config import (
     AppConfig,
     DedupConfig,
     GitHubConfig,
+    RoleConfig,
     load_config,
 )
 
@@ -49,7 +50,10 @@ class TestAppConfigDefaults:
         assert cfg.ai.temperature == 0.3
         assert cfg.ai.max_tokens == 8192
         assert cfg.ai.rate_limit_delay == 4.0
-        assert cfg.ai.roles["classifier"].provider == "sensenova"
+        assert cfg.ai.roles["classifier"].provider == "openrouter"
+        # T1 的降级腿必须跨 provider，否则 openrouter 出事时判别层没有第二条腿
+        assert cfg.ai.roles["classifier"].fallback_provider == "sensenova"
+        assert cfg.ai.roles["classifier"].fallback_model == "deepseek-flash"
         assert cfg.ai.roles["translator_a"].provider == "siliconflow"
         # 两通道跨 provider 是硬约束：同账户时一次欠费/限流会同时带走 A/B 与 Review
         # （10/12-10/15 siliconflow 402 就是这么让中文层消失了四天）。
@@ -126,10 +130,10 @@ class TestLoadConfig:
         assert resolve_base_url("sensenova") == "https://token.sensenova.cn/v1"
 
     def test_sensenova_still_works_with_explicit_config(self, monkeypatch):
-        """SensoNova role should still work when explicitly configured."""
+        """SensoNova 作为显式配置的 provider 仍然可用（T1 之后它是 classifier 的降级腿）。"""
         monkeypatch.setenv("SENSENOVA_API_KEY", "sk-sensenova-test")
         cfg = AppConfig()
-        cfg.ai.roles["classifier"] = cfg.ai.roles["classifier"]  # default is sensenova
+        cfg.ai.roles["classifier"] = RoleConfig(model="sensenova-6.8-flash-lite", provider="sensenova")
         assert cfg.ai.roles["classifier"].model == "sensenova-6.8-flash-lite"
         assert cfg.ai.roles["classifier"].provider == "sensenova"
 
@@ -227,7 +231,8 @@ class TestWriterVariant:
     def test_other_roles_untouched_by_variant(self):
         cfg = AIConfig(writer_variant="b")
         assert cfg.roles["reviewer"].model == ULTRA
-        assert cfg.roles["classifier"].provider == "sensenova"
+        assert cfg.roles["classifier"].provider == "openrouter"
+        assert cfg.roles["classifier"].fallback_provider == "sensenova"
 
     def test_unknown_variant_falls_back_to_a(self):
         cfg = AIConfig(writer_variant="nope")
