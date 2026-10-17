@@ -1,0 +1,46 @@
+name: 🔬 Model Probe (manual only)
+
+# 诊断用，不参与日报：只跑一次真实调用对照表，不产报告、不写 auto-docs、不推 webhook。
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: '只测模型名包含该子串的（留空 = 测全部候选）'
+        required: false
+        default: ''
+
+concurrency:
+  group: model-probe
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Install locked dependencies
+        run: uv sync --frozen
+
+      - name: Probe candidate models
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          SENSENOVA_API_KEY: ${{ secrets.SENSENOVA_API_KEY }}
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          # 走 env 而不是把 ${{ }} 内插进命令行，避开 Actions 脚本注入面
+          PROBE_ONLY: ${{ github.event.inputs.only }}
+          PYTHONUNBUFFERED: 1
+        run: |
+          if [ -n "$PROBE_ONLY" ]; then
+            uv run python scripts/probe_models.py --only "$PROBE_ONLY"
+          else
+            uv run python scripts/probe_models.py
+          fi
