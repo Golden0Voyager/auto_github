@@ -163,9 +163,10 @@ def probe_t1(client: Any, model: str) -> str:
     if not isinstance(data, list):
         return "JSON✗"
     idx = {int(o["index"]) for o in data if isinstance(o, dict) and str(o.get("index", "")).isdigit()}
-    valid = {o for o in data if isinstance(o, dict) and o.get("rating") in {"S", "A", "B", "C"}
-             and o.get("tds") in {"T", "E", "S"}}
-    return f"JSON✓ {len(idx)}/3齐全 合规{len(valid)}/3"
+    valid = sum(1 for o in data
+                if isinstance(o, dict) and o.get("rating") in {"S", "A", "B", "C"}
+                and o.get("tds") in {"T", "E", "S"})
+    return f"JSON✓ {len(idx)}/3齐全 合规{valid}/3"
 
 
 def probe_t2(client: Any, model: str) -> str:
