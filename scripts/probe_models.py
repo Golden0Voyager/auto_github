@@ -25,6 +25,8 @@ BASE_URLS = {
     "openrouter": ("OPENROUTER_API_KEY", "https://openrouter.ai/api/v1"),
     "sensenova": ("SENSENOVA_API_KEY", "https://token.sensenova.cn/v1"),
     "siliconflow": ("SILICONFLOW_API_KEY", "https://api.siliconflow.cn/v1"),
+    # ZenMux 在本机走代理才通（CI runner 直连会被 DNS 污染挡掉），所以它没有 CI secret 也能测
+    "zenmux": ("ZENMUX_API_KEY", "https://zenmux.ai/api/v1"),
 }
 
 CANDIDATES = [
@@ -40,6 +42,7 @@ CANDIDATES = [
     ("sensenova", "deepseek-flash"),
     ("siliconflow", "tencent/Hunyuan-MT-7B"),
     ("siliconflow", "Qwen/Qwen2.5-7B-Instruct"),
+    ("zenmux", "atria-asi/atria-dawn"),
 ]
 
 REQUEST_GAP_SECONDS = 2.0
