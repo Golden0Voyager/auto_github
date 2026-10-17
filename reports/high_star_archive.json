@@ -152,5 +152,12 @@
     "cooldown_until": "2026-11-16",
     "stars": 78145,
     "occurrences": 3
+  },
+  "danielmiessler/SecLists": {
+    "first_seen": "2026-10-14",
+    "archived_at": "2026-10-17",
+    "cooldown_until": "2026-11-16",
+    "stars": 74168,
+    "occurrences": 3
   }
 }
