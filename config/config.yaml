@@ -79,12 +79,18 @@ ai:
     translator_a:
       model: tencent/Hunyuan-MT-7B
       provider: siliconflow
+      # 主腿没有第二条命时，一家欠费就把 A/B 与 Review 一起带走（10/12-10/15 实测）。
+      # 降级腿指向 sensenova 的轻量模型：只要 SENSENOVA_API_KEY 在，中文层就不会整条消失。
+      fallback_model: sensenova-6.8-flash-lite
+      fallback_provider: sensenova
     translator_b:
       # 故意与 translator_a 跨 provider：两通道同账户时，一次欠费/限流就把中文层
       # 和 Review 一起带走（10/12-10/15 的事故）。Gemma 与 Nvidia 也不同家族，
       # 比稿才有区分度。openrouter 的 key、workflow env 与 _PROVIDER_ENV 都已就绪。
       model: google/gemma-4-31b-it:free
       provider: openrouter
+      fallback_model: sensenova-6.8-flash-lite
+      fallback_provider: sensenova
     reviewer:
       model: nvidia/nemotron-3-ultra-550b-a55b:free
       provider: openrouter

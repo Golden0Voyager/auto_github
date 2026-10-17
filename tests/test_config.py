@@ -60,6 +60,10 @@ class TestAppConfigDefaults:
         assert cfg.ai.roles["translator_b"].provider == "openrouter"
         assert cfg.ai.roles["translator_b"].model == "google/gemma-4-31b-it:free"
         assert cfg.ai.roles["translator_a"].provider != cfg.ai.roles["translator_b"].provider
+        # 每条翻译通道都得有第二条命,否则主腿一挂中文层就整条消失
+        for role in ("translator_a", "translator_b"):
+            assert cfg.ai.roles[role].fallback_model == "sensenova-6.8-flash-lite", role
+            assert cfg.ai.roles[role].fallback_provider == "sensenova", role
 
     def test_dedup_defaults(self):
         cfg = AppConfig()
