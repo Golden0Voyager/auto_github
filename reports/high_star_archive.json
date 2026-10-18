@@ -159,5 +159,19 @@
     "cooldown_until": "2026-11-16",
     "stars": 74168,
     "occurrences": 3
+  },
+  "stablyai/orca": {
+    "first_seen": "2026-09-30",
+    "archived_at": "2026-10-18",
+    "cooldown_until": "2026-11-17",
+    "stars": 95695,
+    "occurrences": 3
+  },
+  "heygen-com/hyperframes": {
+    "first_seen": "2026-10-15",
+    "archived_at": "2026-10-18",
+    "cooldown_until": "2026-11-17",
+    "stars": 66147,
+    "occurrences": 3
   }
 }
