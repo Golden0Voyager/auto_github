@@ -42,6 +42,7 @@ CANDIDATES = [
     ("sensenova", "deepseek-flash"),
     ("siliconflow", "tencent/Hunyuan-MT-7B"),
     ("siliconflow", "Qwen/Qwen2.5-7B-Instruct"),
+    ("siliconflow", "XingChenAGI/Xing4.0-29B"),
     ("zenmux", "atria-asi/atria-dawn"),
 ]
 
