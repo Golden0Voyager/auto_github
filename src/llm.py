@@ -5,6 +5,7 @@ from typing import Any
 from src.config import (
     _PROVIDER_ENV,
     AppConfig,
+    ModelLeg,
     resolve_api_key,
     resolve_base_url,
     resolve_jev_api_key,
@@ -56,6 +57,11 @@ def _error_status(exc: Exception) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def _leg_id(leg: ModelLeg) -> str:
+    """per-(role, leg) 熔断键里的腿标识。"""
+    return f"{leg.provider}/{leg.model}"
+
+
 class LLMError(RuntimeError):
     """Raised when a role cannot produce usable content.
 
@@ -81,6 +87,9 @@ class LLMClient:
         self._clients: dict[str, Any] = {}
         self._unavailable_roles: set[str] = set()
         self._banned_providers: set[str] = set()
+        # 熔断粒度是 (role, provider/model)：一条腿死了不该让同 provider 的其它腿陪葬，
+        # 也不该让同一 role 的下一条腿替它挨罚。
+        self._exhausted_legs: set[tuple[str, str]] = set()
         self._jev_client: Any = None
         self._jev_disabled = False
         self._init_clients()
@@ -119,31 +128,31 @@ class LLMClient:
     def has_provider(self, provider: str) -> bool:
         return provider in self._clients and provider not in self._banned_providers
 
-    def has_role(self, role: str) -> bool:
-        """True when the role has at least one reachable provider.
+    def legs(self, role: str) -> list[ModelLeg]:
+        """role 的降级链，保持配置顺序，并剔除当前不可用的腿。
 
-        Lets pipeline stages skip a channel without burning a request.
-        Once a role has exhausted its retries it is tripped off for the rest of
-        the run — a dead model otherwise costs retries × every repository.
+        剔除两类：没有 client 的 provider（没配 key，或已账户级拉黑），以及本次运行
+        已把重试耗尽的 (role, provider/model)。
         """
         if role in self._unavailable_roles:
-            return False
+            return []
         role_cfg = self.config.ai.roles.get(role)
         if role_cfg is None:
-            return False
-        if self.has_provider(role_cfg.provider or self.config.ai.default_provider):
-            return True
-        if role_cfg.fallback_model:
-            return self.has_provider(role_cfg.fallback_provider or role_cfg.provider)
-        return False
+            return []
+        return [
+            leg for leg in role_cfg.chain
+            if self.has_provider(leg.provider)
+            and (role, _leg_id(leg)) not in self._exhausted_legs
+        ]
 
-    def _resolve_providers(self, role: str) -> tuple[str, str | None]:
-        role_cfg = self.config.ai.roles.get(role)
-        if role_cfg is None:
-            raise LLMError(f"unknown role '{role}'")
-        provider = role_cfg.provider or self.config.ai.default_provider
-        fallback = role_cfg.fallback_provider or provider if role_cfg.fallback_model else None
-        return provider, fallback
+    def has_role(self, role: str) -> bool:
+        """True when the role still has at least one reachable leg.
+
+        Lets pipeline stages skip a channel without burning a request.
+        Once every leg is exhausted the role is tripped off for the rest of the
+        run — a dead model otherwise costs retries × every repository.
+        """
+        return bool(self.legs(role))
 
     def _try_model(
         self,
@@ -182,6 +191,10 @@ class LLMClient:
                     raise LLMError(f"{provider}/{model} returned no choices")
                 choice = choices[0]
                 content = choice.message.content or ""
+                if not content.strip():
+                    # 推理型模型会把输出预算烧在 reasoning_content 上，于是返回 200 + 空正文。
+                    # 空正文不是"答案"：上层没法用它做任何决策，比稿更会把它静默当成"选 A"。
+                    raise LLMError(f"{provider}/{model} returned empty content")
 
                 reasoning: str | None = None
                 rc = getattr(choice.message, "reasoning_content", None)
@@ -227,49 +240,43 @@ class LLMClient:
         retries: int = 3,
         backoff_factor: float = 2.0,
     ) -> dict[str, Any]:
-        provider, fallback = self._resolve_providers(role)
         if role in self._unavailable_roles:
             raise LLMError(f"role '{role}' already tripped off this run")
-        if not self.has_role(role):
-            # 配了 fallback 的 role 也要报"没 client",否则会被误诊成"重试耗尽"
-            wanted = [p for p in (provider, fallback) if p]
+        if role not in self.config.ai.roles:
+            raise LLMError(f"unknown role '{role}'")
+
+        legs = self.legs(role)
+        if not legs:
+            # 没配 key 与"重试耗尽"必须分开报，否则会被误诊成后者
+            wanted = [f"{leg.provider}/{leg.model}" for leg in self.config.ai.roles[role].chain]
             raise LLMError(f"no client for provider(s) {wanted} (role={role})")
 
         temp = temperature if temperature is not None else self.config.ai.temperature
-        max_t = max_tokens if max_tokens is not None else self.config.ai.max_tokens
-        role_cfg = self.config.ai.roles[role]
         attempts_before = self.failed_attempt_count
 
-        if self.has_provider(provider):
+        for index, leg in enumerate(legs, start=1):
+            # max_tokens 优先级：腿上的专属值 > 调用点 > 全局默认。
+            leg_max = leg.max_tokens or max_tokens or self.config.ai.max_tokens
+            print(f"[LLM] role={role} → leg {index}/{len(legs)}: {leg.provider}/{leg.model}")
             result = self._try_model(
                 messages=messages, role=role,
-                provider=provider,
-                model=role_cfg.model,
-                temperature=temp, max_tokens=max_t,
+                provider=leg.provider,
+                model=leg.model,
+                temperature=temp, max_tokens=leg_max,
                 retries=retries, backoff_factor=backoff_factor,
-                tag="primary",
+                tag=f"leg {index}/{len(legs)}",
             )
             if result is not None:
+                result["leg"] = f"{index}/{len(legs)}"
                 return result
-
-        if fallback is not None and self.has_provider(fallback):
-            print(f"[LLM] Primary failed, switching to fallback model: {fallback}/{role_cfg.fallback_model}")
-            result = self._try_model(
-                messages=messages, role=role,
-                provider=fallback,
-                model=role_cfg.fallback_model or "",
-                temperature=temp, max_tokens=max_t,
-                retries=retries, backoff_factor=backoff_factor,
-                tag="fallback",
-            )
-            if result is not None:
-                return result
+            # 这条腿的重试已耗尽：本次运行剩余仓库不再为它付失败税
+            self._exhausted_legs.add((role, _leg_id(leg)))
 
         # 熔断：本次运行剩余仓库不再为该 role 付重试的失败税
         self._unavailable_roles.add(role)
         attempts_used = self.failed_attempt_count - attempts_before
         raise LLMError(
-            f"role '{role}' failed after {attempts_used} attempt(s) (primary + fallback); "
+            f"role '{role}' failed after {attempts_used} attempt(s) across {len(legs)} leg(s); "
             f"channel tripped off for the rest of this run."
         )
 
