@@ -218,6 +218,10 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           SENSENOVA_API_KEY: ${{ secrets.SENSENOVA_API_KEY }}
           SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          # 降级链新用到的两家：agnes 承担 writer/classifier/translator_b 的首腿，
+          # zenmux 是三条链的末段兜底
+          AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
+          ZENMUX_API_KEY: ${{ secrets.ZENMUX_API_KEY }}
           # 比稿判断通道（TypeSafe Jev）。没配就自动退回 ultra 字母裁判，不影响管线
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
 
