@@ -24,9 +24,9 @@ from typing import Any
 # provider → (环境变量名, base_url)。sensenova 必须钉在 Token Plan 端点：
 # 通用端点（api.sensenova.cn/compatible-mode/v2）上没有这套限免模型，只会 404。
 #
-# ZenMux 在本机要挂代理才通（本机 DNS 被污染）；GitHub runner 直连是否可达
-# 尚未实测，而这正是本 probe 要回答的问题之一 —— 所以它必须有 CI secret，
-# 不能像以前那样“没 secret 也能测”。
+# ZenMux 在本机要挂代理才通（本机 DNS 被污染），但 **runner 直连是可达的**：
+# 2026-10-19 的 probe run 39211785785 里 ling-3.1-flash 四项探针全过。
+# 当初把"runner 到底通不通"交给 CI 回答，这就是答案 —— 所以它必须有 CI secret。
 BASE_URLS = {
     "openrouter": ("OPENROUTER_API_KEY", "https://openrouter.ai/api/v1"),
     "sensenova": ("SENSENOVA_API_KEY", "https://token.sensenova.cn/v1"),
