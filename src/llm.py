@@ -14,6 +14,31 @@ from src.config import (
 # within milliseconds, so a zero floor turns retries into a hammering storm.
 MIN_RETRY_DELAY = 2.0
 
+# per-provider 的最小重试间隔（秒）。数字全部来自实测（spec「per-provider 参数」表）：
+# sensenova 的限免额度最紧 —— 3s 内发第二发必 429（EndpointTPMExceeded / EndpointRPMExceeded）。
+PROVIDER_MIN_INTERVAL: dict[str, float] = {
+    "sensenova": 6.0,
+    "openrouter": 2.0,
+    "siliconflow": 2.0,
+    "agnes": 2.0,
+    "zenmux": 2.0,
+    "tokenrhythm": 2.0,
+    "intern": 2.0,
+}
+# 单次请求的超时（秒）。超时太紧的代价是"每次都先白烧一次超时重试"（sensenova 在 30s 下
+# 就是这样），而不是失败；所以宁可给宽。
+PROVIDER_TIMEOUTS: dict[str, int] = {
+    "sensenova": 60,      # glm-5.2 写作实测 66.0s
+    "openrouter": 60,     # super-vl 翻译实测 39.2s，已逼近旧的 45s
+    "siliconflow": 90,    # Hunyuan 长输出 >30s：模型慢，不是通道死
+    "agnes": 60,          # 写作实测最大 40.6s
+    "zenmux": 60,         # 写作实测 53.3s
+    "tokenrhythm": 90,    # 预留（当前无 role 使用）
+    "intern": 120,        # 预留（当前无 role 使用）
+}
+DEFAULT_MIN_INTERVAL = 2.0
+DEFAULT_TIMEOUT = 30
+
 # 401/402/403 是账户级闸门：欠费、密钥失效、权限问题重试都不会变好，而且同 provider
 # 的其它模型走同一个闸门（硅基流动 402 时 Hunyuan 与 Qwen2.5 报同一个错）。
 ACCOUNT_LEVEL_STATUS = (401, 402, 403)
@@ -136,11 +161,11 @@ class LLMClient:
         if client is None:
             return None
 
-        delay = {"sensenova": 0.0, "openrouter": 1.0, "openai": 1.0, "siliconflow": 0.1}.get(provider, self.config.ai.rate_limit_delay)
-        delay = max(delay, MIN_RETRY_DELAY)
-        # Hunyuan-MT-7B 在硅基流动上响应 >30s(实测每次都在 30s 处 Request timed out),
-        # 而同一 provider 的 Qwen2.5 只要 ~22s,所以是模型慢不是通道死 —— 给它更宽的额度。
-        timeout = {"sensenova": 30, "openrouter": 45, "openai": 30, "siliconflow": 90}.get(provider, 30)
+        # 间隔与超时都来自 per-provider 表；MIN_RETRY_DELAY 只是下限，防止某个 provider
+        # 配成 0（免费档 429 在毫秒级返回，零下限等于原地猛重）。
+        interval = PROVIDER_MIN_INTERVAL.get(provider, DEFAULT_MIN_INTERVAL)
+        delay = max(interval, MIN_RETRY_DELAY)
+        timeout = PROVIDER_TIMEOUTS.get(provider, DEFAULT_TIMEOUT)
         for attempt in range(retries):
             try:
                 if attempt > 0:
