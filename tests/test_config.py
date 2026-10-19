@@ -24,6 +24,7 @@ from src.config import (
     ModelLeg,
     RoleConfig,
     load_config,
+    resolve_base_url,
 )
 
 # 模型名常量：链的断言引用它们，换型号时一处生效。
@@ -141,6 +142,46 @@ class TestLoadConfig:
         monkeypatch.delenv("OPENROUTER_BASE_URL", raising=False)
         assert resolve_base_url("openrouter") == "https://openrouter.ai/api/v1"
         assert resolve_base_url("sensenova") == "https://token.sensenova.cn/v1"
+
+    def test_resolve_base_url_ignores_a_non_allowlisted_host(self, monkeypatch, capsys):
+        """本机 SENSENOVA_BASE_URL 指向通用端点（那份限免模型只在 token.sensenova.cn 上），
+        必须被挡下：指错端点会稳定 404，而 404 属模型级不可重试 —— 整条腿 0.1s 秒失败，
+        看起来就像"模型下架"。"""
+        monkeypatch.setenv("SENSENOVA_BASE_URL", "https://api.sensenova.cn/compatible-mode/v2")
+        assert resolve_base_url("sensenova") == "https://token.sensenova.cn/v1"
+        assert "[Config Warning]" in capsys.readouterr().out
+
+    def test_resolve_base_url_accepts_an_allowlisted_host(self, monkeypatch, capsys):
+        monkeypatch.setenv("SENSENOVA_BASE_URL", "https://token.sensenova.cn/v1")
+        assert resolve_base_url("sensenova") == "https://token.sensenova.cn/v1"
+        assert "[Config Warning]" not in capsys.readouterr().out
+
+    def test_resolve_base_url_unknown_provider_is_none(self):
+        assert resolve_base_url("nonexistent") is None
+
+    def test_resolve_base_url_warns_for_every_leg_provider(self, monkeypatch, capsys):
+        """守卫不能只给 sensenova 打补丁：每条腿的 env 覆盖都要过同一道白名单。"""
+        cfg = AIConfig()
+        providers = {leg.provider for role_cfg in cfg.roles.values() for leg in role_cfg.chain}
+        for provider in sorted(providers):
+            entry = _PROVIDER_ENV[provider]
+            monkeypatch.setenv(entry[1], "https://evil.example.com/v1")
+            assert resolve_base_url(provider) == entry[2], provider
+            assert f"[Config Warning] {entry[1]}" in capsys.readouterr().out, provider
+
+
+class TestProviderRegistry:
+    """provider → (env key, base_url env, 默认 base_url) 的注册表。"""
+
+    def test_covers_the_new_legs(self):
+        """新链引用的四家都要有注册项。tokenrhythm/intern 是预注册（当前无 role 使用），
+        以后想换过去只改 config.yaml。"""
+        assert {"agnes", "zenmux", "tokenrhythm", "intern"} <= set(_PROVIDER_ENV)
+        for provider in ("agnes", "zenmux", "tokenrhythm", "intern"):
+            env_key, url_env, default = _PROVIDER_ENV[provider]
+            assert env_key.endswith("_API_KEY"), provider
+            assert url_env.endswith("_BASE_URL"), provider
+            assert default.startswith("https://"), provider
 
     def test_sensenova_still_works_with_explicit_config(self, monkeypatch):
         """SensoNova 作为显式配置的腿仍然可用（它是分类/翻译链的末位腿）。"""
