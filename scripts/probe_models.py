@@ -21,29 +21,32 @@ import sys
 import time
 from typing import Any
 
+# provider → (环境变量名, base_url)。sensenova 必须钉在 Token Plan 端点：
+# 通用端点（api.sensenova.cn/compatible-mode/v2）上没有这套限免模型，只会 404。
+#
+# ZenMux 在本机要挂代理才通（本机 DNS 被污染）；GitHub runner 直连是否可达
+# 尚未实测，而这正是本 probe 要回答的问题之一 —— 所以它必须有 CI secret，
+# 不能像以前那样“没 secret 也能测”。
 BASE_URLS = {
     "openrouter": ("OPENROUTER_API_KEY", "https://openrouter.ai/api/v1"),
     "sensenova": ("SENSENOVA_API_KEY", "https://token.sensenova.cn/v1"),
     "siliconflow": ("SILICONFLOW_API_KEY", "https://api.siliconflow.cn/v1"),
-    # ZenMux 在本机走代理才通（CI runner 直连会被 DNS 污染挡掉），所以它没有 CI secret 也能测
+    "agnes": ("AGNES_API_KEY", "https://apihub.agnes-ai.com/v1"),
     "zenmux": ("ZENMUX_API_KEY", "https://zenmux.ai/api/v1"),
 }
 
+# 只列最终降级链里真正会用到的模型：probe 全绿 == 这条链在 CI 里可用。
+# 某个 model 在某个 T 上失败是有意义的信号，不要为了“好看”把它删掉。
 CANDIDATES = [
-    ("openrouter", "google/gemma-4-31b-it:free"),
-    ("openrouter", "google/gemma-4-26b-a4b-it:free"),
-    ("openrouter", "nvidia/nemotron-3.5-super-vl:free"),
-    ("openrouter", "nvidia/nemotron-3-ultra-550b-a55b:free"),
-    ("openrouter", "nvidia/nemotron-3-super-120b-a12b:free"),
-    ("openrouter", "nvidia/nemotron-3.5-lightning:free"),
-    ("openrouter", "liquid/lfm-2.5-2.6b:free"),
-    ("openrouter", "thinkingmachines/inkling-small:free"),
-    ("sensenova", "sensenova-6.8-flash-lite"),
-    ("sensenova", "deepseek-flash"),
-    ("siliconflow", "tencent/Hunyuan-MT-7B"),
-    ("siliconflow", "Qwen/Qwen2.5-7B-Instruct"),
-    ("siliconflow", "XingChenAGI/Xing4.0-29B"),
-    ("zenmux", "atria-asi/atria-dawn"),
+    ("siliconflow", "tencent/Hunyuan-MT-7B"),  # translator_a L1
+    ("agnes", "agnes-2.5-flash"),  # translator_b L1
+    ("agnes", "agnes-3.0-flash"),  # writer/classifier L1, reviewer L2
+    ("openrouter", "nvidia/nemotron-3.5-super-vl:free"),  # translator_a / classifier L2
+    ("openrouter", "nvidia/nemotron-3-ultra-550b-a55b:free"),  # translator_b / writer L2
+    ("zenmux", "inclusionai/ling-3.1-flash"),  # translator_b / writer L3, reviewer L4
+    ("sensenova", "glm-5.2"),  # classifier / reviewer L3
+    ("sensenova", "sensenova-6.8-flash-lite"),  # translator_a L4 / translator_b L4 / writer L4
+    ("sensenova", "deepseek-flash"),  # classifier L4
 ]
 
 REQUEST_GAP_SECONDS = 2.0
