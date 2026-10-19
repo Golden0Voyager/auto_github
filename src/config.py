@@ -68,7 +68,7 @@ class JevConfig(BaseModel):
     """
 
     model: str = "jev-latest"
-    # 低于 confidence_threshold 或漏译概率高于 incomplete_threshold 时,升级给 ultra 复判
+    # 低于 confidence_threshold 或漏译概率高于 incomplete_threshold 时，交给字母裁判复判
     confidence_threshold: float = 0.6
     incomplete_threshold: float = 0.5
     timeout: float = 30.0
