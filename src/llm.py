@@ -305,7 +305,7 @@ class LLMClient:
 
         Choice → choice/confidence/probabilities；Noul → noul（yes 的概率）。
         失败一律抛 LLMError 并在本次运行内停用该通道：付费通道报错后继续逐仓库
-        敲门只是白烧预算，调用方必须显式降级（比稿这里退回 ultra 字母裁判）。
+        敲门只是白烧预算，调用方必须显式降级（比稿这里退回 reviewer 字母裁判）。
         """
         if not self.has_judgment():
             raise LLMError("judgment channel unavailable (no TYPESAFE_API_KEY, or disabled)")
