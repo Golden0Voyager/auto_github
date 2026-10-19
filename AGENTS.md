@@ -5,7 +5,7 @@ AI 智能体策展系统:每日抓取 GitHub Trending 与大厂动态,经多阶�
 生成多端(Markdown / 飞书卡片 / Slack Block / Discord)策展报告。
 
 本仓库是**单 CLI 入口的工具型项目**,不是库。有完整测试套件
-(`tests/`,~310 个用例,coverage 门槛 85%),CI 强制执行。
+(`tests/`,400+ 个用例,coverage 门槛 85%),CI 强制执行。
 
 ---
 
@@ -257,8 +257,11 @@ provider → (env key, base_url env, 默认 base_url) 的映射在 `src/config.p
   (早期只隔离了前两个,`repo_cycles.json` 被真实记忆覆盖过)。session 级 `reports_guard`
   fixture 会在跑完比对 `reports/` 字节变化并直接 fail。
 - 本地 shell 常带各种 `*_API_KEY` 环境变量,会污染"无 key 应降级"类测试
-  (`tests/test_llm.py` 等)。新增 provider 时**不要**写死要清理的 key 名单,用
-  `tests/test_llm.py:_clear_all_provider_keys(monkeypatch)`(它从 `_PROVIDER_ENV` 派生)。
+  (`tests/test_llm.py` / `tests/test_llm_roles.py`)。新增 provider 时**不要**写死要清理的
+  key 名单,统一用 `tests/conftest.py:clear_all_provider_keys(monkeypatch)`(它遍历
+  `_PROVIDER_ENV`,所以加 provider 不用动测试)。**脏环境与干净环境都必须全绿** ——
+  只绿干净环境等于没修:漏掉的那家 provider 让这类用例**假红**,而 CI 是干净环境,
+  永远发现不了(10/19 就修过 5 个这种假红)。
   复现 CI 用干净环境:`env -i PATH="$PATH" HOME="$HOME" uv run pytest tests/ -q`。
   同理,本机 shell 的 `SENSENOVA_BASE_URL` 之类指向别家端点的变量会被
   `resolve_base_url()` 的 host 白名单拦下(响一声 `[Config Warning]` 并回落到代码默认值),
@@ -377,7 +380,7 @@ reports/          线上产物 + **状态文件**(不能被 gitignore)
   high_star_archive.json     冷却中项目(**状态文件**)
   repo_cycles.json           归档轮次计数(**状态文件**)
 reports_mock/     --mock 的沙盒(gitignore):状态与报告都写这里,不碰 reports/
-tests/            pytest 套件(~340 用例)
+tests/            pytest 套件(400+ 用例)
   conftest.py     isolated_dedup_config(tmp_path) + session 级 reports_guard
 pyproject.toml    依赖声明 + ruff/mypy/pytest/coverage/bandit 配置(Dependabot 生态入口)
 uv.lock           uv 锁定文件(**Dependabot 与 pip-audit 扫描对象**)
