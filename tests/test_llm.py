@@ -12,8 +12,17 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.config import _PROVIDER_ENV, AIConfig, AppConfig, RoleConfig, load_config
-from src.llm import MIN_RETRY_DELAY, LLMClient, LLMError, _error_status
+from src.config import _PROVIDER_ENV, AIConfig, AppConfig, ModelLeg, RoleConfig, load_config
+from src.llm import (
+    DEFAULT_MIN_INTERVAL,
+    DEFAULT_TIMEOUT,
+    MIN_RETRY_DELAY,
+    PROVIDER_MIN_INTERVAL,
+    PROVIDER_TIMEOUTS,
+    LLMClient,
+    LLMError,
+    _error_status,
+)
 
 
 def _clear_all_provider_keys(monkeypatch) -> None:
@@ -61,6 +70,56 @@ def mock_openai():
         mock_instance = MagicMock()
         mock_cls.return_value = mock_instance
         yield mock_cls
+
+
+class TestProviderParameterTables:
+    """per-provider 的超时与最小间隔都是实测数字（spec「per-provider 参数」表）。
+
+    它们必须是可断言的数据，而不是散在 `_try_model` 里的字面量 —— 换 provider 前
+    "先重算配额"这条 AGENTS.md 规则，前提是配额看得见。
+    """
+
+    def test_timeouts_match_the_measured_table(self):
+        assert PROVIDER_TIMEOUTS["sensenova"] == 60      # glm-5.2 写作实测 66.0s
+        assert PROVIDER_TIMEOUTS["openrouter"] == 60     # super-vl 翻译实测 39.2s，已逼近旧的 45s
+        assert PROVIDER_TIMEOUTS["siliconflow"] == 90    # Hunyuan 长输出 >30s：模型慢，不是通道死
+        assert PROVIDER_TIMEOUTS["agnes"] == 60          # 写作实测最大 40.6s
+        assert PROVIDER_TIMEOUTS["zenmux"] == 60         # 写作实测 53.3s
+        assert PROVIDER_TIMEOUTS["tokenrhythm"] == 90    # 预留（当前无 role 使用）
+        assert PROVIDER_TIMEOUTS["intern"] == 120        # 预留
+
+    def test_sensenova_min_interval_is_six_seconds(self):
+        """3s 内发第二发实测必 429（RateLimitExceeded.EndpointTPMExceeded）。"""
+        assert PROVIDER_MIN_INTERVAL["sensenova"] == 6.0
+
+    def test_unknown_provider_falls_back_to_defaults(self):
+        assert PROVIDER_TIMEOUTS.get("nope", DEFAULT_TIMEOUT) == 30
+        assert PROVIDER_MIN_INTERVAL.get("nope", DEFAULT_MIN_INTERVAL) == 2.0
+
+    def test_every_provider_a_leg_uses_has_both_parameters(self):
+        """新 provider 忘了配参数会静默拿默认值 —— 那正是"以为设了超时、其实没设"的坑。"""
+        cfg = AIConfig()
+        for role_cfg in cfg.roles.values():
+            for leg in role_cfg.chain:
+                assert leg.provider in PROVIDER_TIMEOUTS, leg.provider
+                assert leg.provider in PROVIDER_MIN_INTERVAL, leg.provider
+
+    def test_try_model_actually_passes_the_provider_timeout_to_the_sdk(self, llm_config, mock_openai, monkeypatch):
+        """表必须真的被用上：否则这些常量只是装饰。"""
+        monkeypatch.setenv("SENSENOVA_API_KEY", "sk-sensenova-test")
+        llm_config.ai.roles["writer"] = RoleConfig(
+            chain=[ModelLeg(model="sensenova-6.8-flash-lite", provider="sensenova")],
+        )
+        ok = MagicMock(
+            choices=[MagicMock(message=MagicMock(content="译文", reasoning_content=None, model_extra=None))],
+            usage=MagicMock(prompt_tokens=5, completion_tokens=2),
+        )
+        mock_openai.return_value.chat.completions.create.return_value = ok
+
+        LLMClient(llm_config).call_llm([{"role": "user", "content": "Hi"}], role="writer")
+
+        kwargs = mock_openai.return_value.chat.completions.create.call_args.kwargs
+        assert kwargs["timeout"] == PROVIDER_TIMEOUTS["sensenova"] == 60
 
 
 class TestLLMClientInit:
