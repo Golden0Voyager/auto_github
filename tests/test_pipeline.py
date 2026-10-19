@@ -29,6 +29,7 @@ from src.pipeline import (
     _infer_rating_fallback,
     _infer_selection_reason_fallback,
     _infer_tags_fallback,
+    _normalize_verdict,
 )
 
 # ===================================================================
@@ -553,3 +554,56 @@ class TestPipelineInitWithNoPersonasFile:
         # The default fallback dict has name="中阶实践者" as fallback
         # So even without the file, we get a valid persona
         assert "name" in pipeline.current_persona
+
+
+# ===================================================================
+# _stage_review（比稿判定）
+# ===================================================================
+
+@pytest.fixture
+def stub_judge(pipeline_config):
+    """关掉 Jev、把 reviewer 的 call_llm 换成固定回复，返回 (pipeline, repo)。
+
+    repo 已带 translation_a="### 甲" 与 translation_b="### 乙"：两边都在，才会走到比稿。
+    """
+    def _make(reply: str):
+        client = MagicMock()
+        client.has_judgment.return_value = False  # Jev 未配置 → 直接走字母裁判
+        client.has_role.return_value = True
+        client.call_llm.return_value = {"content": reply, "reasoning": None, "model": "stub-model"}
+        pipeline = CurationPipeline(pipeline_config, client)
+        repo = {"full_name": "owner/repo", "translation_a": "### 甲", "translation_b": "### 乙"}
+        return pipeline, repo
+
+    return _make
+
+
+class TestNormalizeVerdict:
+    """判词只有 A/B 两种合法形态，其余都是"没答"。"""
+
+    def test_normalize_verdict_strips_markdown(self):
+        assert _normalize_verdict("**B**") == "B"
+        assert _normalize_verdict("  b.\n") == "B"
+        assert _normalize_verdict("The user wants B") is None
+        assert _normalize_verdict("") is None
+
+
+class TestStageReviewVerdict:
+    """旧实现只看首字符：`**B**` 的 `*` 让它以为"没选 B"，空串也一样。"""
+
+    def test_review_takes_b_when_the_verdict_is_markdown_wrapped(self, stub_judge):
+        pipeline, repo = stub_judge("**B**")
+        pipeline._stage_review([repo])
+        assert repo["chinese_summary"] == "### 乙"
+
+    def test_review_does_not_invent_a_verdict_from_prose(self, stub_judge, capsys):
+        """散文不是判词：既不换到 B，也不该被记成裁判成功。"""
+        pipeline, repo = stub_judge("The user wants translation B")
+        pipeline._stage_review([repo])
+        assert repo["chinese_summary"] == "### 甲"
+        assert "[Review No Verdict]" in capsys.readouterr().out
+
+    def test_review_takes_a_when_the_verdict_is_a(self, stub_judge):
+        pipeline, repo = stub_judge("A")
+        pipeline._stage_review([repo])
+        assert repo["chinese_summary"] == "### 甲"
