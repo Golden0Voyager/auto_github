@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import yaml
 from pydantic import BaseModel, Field, PrivateAttr, model_validator
@@ -181,9 +182,12 @@ _PROVIDER_ENV = {
     "sensenova": ("SENSENOVA_API_KEY", "SENSENOVA_BASE_URL", "https://token.sensenova.cn/v1"),
     "openai": ("OPENAI_API_KEY", "OPENAI_BASE_URL", "https://api.openai.com/v1"),
     "siliconflow": ("SILICONFLOW_API_KEY", "SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1"),
-    # 链上新用到的两家（其余预注册见 Task 2）。
+    # 降级链上的两家，以及两家预注册（tokenrhythm / intern 当前无 role 使用，
+    # 预注册是为了以后切换只改 config.yaml）。
     "agnes": ("AGNES_API_KEY", "AGNES_BASE_URL", "https://apihub.agnes-ai.com/v1"),
     "zenmux": ("ZENMUX_API_KEY", "ZENMUX_BASE_URL", "https://zenmux.ai/api/v1"),
+    "tokenrhythm": ("TOKENRHYTHM_API_KEY", "TOKENRHYTHM_BASE_URL", "https://tokenrhythm.studio/v1"),
+    "intern": ("INTERN_AI_API_KEY", "INTERN_AI_BASE_URL", "https://discovery-api.intern-ai.org.cn/v1"),
 }
 
 
@@ -254,8 +258,24 @@ def resolve_jev_api_key() -> str | None:
 
 
 def resolve_base_url(provider: str) -> str | None:
+    """provider 的 base_url：环境变量可覆盖，但 host 必须与代码默认值一致。
+
+    本机 shell 常带着 `SENSENOVA_BASE_URL=api.sensenova.cn/compatible-mode/v2` 这类通用端点，
+    而 Token Plan 的限免模型只在 `token.sensenova.cn` 上：指错端点会稳定 404，而 404 属模型级
+    不可重试 —— 整条腿 0.1s 秒失败，看起来就像"模型下架"。白名单直接从默认 base_url 派生，
+    不另立一张会漂的表。宁可响一声，不要静默降级。
+    """
     entry = _PROVIDER_ENV.get(provider)
-    return os.getenv(entry[1], entry[2]) if entry else None
+    if entry is None:
+        return None
+    url_env, default = entry[1], entry[2]
+    override = os.getenv(url_env)
+    if override and urlparse(override).hostname != urlparse(default).hostname:
+        expected = urlparse(default).hostname
+        print(f"[Config Warning] {url_env}={override} 的 host 不在 {provider} 的白名单内"
+              f"（{expected}），回落到 {default}。")
+        return default
+    return override or default
 
 
 def load_config() -> AppConfig:
