@@ -12,8 +12,18 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.config import AIConfig, AppConfig, RoleConfig, load_config
+from src.config import _PROVIDER_ENV, AIConfig, AppConfig, RoleConfig, load_config
 from src.llm import MIN_RETRY_DELAY, LLMClient, LLMError, _error_status
+
+
+def _clear_all_provider_keys(monkeypatch) -> None:
+    """清掉 _PROVIDER_ENV 里**所有** provider 的 key。
+
+    不写死名单：每加一个 provider 就多一个能污染"无 key 应降级"类测试的环境变量，
+    而本机 shell 里往往正好带着它们（写死名单时漏掉的那家会让这些用例假红）。
+    """
+    for env_key, _url_env, _default in _PROVIDER_ENV.values():
+        monkeypatch.delenv(env_key, raising=False)
 
 
 @pytest.fixture
@@ -98,8 +108,7 @@ class TestCallLLMNoKey:
 
     def test_role_with_fallback_reports_missing_client(self, monkeypatch):
         """配了 fallback 的 role 在完全没 key 时要报"没有 client"，不能被误诊成重试耗尽。"""
-        for key in ("OPENROUTER_API_KEY", "SENSENOVA_API_KEY", "SILICONFLOW_API_KEY", "OPENAI_API_KEY"):
-            monkeypatch.delenv(key, raising=False)
+        _clear_all_provider_keys(monkeypatch)
         client = LLMClient(load_config())  # writer 带 fallback_model
         assert client.has_role("writer") is False
         with pytest.raises(LLMError, match="no client for provider"):
@@ -108,8 +117,7 @@ class TestCallLLMNoKey:
     def test_has_role_reflects_provider_availability(self, llm_config, monkeypatch, mock_openai):
         """has_role 让上层在没有 key 时直接跳过通道，不浪费请求。"""
         assert LLMClient(llm_config).has_role("writer") is True
-        for key in ("OPENAI_API_KEY", "OPENROUTER_API_KEY", "SENSENOVA_API_KEY", "SILICONFLOW_API_KEY"):
-            monkeypatch.delenv(key, raising=False)
+        _clear_all_provider_keys(monkeypatch)
         bare = LLMClient(llm_config)
         assert bare.has_role("writer") is False
         assert bare.has_role("nonexistent") is False
