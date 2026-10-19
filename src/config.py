@@ -60,16 +60,6 @@ class RoleConfig(BaseModel):
         """L1 的 provider。"""
         return self.chain[0].provider
 
-    # 过渡垫片：src/llm.py 仍按"主腿 + 一级 fallback"读取（6 处），到 Task 4 重写完
-    # llm.py 后必须删掉这两个属性，别留陈旧抽象。
-    @property
-    def fallback_model(self) -> str | None:
-        return self.chain[1].model if len(self.chain) > 1 else None
-
-    @property
-    def fallback_provider(self) -> str | None:
-        return self.chain[1].provider if len(self.chain) > 1 else None
-
 
 class JevConfig(BaseModel):
     """比稿判断通道（TypeSafe System One）。
