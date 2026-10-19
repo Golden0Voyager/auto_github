@@ -38,7 +38,7 @@ Spec 没有逐条写、但最可能被踩到的五个输入：
 **Files:**
 - Modify: `src/config.py:17-93`
 - Modify: `config/config.yaml:58-124`
-- Modify: `tests/test_config.py:40-70, 209-280`
+- Modify: `tests/test_config.py:40-70, 135-145, 209-280`
 
 **Interfaces:**
 - Produces: `ModelLeg(model: str, provider: str, max_tokens: int | None = None)`；`RoleConfig.chain: list[ModelLeg]`（`min_length=1`）；只读属性 `RoleConfig.model` / `RoleConfig.provider`（= `chain[0]` 的字段）；`AIConfig.apply_writer_variant()` 内部改用 `model_copy(deep=True)`。
@@ -108,6 +108,14 @@ class RoleConfig(BaseModel):
 
 `AIConfig.roles` / `writer_variants` 的默认值改成 `RoleConfig(chain=[...])`，`apply_writer_variant` 里两处 `model_copy()` 改成 `model_copy(deep=True)`，并把 `self.roles.get("writer", RoleConfig())` 改为显式处理 `None`（`RoleConfig()` 已不再是合法默认值）。
 
+**过渡垫片（Ruling，见 ledger）**：本任务保留 `fallback_model` / `fallback_provider` 两个**只读属性**
+（分别返回 `chain[1].model` / `chain[1].provider`，链不足两条时返回 `None`）。
+原因：`src/llm.py` 有 6 处读这两个字段（`has_role` / `_resolve_providers` / `call_llm`），
+而 llm.py 到 Task 4 才重写 —— 没有垫片的话，Task 2 的 `mypy src/` 会在一个"只改了 schema"
+的仓库上报错。**这两个属性必须在 Task 4 删掉**，不留陈旧抽象。
+
+`tests/test_config.py:135-145` 里的 `RoleConfig(model=..., provider=...)` 构造要一并改成 `chain=` 形式。
+
 - [ ] **Step 4: 跑测试确认通过**
 
 Run: `uv run pytest tests/test_config.py -q`
@@ -123,7 +131,7 @@ Expected: PASS
         - { model: agnes-3.0-flash, provider: agnes }
         - { model: nvidia/nemotron-3.5-super-vl:free, provider: openrouter }
         - { model: glm-5.2, provider: sensenova }
-        - { model: deepseek-flash, provider: sensenova }
+        - { model: sensenova-6.8-flash-lite, provider: sensenova }
 ```
 
 同时把该段失效的注释（"super-vl 是免费 Nvidia 池里唯一支持 structured_outputs 的"、"RoleConfig 只有一级 fallback"）替换为链的说明。
@@ -327,6 +335,7 @@ Expected: FAIL —— `AttributeError: 'RoleConfig' object has no attribute 'fal
 - `call_llm` 改成 for 循环遍历 `legs(role)`，逐腿 `_try_model(...)`；某腿返回 `None` 就把该 `(role, key)` 加进 `_exhausted_legs` 并继续下一腿；全部腿失败才抛 `LLMError`。
 - `max_tokens` 优先级：`leg.max_tokens or max_tokens or self.config.ai.max_tokens`。
 - `_try_model` 里 `content.strip()` 为空时按一次失败处理（`self.failed_attempt_count += 1`），继续重试或返回 `None`。
+- **删掉 Task 1 留下的过渡垫片**：`RoleConfig.fallback_model` / `fallback_provider` 两个属性此时已无人读取（llm.py 是本仓库唯一读者），必须一并删除。
 
 - [ ] **Step 4: 跑测试确认通过**
 
@@ -431,16 +440,24 @@ git add tests/test_pipeline.py && git commit -m "test(pipeline): pin markdown-wr
 - [ ] **Step 1: 写失败测试**
 
 ```python
-def test_every_provider_has_a_workflow_env_line():
-    """只做其一等于没配:provider 进了 _PROVIDER_ENV 就必须在 workflow env 里有映射。"""
+def test_every_provider_used_by_a_leg_has_a_workflow_env_line():
+    """只做其一等于没配：任何被某条腿用到的 provider，都必须在 workflow env 里有映射。
+
+    只看"被腿用到"的 provider，不看 _PROVIDER_ENV 全集 —— 后者是注册表，合法地含有
+    当前无人使用的 provider（openai / tokenrhythm / intern），它们不该要求 CI secret。
+    """
+    cfg = AIConfig()
+    used = {leg.provider for rc in cfg.roles.values() for leg in rc.chain}
+    used |= {leg.provider for rc in cfg.writer_variants.values() for leg in rc.chain}
     text = Path(".github/workflows/daily_trending.yml").read_text(encoding="utf-8")
-    for provider, (env_key, _url_env, _default) in _PROVIDER_ENV.items():
+    for provider in sorted(used):
+        env_key = _PROVIDER_ENV[provider][0]
         assert f"{env_key}: ${{{{ secrets.{env_key} }}}}" in text, provider
 ```
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `uv run pytest tests/test_config.py::test_every_provider_has_a_workflow_env_line -q`
+Run: `uv run pytest tests/test_config.py::test_every_provider_used_by_a_leg_has_a_workflow_env_line -q`
 Expected: FAIL —— `agnes`
 
 - [ ] **Step 3: 实现**
@@ -448,8 +465,10 @@ Expected: FAIL —— `agnes`
 `daily_trending.yml` 的 "Run Curator Pipeline" 步骤 `env:` 增加
 `AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}` 与 `ZENMUX_API_KEY: ${{ secrets.ZENMUX_API_KEY }}`。
 `AGENTS.md`：更新五角色表（改成链）、删除"RoleConfig 只支持一级 fallback"的失效描述、
-补 per-provider 参数表与"classifier 首腿不放 sensenova"的原因、把 probe 的 CI 可达性结论写进
-"改通道配置后必须验证"一节。
+补 per-provider 参数表与"classifier 首腿不放 sensenova"的原因、把 probe 的 CI 实测结论写进
+"改通道配置后必须验证"一节。另外必须写明三条防"修坏"的记录：`or super-vl` 的 T2 只拿到
+3/4 小节（它不当 writer）、`sn glm-5.2` 的 T4 锚点 0/4（它不当翻译腿）、`sn deepseek-flash`
+因 sensenova 的 TPM 天花板在 CI 上 T1/T2/T4 全 429（已从 classifier L4 剔除）。
 
 - [ ] **Step 4: 跑测试确认通过**
 
@@ -466,37 +485,37 @@ git add AGENTS.md && git commit -m "docs: describe the chains and the per-provid
 
 ---
 
-### Task 7: 门 — CI probe 全绿
+### Task 7: 门 — 分支 CI + 真实 runner 探测
 
-**Files:** 无代码改动（只读 `model-probe.yml` 的运行结果）。
+**Files:** 无代码改动。
 
 **Interfaces:**
-- Consumes: Task 1~6 的链路配置；`feat/role-fallback-chains` 上已提交的 probe 改动。
+- Consumes: Task 1~6 的链路配置；本分支上已提交的 probe 改动。
 
-- [ ] **Step 1: 触发探测**
+- [x] **Step 1: 触发探测（已完成）**
 
 Run: `gh workflow run model-probe.yml --ref feat/role-fallback-chains`
-（若 25 分钟超时，拆两趟：`--probes T1,T3` 与 `--probes T2,T4`。）
+Result: run **39211785785**，7m44s 完成，9 个候选全部有结果。
 
-- [ ] **Step 2: 核对结果**
+- [x] **Step 2: 核对结果（已完成）**
 
-Run: `gh run view <run-id> --log | grep -A 20 "探测结果"`
-Expected：9 行候选都有结果；**重点确认 `zenmuxAi/...` 那一行不是 "无 key/跳过"**，即
-`zenmux inclusionai/ling-3.1-flash` 在真实 runner 上可达（这决定 `writer L3` / `reviewer L4` /
-翻译 `L3` 是不是死腿）。
+`zenmux inclusionai/ling-3.1-flash` 四项探针全过（**不是 "无 key/跳过"**）→ zenmux 在 runner
+上可达，三条 zenmux 腿是活的。`deepseek-flash` T1/T2/T4 全 429 → 已从 classifier L4 换成
+`sensenova-6.8-flash-lite`。完整对照见 spec 的「CI probe 实测结论」一节。
 
-- [ ] **Step 3: 若 zenmux 不可达**
-
-spec 的链表需要改：把三条 zenmux 腿替换为 `sensenova glm-5.2`（并接受 sensenova 同时承担
-classifier L3 与翻译 L3 的 TPM 压力），或改用 `siliconflow` 上经检测免费的对话模型。
-这一改动要回到 Task 1 的 Step 5 重做，并在 AGENTS.md 的风险条里记录实测结论。
-
-- [ ] **Step 4: 全绿后开 PR**
+- [ ] **Step 3: 推分支并开 PR**
 
 ```bash
 git push -u origin feat/role-fallback-chains
-gh pr create --fill
+gh pr create --title "feat: ordered role fallback chains" --body-file <pr-body.md>
 ```
 
-PR 描述里必须包含：probe 的 run 链接、`[LLM Init] Providers with keys:` 那一行、
-以及"哪些腿在本次探测里失败过"。
+PR 描述必须包含：probe 的 run 链接（39211785785）、`[LLM Init] Providers with keys:` 那一行、
+本次探测里失败过的腿及其处置、以及 spec/plan 的路径。
+
+- [ ] **Step 4: 等 test job 绿**
+
+Run: `gh pr checks --watch`
+Expected: `test` job 绿（ruff + mypy + bandit + pytest/coverage 85%）。
+
+这是真正的门：probe 验的是"模型可用"，这一关验的才是"代码没坏"。
