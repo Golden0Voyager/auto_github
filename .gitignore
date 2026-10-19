@@ -117,6 +117,9 @@ reports/debug/
 reports_mock/
 *.db
 *.local
+# Git worktrees live under .worktrees/<branch-slug> (see AGENTS.md); the main
+# checkout must not show them as untracked
+.worktrees/
 # Skill-generated analysis artifacts
 .understand-anything/
 .codegraph/
