@@ -183,6 +183,20 @@ class TestProviderRegistry:
             assert url_env.endswith("_BASE_URL"), provider
             assert default.startswith("https://"), provider
 
+    def test_every_provider_used_by_a_leg_has_a_workflow_env_line(self):
+        """只做其一等于没配：任何被某条腿用到的 provider，都必须在 workflow env 里有映射。
+
+        只看"被腿用到"的 provider，不遍历 _PROVIDER_ENV 全集 —— 后者是注册表，合法地
+        含有当前无人使用的 provider（openai / tokenrhythm / intern），它们不该要求 CI secret。
+        """
+        cfg = AIConfig()
+        used = {leg.provider for role_cfg in cfg.roles.values() for leg in role_cfg.chain}
+        used |= {leg.provider for role_cfg in cfg.writer_variants.values() for leg in role_cfg.chain}
+        text = (BASE_DIR / ".github" / "workflows" / "daily_trending.yml").read_text(encoding="utf-8")
+        for provider in sorted(used):
+            env_key = _PROVIDER_ENV[provider][0]
+            assert f"{env_key}: ${{{{ secrets.{env_key} }}}}" in text, provider
+
     def test_sensenova_still_works_with_explicit_config(self, monkeypatch):
         """SensoNova 作为显式配置的腿仍然可用（它是分类/翻译链的末位腿）。"""
         monkeypatch.setenv("SENSENOVA_API_KEY", "sk-sensenova-test")
