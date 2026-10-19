@@ -6,6 +6,7 @@ import pytest
 
 from src.config import AIConfig, AppConfig, RoleConfig
 from src.llm import LLMClient, LLMError
+from tests.conftest import clear_all_provider_keys
 
 
 @pytest.fixture
@@ -34,9 +35,7 @@ def mock_openai():
 
 class TestInitEdgeCases:
     def test_init_no_env_key(self, monkeypatch):
-        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-        monkeypatch.delenv("SENSENOVA_API_KEY", raising=False)
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        clear_all_provider_keys(monkeypatch)
         client = LLMClient(AppConfig())
         assert client.client is None
 
@@ -57,10 +56,7 @@ class TestCallLLMEdgeCases:
             assert c.call_llm([{"role": "user", "content": "test"}], role=role)["content"] == "ok"
 
     def test_no_key_raises(self, monkeypatch):
-        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
-        monkeypatch.delenv("SENSENOVA_API_KEY", raising=False)
-        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
-        monkeypatch.delenv("SILICONFLOW_API_KEY", raising=False)
+        clear_all_provider_keys(monkeypatch)
         with pytest.raises(LLMError, match="no client for provider"):
             LLMClient(AppConfig()).call_llm([{"role": "user", "content": "Hi"}])
 
