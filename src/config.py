@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field, PrivateAttr, model_validator
@@ -14,11 +15,59 @@ class GitHubConfig(BaseModel):
     max_org_repos: int = 5
 
 
+class ModelLeg(BaseModel):
+    """降级链里的一条腿。"""
+
+    model: str
+    provider: str
+    # 推理型模型会把输出预算烧在 reasoning_content 上；这条例外只对该腿生效。
+    max_tokens: int | None = None
+
+
 class RoleConfig(BaseModel):
-    model: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
-    provider: str = "openrouter"
-    fallback_model: str | None = None
-    fallback_provider: str | None = None
+    """一个 role 的有序降级链：逐腿尝试，第一条给出非空正文的腿胜出。
+
+    只保留 `chain`；`model` / `provider` 是 L1 的只读视图，让日志与旧调用点不必
+    知道链的存在。旧的 `{model, provider, fallback_model, fallback_provider}` 形状
+    仍可构造，会被归一化成两条腿的链 —— config.yaml 与代码默认值因此可以分两步迁移。
+    """
+
+    chain: list[ModelLeg] = Field(min_length=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_legacy_shape(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "chain" not in data and "model" in data:
+            legs: list[dict[str, Any]] = [
+                {"model": data["model"], "provider": data.get("provider") or "openrouter"},
+            ]
+            if data.get("fallback_model"):
+                legs.append({
+                    "model": data["fallback_model"],
+                    "provider": data.get("fallback_provider") or "openrouter",
+                })
+            return {"chain": legs}
+        return data
+
+    @property
+    def model(self) -> str:
+        """L1 的模型名。"""
+        return self.chain[0].model
+
+    @property
+    def provider(self) -> str:
+        """L1 的 provider。"""
+        return self.chain[0].provider
+
+    # 过渡垫片：src/llm.py 仍按"主腿 + 一级 fallback"读取（6 处），到 Task 4 重写完
+    # llm.py 后必须删掉这两个属性，别留陈旧抽象。
+    @property
+    def fallback_model(self) -> str | None:
+        return self.chain[1].model if len(self.chain) > 1 else None
+
+    @property
+    def fallback_provider(self) -> str | None:
+        return self.chain[1].provider if len(self.chain) > 1 else None
 
 
 class JevConfig(BaseModel):
@@ -41,25 +90,54 @@ class AIConfig(BaseModel):
     rate_limit_delay: float = 4.0
     jev: JevConfig = Field(default_factory=JevConfig)
     # Mirror of config/config.yaml `ai.roles` for runs without that file; keep in sync.
+    # 每 role 一条有序链：越靠前的腿越可靠（spec「最终降级链」与「排序原则」）。
     roles: dict[str, RoleConfig] = Field(default_factory=lambda: {
-        "classifier": RoleConfig(model="nvidia/nemotron-3.5-super-vl:free", provider="openrouter",
-                                 fallback_model="deepseek-flash", fallback_provider="sensenova"),
-        "writer": RoleConfig(model="nvidia/nemotron-3.5-super-vl:free", provider="openrouter",
-                             fallback_model="nvidia/nemotron-3-ultra-550b-a55b:free", fallback_provider="openrouter"),
-        "translator_a": RoleConfig(model="tencent/Hunyuan-MT-7B", provider="siliconflow",
-                                   fallback_model="sensenova-6.8-flash-lite", fallback_provider="sensenova"),
-        "translator_b": RoleConfig(model="google/gemma-4-31b-it:free", provider="openrouter",
-                                   fallback_model="sensenova-6.8-flash-lite", fallback_provider="sensenova"),
-        "reviewer": RoleConfig(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter",
-                               fallback_model="nvidia/nemotron-3-super-120b-a12b:free", fallback_provider="openrouter"),
+        "classifier": RoleConfig(chain=[
+            # 首腿不放 sensenova：classifier 的单发是全管线最大的一枪，而 sensenova 的
+            # 限免额度按低频小请求设计（实测 first-attempt 0/3）。
+            ModelLeg(model="agnes-3.0-flash", provider="agnes"),
+            ModelLeg(model="nvidia/nemotron-3.5-super-vl:free", provider="openrouter"),
+            ModelLeg(model="glm-5.2", provider="sensenova"),
+            ModelLeg(model="sensenova-6.8-flash-lite", provider="sensenova"),
+        ]),
+        "writer": RoleConfig(chain=[
+            ModelLeg(model="agnes-3.0-flash", provider="agnes"),
+            ModelLeg(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter"),
+            ModelLeg(model="inclusionai/ling-3.1-flash", provider="zenmux"),
+            ModelLeg(model="sensenova-6.8-flash-lite", provider="sensenova"),
+        ]),
+        "translator_a": RoleConfig(chain=[
+            ModelLeg(model="tencent/Hunyuan-MT-7B", provider="siliconflow"),
+            ModelLeg(model="nvidia/nemotron-3.5-super-vl:free", provider="openrouter"),
+            ModelLeg(model="inclusionai/ling-3.1-flash", provider="zenmux"),
+            ModelLeg(model="sensenova-6.8-flash-lite", provider="sensenova"),
+        ]),
+        "translator_b": RoleConfig(chain=[
+            ModelLeg(model="agnes-2.5-flash", provider="agnes"),
+            ModelLeg(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter"),
+            ModelLeg(model="inclusionai/ling-3.1-flash", provider="zenmux"),
+            ModelLeg(model="sensenova-6.8-flash-lite", provider="sensenova"),
+        ]),
+        "reviewer": RoleConfig(chain=[
+            # Jev（TypeSafe）是链前的前置判断通道，不在这条链里（见 ai.jev）。
+            ModelLeg(model="agnes-3.0-flash", provider="agnes"),
+            ModelLeg(model="glm-5.2", provider="sensenova"),
+            ModelLeg(model="inclusionai/ling-3.1-flash", provider="zenmux"),
+        ]),
     })
     # writer 的 A/B：'a' 就是上面 roles.writer 本身（不重复定义）,
     # 这里只放替代方案。切换 = 把 writer_variant 改成 'b',
     # 或设 WRITER_VARIANT 环境变量覆盖（'config'/空值表示不覆盖）。
     writer_variant: str = "a"
     writer_variants: dict[str, RoleConfig] = Field(default_factory=lambda: {
-        "b": RoleConfig(model="nvidia/nemotron-3.5-lightning:free", provider="openrouter",
-                        fallback_model="nvidia/nemotron-3.5-super-vl:free", fallback_provider="openrouter"),
+        # b 案只换首腿：L2 就是 A 案的首腿，两案互为兜底。
+        "b": RoleConfig(chain=[
+            ModelLeg(model="agnes-2.5-flash", provider="agnes"),
+            ModelLeg(model="agnes-3.0-flash", provider="agnes"),
+            ModelLeg(model="nvidia/nemotron-3-ultra-550b-a55b:free", provider="openrouter"),
+            ModelLeg(model="inclusionai/ling-3.1-flash", provider="zenmux"),
+            ModelLeg(model="sensenova-6.8-flash-lite", provider="sensenova"),
+        ]),
     })
     # roles.writer 的原始定义（A 案）,供可逆切换
     _writer_base: RoleConfig | None = PrivateAttr(default=None)
@@ -71,8 +149,13 @@ class AIConfig(BaseModel):
         必须回到构造时留存的原始定义,否则 env 覆盖不回 A 案。
         """
         if self._writer_base is None:
-            self._writer_base = self.roles.get("writer", RoleConfig()).model_copy()
-        base = self._writer_base.model_copy()
+            # chain 是 list[ModelLeg]：浅拷贝会让本属性与 roles.writer 共享同一批
+            # ModelLeg 对象，切回 a 时拿到的就是被 b 那条链改过的型号。
+            current = self.roles.get("writer")
+            if current is None:
+                raise ValueError("ai.roles 必须定义 writer")
+            self._writer_base = current.model_copy(deep=True)
+        base = self._writer_base.model_copy(deep=True)
 
         if self.writer_variant in ("", "a"):
             self.roles["writer"] = base
@@ -85,7 +168,7 @@ class AIConfig(BaseModel):
             self.writer_variant = "a"
             self.roles["writer"] = base
             return
-        self.roles["writer"] = chosen.model_copy()
+        self.roles["writer"] = chosen.model_copy(deep=True)
 
     @model_validator(mode="after")
     def _resolve_writer_variant(self) -> "AIConfig":
@@ -98,6 +181,9 @@ _PROVIDER_ENV = {
     "sensenova": ("SENSENOVA_API_KEY", "SENSENOVA_BASE_URL", "https://token.sensenova.cn/v1"),
     "openai": ("OPENAI_API_KEY", "OPENAI_BASE_URL", "https://api.openai.com/v1"),
     "siliconflow": ("SILICONFLOW_API_KEY", "SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1"),
+    # 链上新用到的两家（其余预注册见 Task 2）。
+    "agnes": ("AGNES_API_KEY", "AGNES_BASE_URL", "https://apihub.agnes-ai.com/v1"),
+    "zenmux": ("ZENMUX_API_KEY", "ZENMUX_BASE_URL", "https://zenmux.ai/api/v1"),
 }
 
 
