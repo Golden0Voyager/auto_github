@@ -57,45 +57,46 @@ ai:
   rate_limit_delay: 4.0
   roles:
     classifier:
-      # T1 判别层：一次 batch 决定全报告的 S/A/B/C 评级、tags 与 selection_reason，
-      # 这些又原样进 writer 的 prompt —— 错一次要为下游 37 次调用买单，所以配最好的
-      # 模型；super-vl 是免费 Nvidia 池里唯一支持 structured_outputs 的，正好治
-      # "batch JSON 解析失败率过高"。降级腿刻意留在 sensenova（跨 provider），
-      # 模型 ID 按官方 Token Plan 文档为 deepseek-flash。
-      model: nvidia/nemotron-3.5-super-vl:free
-      provider: openrouter
-      fallback_model: deepseek-flash
-      fallback_provider: sensenova
+      # 判别层：一次 batch 决定全报告的 S/A/B/C 评级、tags 与 selection_reason，
+      # 这些又原样进 writer 的 prompt —— 错一次要为下游 37 次调用买单，所以首腿配最稳的。
+      # 刻意不放 sensenova：classifier 的单发是全管线最大的一枪（实测 ≈3500 token），
+      # 而 sensenova 的限免额度按低频小请求设计（连打 3 轮 first-attempt 成功率 0/3）。
+      chain:
+        - { model: agnes-3.0-flash, provider: agnes }
+        - { model: nvidia/nemotron-3.5-super-vl:free, provider: openrouter }
+        - { model: glm-5.2, provider: sensenova }
+        - { model: sensenova-6.8-flash-lite, provider: sensenova }
     writer:
-      # A 案（现役）。B 案见下方 writer_variants.b
-      # 2026-10-16: ultra 反复 returned no choices（10/15 两班实测 6 次、4+2 次重试失败），
-      # 主写手换成 super-vl（120B/12B 激活、max_completion 131k、免费 Nvidia 里唯一支持
-      # structured_outputs）；ultra 转为第二条腿。RoleConfig 只有一级 fallback,
-      # 所以链路是 super-vl → ultra → 英文 stub。
-      model: nvidia/nemotron-3.5-super-vl:free
-      provider: openrouter
-      fallback_model: nvidia/nemotron-3-ultra-550b-a55b:free
-      fallback_provider: openrouter
+      # A 案（现役），B 案见下方 writer_variants.b。链是有序的：逐腿尝试，
+      # 第一条给出非空正文的腿胜出，全部腿都失败才落英文 stub。
+      chain:
+        - { model: agnes-3.0-flash, provider: agnes }
+        - { model: nvidia/nemotron-3-ultra-550b-a55b:free, provider: openrouter }
+        - { model: inclusionai/ling-3.1-flash, provider: zenmux }
+        - { model: sensenova-6.8-flash-lite, provider: sensenova }
     translator_a:
-      model: tencent/Hunyuan-MT-7B
-      provider: siliconflow
-      # 主腿没有第二条命时，一家欠费就把 A/B 与 Review 一起带走（10/12-10/15 实测）。
-      # 降级腿指向 sensenova 的轻量模型：只要 SENSENOVA_API_KEY 在，中文层就不会整条消失。
-      fallback_model: sensenova-6.8-flash-lite
-      fallback_provider: sensenova
+      # A 通道。两条通道的 L1 必须既不同模型也不同 provider，否则 A/B 变同源、
+      # 比稿失去意义。
+      chain:
+        - { model: tencent/Hunyuan-MT-7B, provider: siliconflow }
+        - { model: nvidia/nemotron-3.5-super-vl:free, provider: openrouter }
+        - { model: inclusionai/ling-3.1-flash, provider: zenmux }
+        - { model: sensenova-6.8-flash-lite, provider: sensenova }
     translator_b:
-      # 故意与 translator_a 跨 provider：两通道同账户时，一次欠费/限流就把中文层
-      # 和 Review 一起带走（10/12-10/15 的事故）。Gemma 与 Nvidia 也不同家族，
-      # 比稿才有区分度。openrouter 的 key、workflow env 与 _PROVIDER_ENV 都已就绪。
-      model: google/gemma-4-31b-it:free
-      provider: openrouter
-      fallback_model: sensenova-6.8-flash-lite
-      fallback_provider: sensenova
+      # B 通道，故意与 translator_a 跨 provider 跨家族，比稿才有区分度。
+      chain:
+        - { model: agnes-2.5-flash, provider: agnes }
+        - { model: nvidia/nemotron-3-ultra-550b-a55b:free, provider: openrouter }
+        - { model: inclusionai/ling-3.1-flash, provider: zenmux }
+        - { model: sensenova-6.8-flash-lite, provider: sensenova }
     reviewer:
-      model: nvidia/nemotron-3-ultra-550b-a55b:free
-      provider: openrouter
-      fallback_model: nvidia/nemotron-3-super-120b-a12b:free
-      fallback_provider: openrouter
+      # Jev（TypeSafe）是链前的前置判断通道（见下方 ai.jev），这三条是它拿不准时的字母裁判。
+      # 任一翻译通道的 L1 都被排除：裁判不能评自己的译文 —— 实测 Hunyuan-MT-7B 在
+      # "A 漏 / B 好"的对照里仍选 A（A 偏见），而它本身就是 translator_a 的首腿。
+      chain:
+        - { model: agnes-3.0-flash, provider: agnes }
+        - { model: glm-5.2, provider: sensenova }
+        - { model: inclusionai/ling-3.1-flash, provider: zenmux }
 
   # 比稿判断通道（TypeSafe System One）。这是本项目第一个付费依赖：
   # $42 / 1B input token、output 免费，一轮 Review 约 2.5 万 input ≈ $0.001。
@@ -111,17 +112,16 @@ ai:
   # writer 的 A/B：'a' 即上面 roles.writer 本身；改成 'b' 就换用候选模型跑一轮对比质量。
   # 也可以不改这里,用环境变量 WRITER_VARIANT=b 临时覆盖（空值或 'config' = 不覆盖,
   # schedule 触发的定时跑就是空值,所以这行说了算）。
-  # b 用新一代 lightning 做候选时,降级方向反过来指向 A 案,两案互为兜底。
-  # 2026-10-15 A/B 实测（同为 9 仓库、同一份 prompt）：
-  #   b 的 Write output tokens 58,038 vs a 的 14,004（4.1x），
-  #   且 4/9 产物过不了 WRITER_SECTIONS 完整性门（a 为 0/9）——花得多、能用的少,回 A 案。
+  # b 案只换首腿，它的 L2 就是 A 案的首腿，两案互为兜底。
   writer_variant: a
   writer_variants:
     b:
-      model: nvidia/nemotron-3.5-lightning:free
-      provider: openrouter
-      fallback_model: nvidia/nemotron-3.5-super-vl:free
-      fallback_provider: openrouter
+      chain:
+        - { model: agnes-2.5-flash, provider: agnes }
+        - { model: agnes-3.0-flash, provider: agnes }
+        - { model: nvidia/nemotron-3-ultra-550b-a55b:free, provider: openrouter }
+        - { model: inclusionai/ling-3.1-flash, provider: zenmux }
+        - { model: sensenova-6.8-flash-lite, provider: sensenova }
 
 # 高星项目去重配置（节省算力 + 给新兴项目留展位）
 dedup:
