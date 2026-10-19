@@ -74,7 +74,7 @@
 | `translator_a` | `siliconflow` `tencent/Hunyuan-MT-7B` | `openrouter` `nvidia/nemotron-3.5-super-vl:free` | `zenmux` `inclusionai/ling-3.1-flash` | `sensenova` `sensenova-6.8-flash-lite` | 采用 A 通道 |
 | `translator_b` | `agnes` `agnes-2.5-flash` | `openrouter` `nvidia/nemotron-3-ultra-550b-a55b:free` | `zenmux` `inclusionai/ling-3.1-flash` | `sensenova` `sensenova-6.8-flash-lite` | 采用 A 通道 |
 | `writer` | `agnes` `agnes-3.0-flash` | `openrouter` `nvidia/nemotron-3-ultra-550b-a55b:free` | `zenmux` `inclusionai/ling-3.1-flash` | `sensenova` `sensenova-6.8-flash-lite` | 英文 stub |
-| `classifier` | `agnes` `agnes-3.0-flash` | `openrouter` `nvidia/nemotron-3.5-super-vl:free` | `sensenova` `glm-5.2` | `sensenova` `deepseek-flash` | 静态 `infer_tags` / `infer_rating` |
+| `classifier` | `agnes` `agnes-3.0-flash` | `openrouter` `nvidia/nemotron-3.5-super-vl:free` | `sensenova` `glm-5.2` | `sensenova` `sensenova-6.8-flash-lite` | 静态 `infer_tags` / `infer_rating` |
 | `reviewer` | Jev `jev-latest`（前置） | `agnes` `agnes-3.0-flash` | `sensenova` `glm-5.2` | `zenmux` `inclusionai/ling-3.1-flash` | 退回 A 通道 |
 
 ### 排序原则
@@ -132,6 +132,35 @@
 | zenmux `ling-3.1-flash` | zenmux | $0 | ✅ | 保留 |
 | `neohorse-1-9b` | tokenrhythm | 免费 | ✅ | 不入选（reviewer 0/2） |
 | `intern-ai` 系列 | intern | 0 墨点 | ✅ | 不入选（分类 352.5s / 翻译 87.8s，全场景过慢） |
+
+## CI probe 实测结论（run 39211785785，2026-10-19）
+
+九个候选在真实 GitHub runner 上各打四发固定探针（真实 prompt，`max_tokens=2048`；
+T1 的 batch 只有 3 个仓库）：
+
+| 腿 | 承担角色 | 实测 | 判定 |
+| :--- | :--- | :--- | :--- |
+| `sf tencent/Hunyuan-MT-7B` | translator_a L1 | T4 锚点 4/4、中文 317 字；T1 合规 **0/3** | ✅ 只当翻译腿，**永不碰 classifier** |
+| `agnes agnes-2.5-flash` | translator_b L1 | 四项全过，p50 **5.0s** | ✅ |
+| `agnes agnes-3.0-flash` | writer/classifier L1、reviewer L2 | 四项全过，p50 7.2s | ✅ |
+| `or nemotron-3.5-super-vl:free` | translator_a L2、classifier L2 | T1 3/3 合规、T4 4/4；**T2 小节 3/4 且 out=2048 撞上限** | ✅ 只当翻译/分类腿；它当 writer 过不了完整性门（与本机 STUCK 一致） |
+| `or nemotron-3-ultra-550b:free` | translator_b L2、writer L2 | 四项全过，p50 10.4s | ✅ |
+| `zm inclusionai/ling-3.1-flash` | writer L3、reviewer L4、翻译 L3 | 四项全过，p50 15.5s | ✅ **CI 可达** |
+| `sn glm-5.2` | classifier L3、reviewer L3 | T1 3/3 合规、T2 4/4；**T4 锚点 0/4、中文 0 字、out=2048** | ✅ 只当分类/裁判腿，它完全不能翻译 |
+| `sn sensenova-6.8-flash-lite` | 翻译/writer L4、**classifier L4** | T1 **3/3 合规**、T2 4/4、T4 4/4 | ✅ |
+| `sn deepseek-flash` | —（原 classifier L4） | T1/T2/T4 **全 429**、T3 空串 | ❌ 已剔除 |
+
+两点结论：
+
+1. **zenmux 在 GitHub runner 上可达**。`scripts/probe_models.py` 里"CI runner 直连会被 DNS
+   污染挡掉"的旧注释是错的 —— 那是本机的 DNS 污染，不适用于 runner。因此 `writer L3` /
+   `reviewer L4` / 翻译 `L3` 是**活腿**，不是死腿。
+2. **`deepseek-flash` 被剔除**。探针的 batch 只有 3 个仓库（比本机测的 9 个还轻），它仍然
+   T1/T2/T4 全 429 —— sensenova 的 TPM 天花板比"每仓库一次调用"的假设更低。而同端点上的
+   `sensenova-6.8-flash-lite` T1 合规 3/3，所以 `classifier` L4 换成它。
+
+另外两条"看着红但无害"的实测，必须写进 AGENTS.md，免得以后被人当 bug"修坏"：
+`or super-vl` 的 T2（它不当 writer）、`sn glm-5.2` 的 T4（它不当翻译腿）。
 
 ## 接口设计
 
@@ -218,11 +247,8 @@ def call_llm(self, messages, role="writer", temperature=None,
 
 ## 风险与未验证项
 
-1. **zenmux 在 GitHub runner 上的可达性未验证**。本机必须挂代理（本机 DNS 被污染），
-   而仓库里 `scripts/probe_models.py` 的旧注释断言"CI runner 直连会被 DNS 污染挡掉"，
-   与"GitHub Actions 没有防火墙"的判断相反。这直接决定 `writer L3` / `reviewer L4` /
-   翻译 `L3` 是不是死腿 —— **必须由 `model-probe.yml` 在真实 runner 上实测**，
-   本机带代理测出的结论不算数。
+1. ~~**zenmux 在 GitHub runner 上的可达性未验证**~~ —— **已实测可达**（run 39211785785，
+   四项探针全过）。本机需要代理只是本机 DNS 被污染，runner 不受影响。风险关闭。
 2. **sensenova 作为末位腿的能力边界**：它的限免额度对上翻译一发（≈2000 token）实测能过
    （22.7s），但余量小。因此它只出现在 L4（最后一条），且不再出现在 `classifier` 首腿。
 3. **`or super-vl:free` 的传输层不稳**：实测 `502` ×2、流解析失败 1 次。它是 L2 而不是 L1，
