@@ -9,7 +9,9 @@ Covers:
 
 from pathlib import Path
 
+import pytest
 import yaml
+from pydantic import ValidationError
 
 # Project root is already added by conftest
 from src.config import (
@@ -19,9 +21,20 @@ from src.config import (
     AppConfig,
     DedupConfig,
     GitHubConfig,
+    ModelLeg,
     RoleConfig,
     load_config,
+    resolve_base_url,
 )
+
+# 模型名常量：链的断言引用它们，换型号时一处生效。
+AGNES_30 = "agnes-3.0-flash"
+AGNES_25 = "agnes-2.5-flash"
+GLM_52 = "glm-5.2"
+LING_31 = "inclusionai/ling-3.1-flash"
+SN_LITE = "sensenova-6.8-flash-lite"
+ULTRA = "nvidia/nemotron-3-ultra-550b-a55b:free"
+SUPER_VL = "nvidia/nemotron-3.5-super-vl:free"
 
 
 class TestAppConfigDefaults:
@@ -43,27 +56,24 @@ class TestAppConfigDefaults:
     def test_ai_defaults(self):
         cfg = AppConfig()
         assert cfg.ai.default_provider == "openrouter"
-        assert cfg.ai.roles["writer"].model == "nvidia/nemotron-3.5-super-vl:free"
-        assert cfg.ai.roles["writer"].fallback_model == "nvidia/nemotron-3-ultra-550b-a55b:free"
-        assert cfg.ai.roles["reviewer"].model == "nvidia/nemotron-3-ultra-550b-a55b:free"
-        assert cfg.ai.roles["reviewer"].fallback_model == SUPER_120B
         assert cfg.ai.temperature == 0.3
         assert cfg.ai.max_tokens == 8192
         assert cfg.ai.rate_limit_delay == 4.0
-        assert cfg.ai.roles["classifier"].provider == "openrouter"
-        # T1 的降级腿必须跨 provider，否则 openrouter 出事时判别层没有第二条腿
-        assert cfg.ai.roles["classifier"].fallback_provider == "sensenova"
-        assert cfg.ai.roles["classifier"].fallback_model == "deepseek-flash"
-        assert cfg.ai.roles["translator_a"].provider == "siliconflow"
-        # 两通道跨 provider 是硬约束：同账户时一次欠费/限流会同时带走 A/B 与 Review
-        # （10/12-10/15 siliconflow 402 就是这么让中文层消失了四天）。
-        assert cfg.ai.roles["translator_b"].provider == "openrouter"
-        assert cfg.ai.roles["translator_b"].model == "google/gemma-4-31b-it:free"
-        assert cfg.ai.roles["translator_a"].provider != cfg.ai.roles["translator_b"].provider
-        # 每条翻译通道都得有第二条命,否则主腿一挂中文层就整条消失
+        # 每个 role 都是一条有序链（spec「最终降级链」）；model/provider 只是 L1 的视图。
+        assert [leg.model for leg in cfg.ai.roles["classifier"].chain] == [
+            AGNES_30, SUPER_VL, GLM_52, SN_LITE,
+        ]
+        assert [leg.model for leg in cfg.ai.roles["writer"].chain] == [
+            AGNES_30, ULTRA, LING_31, SN_LITE,
+        ]
+        assert cfg.ai.roles["writer"].model == AGNES_30
+        assert cfg.ai.roles["writer"].provider == "agnes"
+        assert cfg.ai.roles["reviewer"].chain[0].model == AGNES_30
+        # 两条翻译通道的尾腿必须是同一条：L1/L2 都失败时，独立性已无从保证，
+        # 此时优先"有译文"。
         for role in ("translator_a", "translator_b"):
-            assert cfg.ai.roles[role].fallback_model == "sensenova-6.8-flash-lite", role
-            assert cfg.ai.roles[role].fallback_provider == "sensenova", role
+            assert cfg.ai.roles[role].chain[-1].model == SN_LITE, role
+            assert cfg.ai.roles[role].chain[-1].provider == "sensenova", role
 
     def test_dedup_defaults(self):
         cfg = AppConfig()
@@ -133,12 +143,66 @@ class TestLoadConfig:
         assert resolve_base_url("openrouter") == "https://openrouter.ai/api/v1"
         assert resolve_base_url("sensenova") == "https://token.sensenova.cn/v1"
 
+    def test_resolve_base_url_ignores_a_non_allowlisted_host(self, monkeypatch, capsys):
+        """本机 SENSENOVA_BASE_URL 指向通用端点（那份限免模型只在 token.sensenova.cn 上），
+        必须被挡下：指错端点会稳定 404，而 404 属模型级不可重试 —— 整条腿 0.1s 秒失败，
+        看起来就像"模型下架"。"""
+        monkeypatch.setenv("SENSENOVA_BASE_URL", "https://api.sensenova.cn/compatible-mode/v2")
+        assert resolve_base_url("sensenova") == "https://token.sensenova.cn/v1"
+        assert "[Config Warning]" in capsys.readouterr().out
+
+    def test_resolve_base_url_accepts_an_allowlisted_host(self, monkeypatch, capsys):
+        monkeypatch.setenv("SENSENOVA_BASE_URL", "https://token.sensenova.cn/v1")
+        assert resolve_base_url("sensenova") == "https://token.sensenova.cn/v1"
+        assert "[Config Warning]" not in capsys.readouterr().out
+
+    def test_resolve_base_url_unknown_provider_is_none(self):
+        assert resolve_base_url("nonexistent") is None
+
+    def test_resolve_base_url_warns_for_every_leg_provider(self, monkeypatch, capsys):
+        """守卫不能只给 sensenova 打补丁：每条腿的 env 覆盖都要过同一道白名单。"""
+        cfg = AIConfig()
+        providers = {leg.provider for role_cfg in cfg.roles.values() for leg in role_cfg.chain}
+        for provider in sorted(providers):
+            entry = _PROVIDER_ENV[provider]
+            monkeypatch.setenv(entry[1], "https://evil.example.com/v1")
+            assert resolve_base_url(provider) == entry[2], provider
+            assert f"[Config Warning] {entry[1]}" in capsys.readouterr().out, provider
+
+
+class TestProviderRegistry:
+    """provider → (env key, base_url env, 默认 base_url) 的注册表。"""
+
+    def test_covers_the_new_legs(self):
+        """新链引用的四家都要有注册项。tokenrhythm/intern 是预注册（当前无 role 使用），
+        以后想换过去只改 config.yaml。"""
+        assert {"agnes", "zenmux", "tokenrhythm", "intern"} <= set(_PROVIDER_ENV)
+        for provider in ("agnes", "zenmux", "tokenrhythm", "intern"):
+            env_key, url_env, default = _PROVIDER_ENV[provider]
+            assert env_key.endswith("_API_KEY"), provider
+            assert url_env.endswith("_BASE_URL"), provider
+            assert default.startswith("https://"), provider
+
+    def test_every_provider_used_by_a_leg_has_a_workflow_env_line(self):
+        """只做其一等于没配：任何被某条腿用到的 provider，都必须在 workflow env 里有映射。
+
+        只看"被腿用到"的 provider，不遍历 _PROVIDER_ENV 全集 —— 后者是注册表，合法地
+        含有当前无人使用的 provider（openai / tokenrhythm / intern），它们不该要求 CI secret。
+        """
+        cfg = AIConfig()
+        used = {leg.provider for role_cfg in cfg.roles.values() for leg in role_cfg.chain}
+        used |= {leg.provider for role_cfg in cfg.writer_variants.values() for leg in role_cfg.chain}
+        text = (BASE_DIR / ".github" / "workflows" / "daily_trending.yml").read_text(encoding="utf-8")
+        for provider in sorted(used):
+            env_key = _PROVIDER_ENV[provider][0]
+            assert f"{env_key}: ${{{{ secrets.{env_key} }}}}" in text, provider
+
     def test_sensenova_still_works_with_explicit_config(self, monkeypatch):
-        """SensoNova 作为显式配置的 provider 仍然可用（T1 之后它是 classifier 的降级腿）。"""
+        """SensoNova 作为显式配置的腿仍然可用（它是分类/翻译链的末位腿）。"""
         monkeypatch.setenv("SENSENOVA_API_KEY", "sk-sensenova-test")
         cfg = AppConfig()
-        cfg.ai.roles["classifier"] = RoleConfig(model="sensenova-6.8-flash-lite", provider="sensenova")
-        assert cfg.ai.roles["classifier"].model == "sensenova-6.8-flash-lite"
+        cfg.ai.roles["classifier"] = RoleConfig(chain=[ModelLeg(model=SN_LITE, provider="sensenova")])
+        assert cfg.ai.roles["classifier"].model == SN_LITE
         assert cfg.ai.roles["classifier"].provider == "sensenova"
 
     def test_webhook_overrides_from_env(self, monkeypatch):
@@ -156,8 +220,8 @@ class TestLoadConfig:
         config = load_config()
         assert isinstance(config, AppConfig)
         # 不写死具体型号：仓库可以随时切到 B 案，这里只验证 writer 被正确解析
-        assert config.ai.roles["writer"].provider == "openrouter"
-        assert config.ai.roles["writer"].model in {ULTRA, LIGHTNING, SUPER_VL}
+        assert config.ai.roles["writer"].provider == "agnes"
+        assert config.ai.roles["writer"].model in {AGNES_30, AGNES_25}
 
 
 class TestModelValidation:
@@ -187,10 +251,7 @@ class TestModelValidation:
         cfg = AIConfig()
         for role, expected in yaml_roles.items():
             actual = cfg.roles[role]
-            assert actual.model == expected["model"], role
-            assert actual.provider == expected["provider"], role
-            assert actual.fallback_model == expected.get("fallback_model"), role
-            assert actual.fallback_provider == expected.get("fallback_provider"), role
+            assert [leg.model_dump(exclude_none=True) for leg in actual.chain] == expected["chain"], role
 
     def test_empty_config_yaml_fails_gracefully(self):
         """An empty dict should produce a valid AppConfig with defaults."""
@@ -199,10 +260,74 @@ class TestModelValidation:
         assert cfg.dedup.archive_threshold == 3
 
 
-ULTRA = "nvidia/nemotron-3-ultra-550b-a55b:free"
-SUPER_VL = "nvidia/nemotron-3.5-super-vl:free"
-LIGHTNING = "nvidia/nemotron-3.5-lightning:free"
-SUPER_120B = "nvidia/nemotron-3-super-120b-a12b:free"
+class TestRoleConfigChain:
+    """RoleConfig 的链式 schema。"""
+
+    def test_chain_is_the_source_of_truth(self):
+        rc = RoleConfig(chain=[ModelLeg(model="m1", provider="p1"),
+                               ModelLeg(model="m2", provider="p2", max_tokens=256)])
+        # model/provider 只是 L1 的视图，日志与旧调用点无需知道链的存在
+        assert rc.model == "m1"
+        assert rc.provider == "p1"
+        assert [leg.model for leg in rc.chain] == ["m1", "m2"]
+        assert rc.chain[1].max_tokens == 256
+        assert rc.chain[0].max_tokens is None
+
+    def test_rejects_empty_chain(self):
+        """空链等于没有通道：必须在构造时就炸，而不是逐仓库调用时才发现。"""
+        with pytest.raises(ValidationError):
+            RoleConfig(chain=[])
+
+    def test_normalizes_the_legacy_two_leg_shape(self):
+        """旧的 {model, provider, fallback_*} 形状仍被接受并归一化成链，
+        这样 config.yaml 与代码默认值可以分两步迁移。"""
+        rc = RoleConfig(model="m1", provider="p1",
+                        fallback_model="m2", fallback_provider="p2")
+        assert [(leg.model, leg.provider) for leg in rc.chain] == [("m1", "p1"), ("m2", "p2")]
+
+    def test_legacy_shape_without_fallback_is_a_one_leg_chain(self):
+        rc = RoleConfig(model="m1", provider="p1")
+        assert [(leg.model, leg.provider) for leg in rc.chain] == [("m1", "p1")]
+
+
+class TestFallbackChainConstraints:
+    """链的设计约束（spec「排序原则」与「腿的独立性约束」），不是形状断言。"""
+
+    def test_translator_channels_start_on_different_models_and_providers(self):
+        """A/B 两条通道的首腿必须既不同模型也不同 provider，否则比稿失去意义。"""
+        cfg = AIConfig()
+        a_head = cfg.roles["translator_a"].chain[0]
+        b_head = cfg.roles["translator_b"].chain[0]
+        assert a_head.provider != b_head.provider
+        assert a_head.model != b_head.model
+
+    def test_reviewer_never_reuses_a_translator_head(self):
+        """裁判不能评自己的译文。实测 Hunyuan-MT-7B 在"A 漏 / B 好"的对照里仍选 A
+        （A 偏见），而它本身就是 translator_a 的首腿 —— 两条理由都要求把它排除。"""
+        cfg = AIConfig()
+        translator_heads = {
+            cfg.roles["translator_a"].chain[0].model,
+            cfg.roles["translator_b"].chain[0].model,
+        }
+        assert not translator_heads & {leg.model for leg in cfg.roles["reviewer"].chain}
+
+    def test_classifier_does_not_lead_with_sensenova(self):
+        """classifier 一轮只发一次（RPM 需求≈0），但它决定全部仓库的评级与分桶，
+        失败代价最高；而 sensenova 的限免额度按低频小请求设计（实测 first-attempt 0/3，
+        恒 RateLimitExceeded.EndpointTPMExceeded）。所以首腿必须是配额最宽的那条。"""
+        assert AIConfig().roles["classifier"].chain[0].provider != "sensenova"
+
+    def test_every_role_has_at_least_three_legs(self):
+        """方案 B 的全部意义就是"两条腿不会一起挂"：1+1 在免费档上已被三次事故证伪。"""
+        cfg = AIConfig()
+        for role, role_cfg in cfg.roles.items():
+            assert len(role_cfg.chain) >= 3, role
+
+    def test_every_leg_provider_is_registered(self):
+        cfg = AIConfig()
+        for role, role_cfg in cfg.roles.items():
+            for leg in role_cfg.chain:
+                assert leg.provider in _PROVIDER_ENV, f"{role}: {leg.provider}"
 
 
 class TestWriterVariant:
@@ -211,43 +336,53 @@ class TestWriterVariant:
     def test_default_variant_keeps_current_writer(self):
         cfg = AIConfig()
         assert cfg.writer_variant == "a"
-        assert cfg.roles["writer"].model == SUPER_VL
+        assert cfg.roles["writer"].chain[0].model == AGNES_30
+
+    def test_switch_does_not_alias_chain_lists(self):
+        """roles.writer 与 _writer_base 必须是深拷贝：浅拷贝会让两条链共享同一批
+        ModelLeg 对象，切回 a 时拿到的是被 b 那条链改过的型号。"""
+        cfg = AIConfig()
+        cfg.writer_variant = "b"
+        cfg.apply_writer_variant()
+        cfg.roles["writer"].chain[0].model = "mutated"
+        cfg.writer_variant = "a"
+        cfg.apply_writer_variant()
+        assert cfg.roles["writer"].chain[0].model == AGNES_30
 
     def test_variant_switch_is_reversible_on_one_instance(self):
         """同一实例反复切换时，roles.writer 必须跟着走，不能粘在最后一次覆写上。"""
         cfg = AIConfig(writer_variant="a")
-        assert cfg.roles["writer"].model == SUPER_VL
+        assert cfg.roles["writer"].chain[0].model == AGNES_30
         cfg.writer_variant = "b"
         cfg.apply_writer_variant()
-        assert cfg.roles["writer"].model == LIGHTNING
+        assert cfg.roles["writer"].chain[0].model == AGNES_25
         cfg.writer_variant = "a"
         cfg.apply_writer_variant()
-        assert cfg.roles["writer"].model == SUPER_VL
-        assert cfg.roles["writer"].fallback_model == ULTRA
+        assert cfg.roles["writer"].chain[0].model == AGNES_30
+        assert cfg.roles["writer"].chain[1].model == ULTRA
 
-    def test_variant_b_swaps_writer_and_reverses_fallback(self):
-        """b 案的降级腿指向 A 案，两案互为兜底。"""
-        cfg = AIConfig(writer_variant="b")
-        writer = cfg.roles["writer"]
-        assert writer.model == LIGHTNING
-        assert writer.fallback_model == SUPER_VL
+    def test_variant_b_shares_the_tail_and_hands_the_torch_to_a(self):
+        """b 案的 L2 就是 A 案的首腿，两案互为兜底。"""
+        writer = AIConfig(writer_variant="b").roles["writer"]
+        assert writer.chain[0].model == AGNES_25
+        assert writer.chain[1].model == AGNES_30
 
     def test_other_roles_untouched_by_variant(self):
         cfg = AIConfig(writer_variant="b")
-        assert cfg.roles["reviewer"].model == ULTRA
-        assert cfg.roles["classifier"].provider == "openrouter"
-        assert cfg.roles["classifier"].fallback_provider == "sensenova"
+        assert cfg.roles["reviewer"].chain[0].model == AGNES_30
+        assert cfg.roles["classifier"].chain[0].provider == "agnes"
+        assert cfg.roles["classifier"].chain[0].model == AGNES_30
 
     def test_unknown_variant_falls_back_to_a(self):
         cfg = AIConfig(writer_variant="nope")
         assert cfg.writer_variant == "a"
-        assert cfg.roles["writer"].model == SUPER_VL
+        assert cfg.roles["writer"].chain[0].model == AGNES_30
 
     def test_env_var_overrides_yaml_variant(self, monkeypatch):
         monkeypatch.setenv("WRITER_VARIANT", "b")
         cfg = load_config()
         assert cfg.ai.writer_variant == "b"
-        assert cfg.ai.roles["writer"].model == LIGHTNING
+        assert cfg.ai.roles["writer"].chain[0].model == AGNES_25
 
     def test_env_var_can_override_back_to_a(self, monkeypatch):
         """env 必须能双向覆盖 yaml，否则 yaml 切到 b 之后这条就变成空跑。"""
@@ -255,12 +390,12 @@ class TestWriterVariant:
             (BASE_DIR / "config" / "config.yaml").read_text(encoding="utf-8")
         )["ai"]["writer_variant"]
         monkeypatch.setenv("WRITER_VARIANT", "a" if yaml_variant == "b" else "b")
-        expected = SUPER_VL if yaml_variant == "b" else LIGHTNING
-        assert load_config().ai.roles["writer"].model == expected
+        expected = AGNES_30 if yaml_variant == "b" else AGNES_25
+        assert load_config().ai.roles["writer"].chain[0].model == expected
 
     def test_env_var_is_case_insensitive(self, monkeypatch):
         monkeypatch.setenv("WRITER_VARIANT", "B")
-        assert load_config().ai.roles["writer"].model == LIGHTNING
+        assert load_config().ai.roles["writer"].chain[0].model == AGNES_25
 
     def test_env_sentinel_defers_to_yaml_variant(self, monkeypatch):
         """空值和 'config' 都表示“不覆盖”：schedule 触发时 env 就是空的，
@@ -268,12 +403,12 @@ class TestWriterVariant:
         yaml_variant = yaml.safe_load(
             (BASE_DIR / "config" / "config.yaml").read_text(encoding="utf-8")
         )["ai"]["writer_variant"]
-        expected = LIGHTNING if yaml_variant == "b" else SUPER_VL
+        expected = AGNES_25 if yaml_variant == "b" else AGNES_30
         for sentinel in ("", "config", "  CONFIG  "):
             monkeypatch.setenv("WRITER_VARIANT", sentinel)
             cfg = load_config()
             assert cfg.ai.writer_variant == yaml_variant, sentinel
-            assert cfg.ai.roles["writer"].model == expected, sentinel
+            assert cfg.ai.roles["writer"].chain[0].model == expected, sentinel
 
     def test_workflow_leaves_writer_variant_to_config_yaml(self):
         """workflow 不能把 writer_variant 钉死成 'a'，否则 A/B 开关对定时跑是死的。"""
@@ -293,9 +428,7 @@ class TestWriterVariant:
         assert set(yaml_variants) == set(code_variants)
         for name, expected in yaml_variants.items():
             actual = code_variants[name]
-            assert actual.model == expected["model"], name
-            assert actual.provider == expected["provider"], name
-            assert actual.fallback_model == expected.get("fallback_model"), name
+            assert [leg.model_dump(exclude_none=True) for leg in actual.chain] == expected["chain"], name
 
     def test_jev_yaml_matches_code_default(self):
         """Jev 通道也有 drift 风险：YAML 的判断参数必须与代码默认一致。"""

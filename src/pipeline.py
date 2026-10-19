@@ -21,9 +21,10 @@ RATING_ORDER = {"S": 0, "A": 1, "B": 2, "C": 3}
 # 短于该长度的正文不值得翻译（多半是 stub 或失败产物）
 MIN_TRANSLATABLE_CHARS = 50
 # Review 只回一个字母,但推理型模型会把 reasoning_content 算进同一个预算,
-# 10 token 可能全被思考吃掉、正文返回空。64 token 换掉这个风险,
-# 代价是每次多约 54 个 output token（免费模型不计费,可忽略）。
-REVIEW_MAX_TOKENS = 64
+# 10 token 可能全被思考吃掉、正文返回空。实测 10 个候选模型里 6 个在 64 token 下
+# content='' —— 而空正文又被旧逻辑静默当成"选 A"，等于让裁判的沉默替 A 投票。
+# 256 换掉这个风险：免费模型不计费，多给的预算没有代价。
+REVIEW_MAX_TOKENS = 256
 # 喂给 writer 的 README 摘录预算：够判断项目实际做什么，又不吃掉整个 input 配额
 README_CONTEXT_CHARS = 1200
 # 翻译通道全断时，报告里的英文原文要带这行说明
@@ -41,6 +42,18 @@ REVIEW_PROMPT = (
     'Output ONLY "A" or "B".\n\n'
     "--- Translation A ---\n{ta}\n\n--- Translation B ---\n{tb}"
 )
+
+# 剥掉包裹判词用的标点：实测有模型回 `**A**`，旧实现只看首字符于是把 `*` 当成
+# "没选 B"，静默回到 A。只剥首尾，不剥中间 —— 中间出现 A/B 的散文不是判词。
+_VERDICT_NOISE = "*_`# \t\r\n.。,:：;；!！?？\"'“”‘’()（）[]【】-—"
+
+
+def _normalize_verdict(raw: str) -> str | None:
+    """从裁判回复里取 A/B 判词；取不到返回 None（调用方负责降级，不要猜）。"""
+    cleaned = (raw or "").strip(_VERDICT_NOISE).upper()
+    if not cleaned:
+        return None
+    return cleaned[0] if cleaned[0] in ("A", "B") else None
 
 # Jev（TypeSafe System One）比稿问题。一次请求并行问两个判断，不多花轮次：
 # Choice 选更好的译文，Noul 专抓"丢小节/整段漏译"——只看文笔的裁判抓不到这个。
@@ -666,7 +679,7 @@ class CurationPipeline:
                 r[key] = (res.get("content") or "").strip()
 
     def _jev_verdict(self, r: dict[str, Any], ta: str, tb: str) -> str | None:
-        """比稿前置判断：Jev 给出可信答案就返回 "A"/"B"，否则返回 None 交给 ultra。
+        """比稿前置判断：Jev 给出可信答案就返回 "A"/"B"，否则返回 None 交给字母裁判。
 
         退回条件：通道未配置/调用失败、答案不是 A 或 B、漏译概率过高、置信度不足。
         """
@@ -692,20 +705,20 @@ class CurationPipeline:
             )
         except Exception as e:
             # 付费通道报错就整条运行停用（llm 内部已做），这里退回字母裁判继续比稿
-            print(f"  [Review Jev Fail] {r['full_name']}: {e} → 交给 ultra")
+            print(f"  [Review Jev Fail] {r['full_name']}: {e} → 交给字母裁判")
             return None
         pick = str(answers.get("better_draft", {}).get("choice", "") or "").strip().upper()
         confidence = answers.get("better_draft", {}).get("confidence")
         incomplete = answers.get("draft_incomplete", {}).get("noul")
 
         if pick not in ("A", "B"):
-            print(f"  [Review Jev] {r['full_name']} 未给出 A/B → 交给 ultra")
+            print(f"  [Review Jev] {r['full_name']} 未给出 A/B → 交给字母裁判")
             return None
         if isinstance(incomplete, (int, float)) and incomplete > jev.incomplete_threshold:
-            print(f"  [Review Escalate] {r['full_name']} 漏译概率 {incomplete:.2f} → 交给 ultra")
+            print(f"  [Review Escalate] {r['full_name']} 漏译概率 {incomplete:.2f} → 交给字母裁判")
             return None
         if isinstance(confidence, (int, float)) and confidence < jev.confidence_threshold:
-            print(f"  [Review Escalate] {r['full_name']} 置信度 {confidence:.2f} → 交给 ultra")
+            print(f"  [Review Escalate] {r['full_name']} 置信度 {confidence:.2f} → 交给字母裁判")
             return None
         conf = f"{confidence:.2f}" if isinstance(confidence, (int, float)) else "n/a"
         print(f"  [Review Jev] {r['full_name']} 选 {pick}（置信度 {conf}）")
@@ -746,9 +759,13 @@ class CurationPipeline:
                 print(f"  [Review Fail] {r['full_name']}: {e} → 采用 A 通道")
                 r["chinese_summary"] = ta
                 continue
-            choice = (res.get("content") or "").strip().upper()
-            # 只有明确选了 B 才换，乱答（含空串）一律回到 A
-            r["chinese_summary"] = tb if choice.startswith("B") else ta
+            choice = _normalize_verdict(res.get("content") or "")
+            if choice is None:
+                # 散文、空串都不是判词：既不换到 B，也不能记成"裁判成功"。
+                print(f"  [Review No Verdict] {r['full_name']} 裁判未给出 A/B → 采用 A 通道")
+                r["chinese_summary"] = ta
+                continue
+            r["chinese_summary"] = tb if choice == "B" else ta
 
     def _stage_crawl(self, since: str, use_mock: bool) -> list[dict[str, Any]]:
         """Stage: Fetch raw repository data from GitHub Trending and Orgs."""

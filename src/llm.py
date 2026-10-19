@@ -5,6 +5,7 @@ from typing import Any
 from src.config import (
     _PROVIDER_ENV,
     AppConfig,
+    ModelLeg,
     resolve_api_key,
     resolve_base_url,
     resolve_jev_api_key,
@@ -13,6 +14,31 @@ from src.config import (
 # Retry waits are multiplicative on this floor. Free-tier providers answer 429
 # within milliseconds, so a zero floor turns retries into a hammering storm.
 MIN_RETRY_DELAY = 2.0
+
+# per-provider 的最小重试间隔（秒）。数字全部来自实测（spec「per-provider 参数」表）：
+# sensenova 的限免额度最紧 —— 3s 内发第二发必 429（EndpointTPMExceeded / EndpointRPMExceeded）。
+PROVIDER_MIN_INTERVAL: dict[str, float] = {
+    "sensenova": 6.0,
+    "openrouter": 2.0,
+    "siliconflow": 2.0,
+    "agnes": 2.0,
+    "zenmux": 2.0,
+    "tokenrhythm": 2.0,
+    "intern": 2.0,
+}
+# 单次请求的超时（秒）。超时太紧的代价是"每次都先白烧一次超时重试"（sensenova 在 30s 下
+# 就是这样），而不是失败；所以宁可给宽。
+PROVIDER_TIMEOUTS: dict[str, int] = {
+    "sensenova": 60,      # glm-5.2 写作实测 66.0s
+    "openrouter": 60,     # super-vl 翻译实测 39.2s，已逼近旧的 45s
+    "siliconflow": 90,    # Hunyuan 长输出 >30s：模型慢，不是通道死
+    "agnes": 60,          # 写作实测最大 40.6s
+    "zenmux": 60,         # 写作实测 53.3s
+    "tokenrhythm": 90,    # 预留（当前无 role 使用）
+    "intern": 120,        # 预留（当前无 role 使用）
+}
+DEFAULT_MIN_INTERVAL = 2.0
+DEFAULT_TIMEOUT = 30
 
 # 401/402/403 是账户级闸门：欠费、密钥失效、权限问题重试都不会变好，而且同 provider
 # 的其它模型走同一个闸门（硅基流动 402 时 Hunyuan 与 Qwen2.5 报同一个错）。
@@ -29,6 +55,11 @@ def _error_status(exc: Exception) -> int | None:
         return status
     match = re.search(r"Error code:\s*(\d{3})", str(exc))
     return int(match.group(1)) if match else None
+
+
+def _leg_id(leg: ModelLeg) -> str:
+    """per-(role, leg) 熔断键里的腿标识。"""
+    return f"{leg.provider}/{leg.model}"
 
 
 class LLMError(RuntimeError):
@@ -56,6 +87,9 @@ class LLMClient:
         self._clients: dict[str, Any] = {}
         self._unavailable_roles: set[str] = set()
         self._banned_providers: set[str] = set()
+        # 熔断粒度是 (role, provider/model)：一条腿死了不该让同 provider 的其它腿陪葬，
+        # 也不该让同一 role 的下一条腿替它挨罚。
+        self._exhausted_legs: set[tuple[str, str]] = set()
         self._jev_client: Any = None
         self._jev_disabled = False
         self._init_clients()
@@ -94,31 +128,31 @@ class LLMClient:
     def has_provider(self, provider: str) -> bool:
         return provider in self._clients and provider not in self._banned_providers
 
-    def has_role(self, role: str) -> bool:
-        """True when the role has at least one reachable provider.
+    def legs(self, role: str) -> list[ModelLeg]:
+        """role 的降级链，保持配置顺序，并剔除当前不可用的腿。
 
-        Lets pipeline stages skip a channel without burning a request.
-        Once a role has exhausted its retries it is tripped off for the rest of
-        the run — a dead model otherwise costs retries × every repository.
+        剔除两类：没有 client 的 provider（没配 key，或已账户级拉黑），以及本次运行
+        已把重试耗尽的 (role, provider/model)。
         """
         if role in self._unavailable_roles:
-            return False
+            return []
         role_cfg = self.config.ai.roles.get(role)
         if role_cfg is None:
-            return False
-        if self.has_provider(role_cfg.provider or self.config.ai.default_provider):
-            return True
-        if role_cfg.fallback_model:
-            return self.has_provider(role_cfg.fallback_provider or role_cfg.provider)
-        return False
+            return []
+        return [
+            leg for leg in role_cfg.chain
+            if self.has_provider(leg.provider)
+            and (role, _leg_id(leg)) not in self._exhausted_legs
+        ]
 
-    def _resolve_providers(self, role: str) -> tuple[str, str | None]:
-        role_cfg = self.config.ai.roles.get(role)
-        if role_cfg is None:
-            raise LLMError(f"unknown role '{role}'")
-        provider = role_cfg.provider or self.config.ai.default_provider
-        fallback = role_cfg.fallback_provider or provider if role_cfg.fallback_model else None
-        return provider, fallback
+    def has_role(self, role: str) -> bool:
+        """True when the role still has at least one reachable leg.
+
+        Lets pipeline stages skip a channel without burning a request.
+        Once every leg is exhausted the role is tripped off for the rest of the
+        run — a dead model otherwise costs retries × every repository.
+        """
+        return bool(self.legs(role))
 
     def _try_model(
         self,
@@ -136,11 +170,11 @@ class LLMClient:
         if client is None:
             return None
 
-        delay = {"sensenova": 0.0, "openrouter": 1.0, "openai": 1.0, "siliconflow": 0.1}.get(provider, self.config.ai.rate_limit_delay)
-        delay = max(delay, MIN_RETRY_DELAY)
-        # Hunyuan-MT-7B 在硅基流动上响应 >30s(实测每次都在 30s 处 Request timed out),
-        # 而同一 provider 的 Qwen2.5 只要 ~22s,所以是模型慢不是通道死 —— 给它更宽的额度。
-        timeout = {"sensenova": 30, "openrouter": 45, "openai": 30, "siliconflow": 90}.get(provider, 30)
+        # 间隔与超时都来自 per-provider 表；MIN_RETRY_DELAY 只是下限，防止某个 provider
+        # 配成 0（免费档 429 在毫秒级返回，零下限等于原地猛重）。
+        interval = PROVIDER_MIN_INTERVAL.get(provider, DEFAULT_MIN_INTERVAL)
+        delay = max(interval, MIN_RETRY_DELAY)
+        timeout = PROVIDER_TIMEOUTS.get(provider, DEFAULT_TIMEOUT)
         for attempt in range(retries):
             try:
                 if attempt > 0:
@@ -157,6 +191,10 @@ class LLMClient:
                     raise LLMError(f"{provider}/{model} returned no choices")
                 choice = choices[0]
                 content = choice.message.content or ""
+                if not content.strip():
+                    # 推理型模型会把输出预算烧在 reasoning_content 上，于是返回 200 + 空正文。
+                    # 空正文不是"答案"：上层没法用它做任何决策，比稿更会把它静默当成"选 A"。
+                    raise LLMError(f"{provider}/{model} returned empty content")
 
                 reasoning: str | None = None
                 rc = getattr(choice.message, "reasoning_content", None)
@@ -202,49 +240,43 @@ class LLMClient:
         retries: int = 3,
         backoff_factor: float = 2.0,
     ) -> dict[str, Any]:
-        provider, fallback = self._resolve_providers(role)
         if role in self._unavailable_roles:
             raise LLMError(f"role '{role}' already tripped off this run")
-        if not self.has_role(role):
-            # 配了 fallback 的 role 也要报"没 client",否则会被误诊成"重试耗尽"
-            wanted = [p for p in (provider, fallback) if p]
+        if role not in self.config.ai.roles:
+            raise LLMError(f"unknown role '{role}'")
+
+        legs = self.legs(role)
+        if not legs:
+            # 没配 key 与"重试耗尽"必须分开报，否则会被误诊成后者
+            wanted = [f"{leg.provider}/{leg.model}" for leg in self.config.ai.roles[role].chain]
             raise LLMError(f"no client for provider(s) {wanted} (role={role})")
 
         temp = temperature if temperature is not None else self.config.ai.temperature
-        max_t = max_tokens if max_tokens is not None else self.config.ai.max_tokens
-        role_cfg = self.config.ai.roles[role]
         attempts_before = self.failed_attempt_count
 
-        if self.has_provider(provider):
+        for index, leg in enumerate(legs, start=1):
+            # max_tokens 优先级：腿上的专属值 > 调用点 > 全局默认。
+            leg_max = leg.max_tokens or max_tokens or self.config.ai.max_tokens
+            print(f"[LLM] role={role} → leg {index}/{len(legs)}: {leg.provider}/{leg.model}")
             result = self._try_model(
                 messages=messages, role=role,
-                provider=provider,
-                model=role_cfg.model,
-                temperature=temp, max_tokens=max_t,
+                provider=leg.provider,
+                model=leg.model,
+                temperature=temp, max_tokens=leg_max,
                 retries=retries, backoff_factor=backoff_factor,
-                tag="primary",
+                tag=f"leg {index}/{len(legs)}",
             )
             if result is not None:
+                result["leg"] = f"{index}/{len(legs)}"
                 return result
-
-        if fallback is not None and self.has_provider(fallback):
-            print(f"[LLM] Primary failed, switching to fallback model: {fallback}/{role_cfg.fallback_model}")
-            result = self._try_model(
-                messages=messages, role=role,
-                provider=fallback,
-                model=role_cfg.fallback_model or "",
-                temperature=temp, max_tokens=max_t,
-                retries=retries, backoff_factor=backoff_factor,
-                tag="fallback",
-            )
-            if result is not None:
-                return result
+            # 这条腿的重试已耗尽：本次运行剩余仓库不再为它付失败税
+            self._exhausted_legs.add((role, _leg_id(leg)))
 
         # 熔断：本次运行剩余仓库不再为该 role 付重试的失败税
         self._unavailable_roles.add(role)
         attempts_used = self.failed_attempt_count - attempts_before
         raise LLMError(
-            f"role '{role}' failed after {attempts_used} attempt(s) (primary + fallback); "
+            f"role '{role}' failed after {attempts_used} attempt(s) across {len(legs)} leg(s); "
             f"channel tripped off for the rest of this run."
         )
 
@@ -273,7 +305,7 @@ class LLMClient:
 
         Choice → choice/confidence/probabilities；Noul → noul（yes 的概率）。
         失败一律抛 LLMError 并在本次运行内停用该通道：付费通道报错后继续逐仓库
-        敲门只是白烧预算，调用方必须显式降级（比稿这里退回 ultra 字母裁判）。
+        敲门只是白烧预算，调用方必须显式降级（比稿这里退回 reviewer 字母裁判）。
         """
         if not self.has_judgment():
             raise LLMError("judgment channel unavailable (no TYPESAFE_API_KEY, or disabled)")

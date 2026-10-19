@@ -39,6 +39,10 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           SENSENOVA_API_KEY: ${{ secrets.SENSENOVA_API_KEY }}
           SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          # Agnes 与 ZenMux 是新增的降级腿来源；ZenMux 的 runner 可达性
+          # 必须先在这里实测，否则 writer L3 / reviewer L4 会静默变成死腿。
+          AGNES_API_KEY: ${{ secrets.AGNES_API_KEY }}
+          ZENMUX_API_KEY: ${{ secrets.ZENMUX_API_KEY }}
           # 走 env 而不是把 ${{ }} 内插进命令行，避开 Actions 脚本注入面
           PROBE_ONLY: ${{ github.event.inputs.only }}
           PROBE_PROBES: ${{ github.event.inputs.probes }}

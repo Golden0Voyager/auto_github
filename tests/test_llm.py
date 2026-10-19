@@ -8,12 +8,32 @@ Covers:
 - Edge cases: missing API key, unknown role
 """
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.config import AIConfig, AppConfig, RoleConfig, load_config
-from src.llm import MIN_RETRY_DELAY, LLMClient, LLMError, _error_status
+from src.config import _PROVIDER_ENV, AIConfig, AppConfig, ModelLeg, RoleConfig, load_config
+from src.llm import (
+    DEFAULT_MIN_INTERVAL,
+    DEFAULT_TIMEOUT,
+    MIN_RETRY_DELAY,
+    PROVIDER_MIN_INTERVAL,
+    PROVIDER_TIMEOUTS,
+    LLMClient,
+    LLMError,
+    _error_status,
+)
+
+
+def _clear_all_provider_keys(monkeypatch) -> None:
+    """清掉 _PROVIDER_ENV 里**所有** provider 的 key。
+
+    不写死名单：每加一个 provider 就多一个能污染"无 key 应降级"类测试的环境变量，
+    而本机 shell 里往往正好带着它们（写死名单时漏掉的那家会让这些用例假红）。
+    """
+    for env_key, _url_env, _default in _PROVIDER_ENV.values():
+        monkeypatch.delenv(env_key, raising=False)
 
 
 @pytest.fixture
@@ -51,6 +71,56 @@ def mock_openai():
         mock_instance = MagicMock()
         mock_cls.return_value = mock_instance
         yield mock_cls
+
+
+class TestProviderParameterTables:
+    """per-provider 的超时与最小间隔都是实测数字（spec「per-provider 参数」表）。
+
+    它们必须是可断言的数据，而不是散在 `_try_model` 里的字面量 —— 换 provider 前
+    "先重算配额"这条 AGENTS.md 规则，前提是配额看得见。
+    """
+
+    def test_timeouts_match_the_measured_table(self):
+        assert PROVIDER_TIMEOUTS["sensenova"] == 60      # glm-5.2 写作实测 66.0s
+        assert PROVIDER_TIMEOUTS["openrouter"] == 60     # super-vl 翻译实测 39.2s，已逼近旧的 45s
+        assert PROVIDER_TIMEOUTS["siliconflow"] == 90    # Hunyuan 长输出 >30s：模型慢，不是通道死
+        assert PROVIDER_TIMEOUTS["agnes"] == 60          # 写作实测最大 40.6s
+        assert PROVIDER_TIMEOUTS["zenmux"] == 60         # 写作实测 53.3s
+        assert PROVIDER_TIMEOUTS["tokenrhythm"] == 90    # 预留（当前无 role 使用）
+        assert PROVIDER_TIMEOUTS["intern"] == 120        # 预留
+
+    def test_sensenova_min_interval_is_six_seconds(self):
+        """3s 内发第二发实测必 429（RateLimitExceeded.EndpointTPMExceeded）。"""
+        assert PROVIDER_MIN_INTERVAL["sensenova"] == 6.0
+
+    def test_unknown_provider_falls_back_to_defaults(self):
+        assert PROVIDER_TIMEOUTS.get("nope", DEFAULT_TIMEOUT) == 30
+        assert PROVIDER_MIN_INTERVAL.get("nope", DEFAULT_MIN_INTERVAL) == 2.0
+
+    def test_every_provider_a_leg_uses_has_both_parameters(self):
+        """新 provider 忘了配参数会静默拿默认值 —— 那正是"以为设了超时、其实没设"的坑。"""
+        cfg = AIConfig()
+        for role_cfg in cfg.roles.values():
+            for leg in role_cfg.chain:
+                assert leg.provider in PROVIDER_TIMEOUTS, leg.provider
+                assert leg.provider in PROVIDER_MIN_INTERVAL, leg.provider
+
+    def test_try_model_actually_passes_the_provider_timeout_to_the_sdk(self, llm_config, mock_openai, monkeypatch):
+        """表必须真的被用上：否则这些常量只是装饰。"""
+        monkeypatch.setenv("SENSENOVA_API_KEY", "sk-sensenova-test")
+        llm_config.ai.roles["writer"] = RoleConfig(
+            chain=[ModelLeg(model="sensenova-6.8-flash-lite", provider="sensenova")],
+        )
+        ok = MagicMock(
+            choices=[MagicMock(message=MagicMock(content="译文", reasoning_content=None, model_extra=None))],
+            usage=MagicMock(prompt_tokens=5, completion_tokens=2),
+        )
+        mock_openai.return_value.chat.completions.create.return_value = ok
+
+        LLMClient(llm_config).call_llm([{"role": "user", "content": "Hi"}], role="writer")
+
+        kwargs = mock_openai.return_value.chat.completions.create.call_args.kwargs
+        assert kwargs["timeout"] == PROVIDER_TIMEOUTS["sensenova"] == 60
 
 
 class TestLLMClientInit:
@@ -98,9 +168,8 @@ class TestCallLLMNoKey:
 
     def test_role_with_fallback_reports_missing_client(self, monkeypatch):
         """配了 fallback 的 role 在完全没 key 时要报"没有 client"，不能被误诊成重试耗尽。"""
-        for key in ("OPENROUTER_API_KEY", "SENSENOVA_API_KEY", "SILICONFLOW_API_KEY", "OPENAI_API_KEY"):
-            monkeypatch.delenv(key, raising=False)
-        client = LLMClient(load_config())  # writer 带 fallback_model
+        _clear_all_provider_keys(monkeypatch)
+        client = LLMClient(load_config())  # writer 带降级链
         assert client.has_role("writer") is False
         with pytest.raises(LLMError, match="no client for provider"):
             client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=1)
@@ -108,8 +177,7 @@ class TestCallLLMNoKey:
     def test_has_role_reflects_provider_availability(self, llm_config, monkeypatch, mock_openai):
         """has_role 让上层在没有 key 时直接跳过通道，不浪费请求。"""
         assert LLMClient(llm_config).has_role("writer") is True
-        for key in ("OPENAI_API_KEY", "OPENROUTER_API_KEY", "SENSENOVA_API_KEY", "SILICONFLOW_API_KEY"):
-            monkeypatch.delenv(key, raising=False)
+        _clear_all_provider_keys(monkeypatch)
         bare = LLMClient(llm_config)
         assert bare.has_role("writer") is False
         assert bare.has_role("nonexistent") is False
@@ -447,6 +515,110 @@ class TestEmptyChoicesResponse:
         with pytest.raises(LLMError, match="failed after"):
             client.call_llm([{"role": "user", "content": "Hi"}], role="writer", retries=2, backoff_factor=1.0)
         assert mock_client.chat.completions.create.call_count == 2
+
+
+class _FakeClients:
+    """按 provider 造假的 OpenAI client，并记录调用次数与最后一次的 kwargs。"""
+
+    def __init__(self) -> None:
+        self.replies: dict[str, Any] = {}
+        self.calls: dict[str, int] = {}
+        self.last_kwargs: dict[str, Any] = {}
+
+    def client_for(self, provider: str) -> MagicMock:
+        def create(**kwargs: Any) -> MagicMock:
+            self.calls[provider] = self.calls.get(provider, 0) + 1
+            self.last_kwargs = kwargs
+            reply = self.replies.get(provider, "ok")
+            if isinstance(reply, Exception):
+                raise reply
+            return MagicMock(
+                choices=[MagicMock(message=MagicMock(
+                    content=reply, reasoning_content=None, model_extra=None))],
+                usage=MagicMock(prompt_tokens=1, completion_tokens=1),
+            )
+
+        client = MagicMock()
+        client.chat.completions.create.side_effect = create
+        return client
+
+
+@pytest.fixture
+def fake_clients():
+    """这些用例既不联网也不真的睡：sleep 换成 no-op，好让重试路径能快速跑完。"""
+    fake = _FakeClients()
+    with patch("src.llm.time.sleep"):
+        yield fake
+
+
+def _client_with_chain(fake: _FakeClients, legs: list[tuple], replies: dict[str, Any],
+                       keys: set[str] | None = None) -> LLMClient:
+    """造一个不联网的 LLMClient。
+
+    `legs` 形如 `[(provider, model)]` 或 `[(provider, model, max_tokens)]`（按链序）。
+    链装在全部五个 role 上，测试想用哪个 role 都行；`keys` 限定哪些 provider 有 client
+    （不给就是全都有）。client 造好后直接替换 `_clients`，绕开环境变量与网络。
+    """
+    fake.replies = dict(replies)
+    available = keys if keys is not None else {leg[0] for leg in legs}
+    clients = {provider: fake.client_for(provider) for provider in available}
+    config = AppConfig(ai=AIConfig(
+        roles={
+            role: RoleConfig(chain=[
+                ModelLeg(model=leg[1], provider=leg[0], max_tokens=(leg[2] if len(leg) > 2 else None))
+                for leg in legs
+            ])
+            for role in ("classifier", "writer", "translator_a", "translator_b", "reviewer")
+        },
+        rate_limit_delay=0.01,
+    ))
+    client = LLMClient(config)
+    client._clients = clients
+    return client
+
+
+class TestFallbackChainRouting:
+    """有序链：逐腿降级、per-(role, leg) 熔断、空正文不算答案。"""
+
+    def test_walks_the_chain_in_order(self, fake_clients):
+        """leg1 返回空正文，必须换到 leg2，而不是把空串当成功。"""
+        llm = _client_with_chain(fake_clients, [("p1", "m1"), ("p2", "m2")],
+                                 replies={"p1": "", "p2": "ok"})
+        res = llm.call_llm([{"role": "user", "content": "x"}], role="writer")
+        assert res["content"] == "ok"
+        assert res["model"] == "m2"
+        assert res["leg"] == "2/2"
+
+    def test_exhausted_leg_is_skipped_on_the_next_call(self, fake_clients):
+        """per-(role, leg) 熔断：第二个仓库不再为已死的 leg1 付失败税。"""
+        llm = _client_with_chain(fake_clients, [("p1", "m1"), ("p2", "m2")],
+                                 replies={"p1": RuntimeError("boom"), "p2": "ok"})
+        llm.call_llm([{"role": "user", "content": "x"}], role="writer", retries=1)
+        hit_before = fake_clients.calls["p1"]
+        llm.call_llm([{"role": "user", "content": "y"}], role="writer", retries=1)
+        assert fake_clients.calls["p1"] == hit_before
+
+    def test_leg_max_tokens_overrides_the_call_site_value(self, fake_clients):
+        """leg 上的 max_tokens 优先于调用点给的 8192（比稿只要一个字母）。"""
+        llm = _client_with_chain(fake_clients, [("p1", "m1", 256)], replies={"p1": "A"})
+        llm.call_llm([{"role": "user", "content": "x"}], role="reviewer", max_tokens=8192)
+        assert fake_clients.last_kwargs["max_tokens"] == 256
+
+    def test_adjacent_legs_on_one_provider_neither_loop_nor_crash(self, fake_clients):
+        """classifier 的 L3/L4 都是 sensenova：两条腿各打一次就收手，不互相打转。"""
+        llm = _client_with_chain(fake_clients, [("p1", "m1"), ("p1", "m2")], replies={"p1": ""})
+        with pytest.raises(LLMError):
+            llm.call_llm([{"role": "user", "content": "x"}], role="classifier", retries=1)
+        assert fake_clients.calls["p1"] == 2
+
+    def test_missing_provider_key_is_unconfigured_not_exhausted(self, fake_clients):
+        """没配 key 不是失败，也不能拉黑 provider（否则同 provider 的别的 role 一起陪葬）。"""
+        llm = _client_with_chain(fake_clients, [("p_missing", "m1"), ("p2", "m2")],
+                                 replies={"p2": "ok"}, keys={"p2"})
+        res = llm.call_llm([{"role": "user", "content": "x"}], role="writer")
+        assert res["content"] == "ok"
+        assert res["leg"] == "1/1"
+        assert "p_missing" not in llm._banned_providers
 
 
 def _jev_response(choice="B", confidence=0.82, noul=0.05):
