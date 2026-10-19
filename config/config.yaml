@@ -100,7 +100,7 @@ ai:
 
   # 比稿判断通道（TypeSafe System One）。这是本项目第一个付费依赖：
   # $42 / 1B input token、output 免费，一轮 Review 约 2.5 万 input ≈ $0.001。
-  # 凭证走环境变量 TYPESAFE_API_KEY；没配就直接退回 ultra 字母裁判，不影响管线。
+  # 凭证走环境变量 TYPESAFE_API_KEY；没配就直接退回 reviewer 的字母裁判链，不影响管线。
   # 一次请求里并行问 Choice(better_draft) + Noul(draft_incomplete)，
   # 后者专门抓"译文丢了小节/整段漏译"这种只看文笔抓不到的失效。
   jev:
