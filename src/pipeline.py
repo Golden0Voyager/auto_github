@@ -679,7 +679,7 @@ class CurationPipeline:
                 r[key] = (res.get("content") or "").strip()
 
     def _jev_verdict(self, r: dict[str, Any], ta: str, tb: str) -> str | None:
-        """比稿前置判断：Jev 给出可信答案就返回 "A"/"B"，否则返回 None 交给 ultra。
+        """比稿前置判断：Jev 给出可信答案就返回 "A"/"B"，否则返回 None 交给字母裁判。
 
         退回条件：通道未配置/调用失败、答案不是 A 或 B、漏译概率过高、置信度不足。
         """
@@ -705,20 +705,20 @@ class CurationPipeline:
             )
         except Exception as e:
             # 付费通道报错就整条运行停用（llm 内部已做），这里退回字母裁判继续比稿
-            print(f"  [Review Jev Fail] {r['full_name']}: {e} → 交给 ultra")
+            print(f"  [Review Jev Fail] {r['full_name']}: {e} → 交给字母裁判")
             return None
         pick = str(answers.get("better_draft", {}).get("choice", "") or "").strip().upper()
         confidence = answers.get("better_draft", {}).get("confidence")
         incomplete = answers.get("draft_incomplete", {}).get("noul")
 
         if pick not in ("A", "B"):
-            print(f"  [Review Jev] {r['full_name']} 未给出 A/B → 交给 ultra")
+            print(f"  [Review Jev] {r['full_name']} 未给出 A/B → 交给字母裁判")
             return None
         if isinstance(incomplete, (int, float)) and incomplete > jev.incomplete_threshold:
-            print(f"  [Review Escalate] {r['full_name']} 漏译概率 {incomplete:.2f} → 交给 ultra")
+            print(f"  [Review Escalate] {r['full_name']} 漏译概率 {incomplete:.2f} → 交给字母裁判")
             return None
         if isinstance(confidence, (int, float)) and confidence < jev.confidence_threshold:
-            print(f"  [Review Escalate] {r['full_name']} 置信度 {confidence:.2f} → 交给 ultra")
+            print(f"  [Review Escalate] {r['full_name']} 置信度 {confidence:.2f} → 交给字母裁判")
             return None
         conf = f"{confidence:.2f}" if isinstance(confidence, (int, float)) else "n/a"
         print(f"  [Review Jev] {r['full_name']} 选 {pick}（置信度 {conf}）")
