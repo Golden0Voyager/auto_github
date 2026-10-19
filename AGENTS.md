@@ -33,7 +33,8 @@ LLM 调用的真实成本由**四笔账**叠加,不是单次 token 总和:
   `total_prompt_tokens` / `total_completion_tokens` 四件套是底线。
 - **per-stage snapshot**:`pipeline._log_llm_stage()` 在 stage 边界 diff `get_stats()`,
   把成本归因到具体 stage(每次 Actions 日志里都能按 stage 看到成本)。
-- **多 provider 混合节流**:节流参数是 **per-provider** 的(见 `llm.py` 的 delay/timeout 字典),
+- **多 provider 混合节流**:节流参数是 **per-provider** 的(见 `llm.py` 的
+  `PROVIDER_TIMEOUTS` / `PROVIDER_MIN_INTERVAL` 两张表),
   换 provider 或加 secret 前先重算配额。
 
 **反模式(看到就改)**:
@@ -87,85 +88,140 @@ python src/main.py --since weekly --persona advanced
   因此 `python src/main.py` 必须在仓库根运行,不要 `cd src && python main.py`。
 - **CLI 选项**:`--since {daily,weekly,monthly}`、`--persona {beginner,intermediate,advanced}`、
   `--mock`、`--feishu/--slack/--discord <webhook>`(覆盖 config/env)。
-- **真实运行需要 3 个 API key**(缺一即对应通道静默降级,**不会中断管线**):
-  - `OPENROUTER_API_KEY` — writer + reviewer + translator_b + classifier
-  - `SENSENOVA_API_KEY` — classifier/translator 的降级腿(Token Plan 端点)
-  - `SILICONFLOW_API_KEY` — translator_a
-  第四个是**可选**的 `TYPESAFE_API_KEY`(比稿 Jev 判断通道,见下),没有就退回 ultra 字母裁判。
+- **真实运行需要 5 个 API key**(缺一即对应通道静默降级,**不会中断管线**):
+  - `OPENROUTER_API_KEY` — 各链 L2/L3 的公共降级腿(`super-vl` / `ultra`)
+  - `SENSENOVA_API_KEY` — 分类/翻译/写作链的末位限免腿(Token Plan 端点)
+  - `SILICONFLOW_API_KEY` — `translator_a` 的首腿
+  - `AGNES_API_KEY` — `writer` / `classifier` / `translator_b` 的首腿
+  - `ZENMUX_API_KEY` — 四条链上的中段兜底(`ling-3.1-flash`)
+  第六个是**可选**的 `TYPESAFE_API_KEY`(比稿 Jev 判断通道,见下),没有就退回字母裁判。
   其余可选:`FEISHU_WEBHOOK_URL` / `SLACK_WEBHOOK_URL` / `DISCORD_WEBHOOK_URL` / `GITHUB_TOKEN`。
 - `python-dotenv` 通过 `load_dotenv()`(main.py:58)从 CWD 加载 `.env`。
 
 ### LLM 引擎:五角色多供应商
 
-模型路由:`config.yaml` 的 `ai.roles` 定义每个角色的 `{model, provider, fallback_model?, fallback_provider?}`,
-代码级默认在 `src/config.py` 的 `AIConfig.roles`(两处要同步)。
-provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
+模型路由:`config.yaml` 的 `ai.roles` 给每个角色一条**有序降级链**
+(`chain: [{model, provider, max_tokens?}, ...]`),代码级默认在 `src/config.py` 的
+`AIConfig.roles`(两处要同步,有 drift 用例守着)。
+provider → (env key, base_url env, 默认 base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 
-| 角色 | 管线阶段 | provider | 当前模型 |
-| :--- | :--- | :--- | :--- |
-| `classifier` | Stage 2 批量分类评级 | openrouter | `nemotron-3.5-super-vl:free`(支持 `structured_outputs`),**跨 provider 降级** sensenova `deepseek-flash`(上一代主模型 `sensenova-6.8-flash-lite`;6.7 已下架,404) |
-| `writer` | Stage 3+4 逐仓库写作+反思 | openrouter | `nemotron-3.5-super-vl:free`,降级 `nemotron-3-ultra-550b-a55b:free` |
-| `translator_a` | Stage 5 翻译 A 通道 | siliconflow | `tencent/Hunyuan-MT-7B`,**跨 provider 降级** sensenova `sensenova-6.8-flash-lite` |
-| `translator_b` | Stage 5 翻译 B 通道 | openrouter | `google/gemma-4-31b-it:free`,**跨 provider 降级** sensenova `sensenova-6.8-flash-lite` |
-| `reviewer` | Stage 5.5 二选一比稿 | **Jev 前置**(TypeSafe) | 拿不准才落 openrouter nemotron-ultra,降级 `nemotron-3-super-120b-a12b:free` |
+**链的语义:逐腿尝试,第一条给出非空正文的腿胜出**;整条链都失败才降到 stub。
 
-- **翻译两通道必须跨 provider**:`translator_a`=siliconflow,`translator_b`=openrouter(Gemma)。
-  两条都挂在 siliconflow 同一账户时,A/B 竞稿毫无独立性 —— 10/12 那次欠费 402 一把带走
-  两个通道 + Review,日报连续四天只有英文/中文 stub。换模型可以,把两条搬回同一家不行。
+| 角色 | 管线阶段 | L1 → L2 → L3 → L4 |
+| :--- | :--- | :--- |
+| `classifier` | Stage 2 批量分类评级 | agnes `agnes-3.0-flash` → or `nemotron-3.5-super-vl:free` → sn `glm-5.2` → sn `sensenova-6.8-flash-lite` |
+| `writer` | Stage 3+4 逐仓库写作+反思 | agnes `agnes-3.0-flash` → or `nemotron-3-ultra-550b-a55b:free` → zm `inclusionai/ling-3.1-flash` → sn `sensenova-6.8-flash-lite` → 英文 stub |
+| `translator_a` | Stage 5 翻译 A 通道 | sf `tencent/Hunyuan-MT-7B` → or `nemotron-3.5-super-vl:free` → zm `ling-3.1-flash` → sn `sensenova-6.8-flash-lite` → 采用 A 通道 |
+| `translator_b` | Stage 5 翻译 B 通道 | agnes `agnes-2.5-flash` → or `nemotron-3-ultra-550b-a55b:free` → zm `ling-3.1-flash` → sn `sensenova-6.8-flash-lite` → 采用 A 通道 |
+| `reviewer` | Stage 5.5 二选一比稿 | **Jev 前置**(TypeSafe,不在这条链里) → agnes `agnes-3.0-flash` → sn `glm-5.2` → zm `ling-3.1-flash` |
+
+- **排序原则**:越靠前的腿越可靠,相邻腿尽量跨 provider。三条硬约束(都有回归用例守着):
+  ① 两条翻译通道的 L1 必须**既不同模型也不同 provider**,否则 A/B 同源,比稿失去意义;
+  ② `reviewer` **不得复用任一翻译通道 L1 的模型** —— 裁判不能评自己的译文,实测
+  `Hunyuan-MT-7B` 在"A 漏 / B 好"的对照里仍选 A(A 偏见);
+  ③ `classifier` 的 L1 **不放 sensenova**:它一轮只发一次(RPM 需求≈0),却决定全部仓库的
+  评级与分桶,失败代价最高,而 sensenova 的限免额度是按低频小请求设计的 ——
+  实测连打 3 轮 first-attempt 成功率 **0/3**(恒 `RateLimitExceeded.EndpointTPMExceeded`)。
+- **翻译两通道必须跨 provider**:`translator_a`=siliconflow(Hunyuan-MT-7B),
+  `translator_b`=agnes(`agnes-2.5-flash`)。两条都挂在同一账户时,A/B 竞稿毫无独立性 ——
+  10/12 那次欠费 402 一把带走两个通道 + Review,日报连续四天只有英文/中文 stub。
+  换模型可以,把两条搬回同一家不行。
   openrouter 免费档限额是 **20 请求/分钟 + 1000 请求/天**(累计购额 ≥$10;<$10 只有 50/天),
   一轮完整管线约 37 次请求,三班/天也才 ~110 次,余量足够 —— 但**别把天数的重试堆出来**。
-  另外**每条通道都必须有降级腿**(现指 sensenova `sensenova-6.8-flash-lite`):主腿没有
-  第二条命时,`has_role` 只看主 provider,一家挂掉就等于中文层整条消失 —— 10/12 那四天
-  的 stub 就是这么来的。两条腿都指 sensenova 是可接受的:那时主腿仍分属两家。
+  两条通道的 L3/L4 都指同一条 sensenova 腿是可接受的:那时 L1 仍分属两家,独立性已无从保证,
+  优先"有译文"(缺一边 → 用另一边;两边全空 → 见下方降级路径表)。
 - **writer 的 A/B 开关**:`ai.roles.writer` 就是 A 案(现役);`ai.writer_variants.b` 只放替代方案,
   `ai.writer_variant: a|b` 一处切换,或设环境变量 `WRITER_VARIANT=b` 临时覆盖。
   解析在 `AIConfig.apply_writer_variant()` —— 选中 b 时直接覆写 `roles["writer"]`,下游读取路径不变,
-  所以 b 案(lightning)的反向降级指向 A 案(super-vl),两案互为兜底。非法变体会打印 `[Config Warning]` 并回退 a。
-  **A 案在 2026-10-16 从 ultra 换成 `nemotron-3.5-super-vl:free`**(ultra 反复 `returned no choices`,
-  10/15 两班实测烧掉 6 次与 4+2 次重试);`RoleConfig` 只支持一级 fallback,所以写作链路是
-  **super-vl → ultra → 英文 stub**,super-120b 不再是 writer 的兜底腿(它仍服务 reviewer)。
+  所以 **b 案的 L2 就是 A 案的 L1**,两案互为兜底(b = `agnes-2.5-flash` → `agnes-3.0-flash` →
+  ultra → ling → sensenova-lite)。非法变体会打印 `[Config Warning]` 并回退 a。
+  **`apply_writer_variant` 必须 `model_copy(deep=True)`**:chain 是 `list[ModelLeg]`,浅拷贝会让
+  `_writer_base` 与 `roles["writer"]` 共享同一批 ModelLeg 对象,切回 a 时拿到的是被 b 那条链
+  改过的型号(有专门的回归用例守着)。
   **workflow 的下拉框默认是 `config`(= 不覆盖)**,schedule 触发时 `WRITER_VARIANT` 为空,
   所以定时跑走 `config.yaml` 的值;env 空值与 `config` 一律视为"不覆盖"(`load_config()`)。
   日志里的 `[Init] writer: … [变体 b]` 用来确认当前跑的是哪一案 —— 10/11 把 YAML 改成 b 后
   连续三天日志仍是 `[变体 a]`,原因就是你当时在这行加了 `|| 'a'` 兜底。
-- **Review 的 `max_tokens=64`**(`pipeline.REVIEW_MAX_TOKENS`):输出只要一个字母,但推理型模型把
-  `reasoning_content` 算进同一预算,10 token 可能全被思考吃掉导致正文为空。免费模型不计费,
-  多给 54 token 换掉这个风险可以忽略。
+- **Review 的 `max_tokens=256`**(`pipeline.REVIEW_MAX_TOKENS`):输出只要一个字母,但推理型模型把
+  `reasoning_content` 算进同一预算 —— 实测 10 个候选模型里有 **6 个**在 64 token 下返回**空正文**。
+  而旧逻辑只看首字符:`**B**`(星号)与空正文都会被静默读成"选 A",**裁判的沉默等于替 A 投票**。
+  现在预算给到 256(免费模型多给预算没有代价),判词先过 `pipeline._normalize_verdict`
+  (剥掉首尾 Markdown 与标点,只认归一化后的首字符 A/B),其余一律打印
+  `[Review No Verdict]` 并采用 A 通道 —— **不猜**。
 - **比稿先问 Jev(TypeSafe System One)**,这是本项目**第一个付费依赖**($42/B input、output
   免费,一轮 Review 约 2.5 万 input ≈ $0.001)。`pipeline._jev_verdict` 在**一次** `system_one`
   请求里并行问两个判断:`Choice(better_draft)` 选 A/B(带 `confidence` 与 `probabilities`),
   `Noul(draft_incomplete)` 专抓"丢小节/整段漏译" —— 只看文笔的字母裁判抓不到这个。
-  **升级回 ultra 的条件**(任一命中即复判):通道未配置或调用失败、答案不是 A/B、
+  **退回字母裁判的条件**(任一命中即复判):通道未配置或调用失败、答案不是 A/B、
   `confidence < ai.jev.confidence_threshold`(默认 0.6)、`noul > incomplete_threshold`(默认 0.5)。
   它**不走 `_PROVIDER_ENV`**(不是 OpenAI 兼容协议),凭证是 `TYPESAFE_API_KEY`,
   client 在 `LLMClient._get_jev_client` 里懒建;`call_judgment` 一旦失败就把通道停用
   到本次运行结束(`has_judgment()` 转 False),绝不逐仓库继续敲门烧钱。
 
-- 三家 provider 全部走 OpenAI SDK 兼容协议(`src/llm.py`),**Jev 判断通道除外**(独立 client)。
-- **节流**:全局 `rate_limit_delay: 4.0s`(每次成功后再睡 delay/2);per-provider 重试间隔与
-  超时见 `llm.py` 内字典;`call_llm` 默认 `retries=3, backoff_factor=2.0`,429 时指数退避;
-  主模型耗尽后自动切 fallback。退避有下限 `MIN_RETRY_DELAY = 2.0` —— sensenova/siliconflow
-  配的 delay 是 0.0/0.1,不兜底就等于 429 后原地猛重。
+- 五家 provider(openrouter / sensenova / siliconflow / agnes / zenmux)全部走 OpenAI SDK
+  兼容协议(`src/llm.py`),**Jev 判断通道除外**(独立 client)。`_PROVIDER_ENV` 另**预注册**了
+  tokenrhythm / intern 两家(当前无 role 使用,为将来切换预留 —— 只改 config.yaml 就能用)。
+- **节流**:超时与最小重试间隔是两张 **module-level 表**(`llm.PROVIDER_TIMEOUTS` /
+  `llm.PROVIDER_MIN_INTERVAL`),数字都来自实测;未知 provider 落
+  `DEFAULT_TIMEOUT = 30` / `DEFAULT_MIN_INTERVAL = 2.0`:
+
+  | provider | 超时 | 最小间隔 | 依据 |
+  | :--- | :--- | :--- | :--- |
+  | sensenova | 60s | **6.0s** | `glm-5.2` 写作实测 66.0s;3s 内发第二发必 429 |
+  | openrouter | 60s | 2.0s | `super-vl` 翻译实测 39.2s,已逼近旧的 45s |
+  | siliconflow | 90s | 2.0s | Hunyuan 长输出 >30s:模型慢,不是通道死 |
+  | agnes | 60s | 2.0s | 写作实测最大 40.6s |
+  | zenmux | 60s | 2.0s | 写作实测 53.3s |
+  | tokenrhythm / intern | 90s / 120s | 2.0s | 预留,未实测 |
+
+  `call_llm` 默认 `retries=3, backoff_factor=2.0`,429 时指数退避,退避有下限
+  `MIN_RETRY_DELAY = 2.0` —— 免费档 429 在毫秒级返回,零下限等于原地猛重。
   **两个 SDK 的内置重试都必须显式归零**:`OpenAI(..., max_retries=0)`、
   `TypeSafeClient(retry=RetryPolicy(max_retries=0))`。默认值都是 2,会把我们的 `retries=3`
   乘成 9 次 HTTP —— 10/16 那班 openrouter 逐仓库超时,单模型耗掉 ~135s(3×45s),
   整条 curate 撞上 `timeout-minutes: 45` 被杀,当天报告直接没出。
 - **错误契约**:`call_llm` 拿不到内容时 **raise `LLMError`**,不再返回
   `{"content": "Error: no client..."}`。旧实现会把错误字符串当正文一路写进报告
-  (历史上真发生过)。上层用 `llm.has_role(role)` 预判通道可用性 → 不可用就**跳过、不发请求**;
-  逐仓库阶段(analyze/write/translate/review)`except Exception` 落到 stub,保证单仓库失败不拖垮整份报告。
-- **失败税熔断**:某个 role 把 primary + fallback 的重试全部耗尽后,会被 trips off
-  (`has_role` 之后一律 False),本次运行剩余仓库直接跳过该通道。先例:siliconflow 的
-  `tencent/Hunyuan-MT-7B` 每次 30s 超时,9 个仓库各烧 3 次重试 ≈ 14 分钟,整条 curate job
-  撞上 `timeout-minutes` 被取消,一份报告都没出。所以同时把 siliconflow 超时提到 90s
-  (同 provider 的 Qwen2.5 只要 ~22s,说明是模型慢不是通道死)。
+  (历史上真发生过)。**空正文(`content.strip()` 为空)和"没有 choices"一样记一次失败**,
+  绝不当成答案 —— 推理型模型烧光预算后回 200 + 空串,那既不是译文也不是判词。
+  上层用 `llm.has_role(role)` 预判通道可用性(它现在是 `bool(llm.legs(role))`)→
+  不可用就**跳过、不发请求**;逐仓库阶段(analyze/write/translate/review)`except Exception`
+  落到 stub,保证单仓库失败不拖垮整份报告。
+- **熔断是两级,而且粒度到腿**(`LLMClient._exhausted_legs: set[(role, "provider/model")]`):
+  一条腿把重试耗尽 → 本次运行剩余仓库不再试它(`legs()` 会把它滤掉),**链上后面的腿照常走**;
+  整条链都耗尽 → 该 role 进 `_unavailable_roles`,`has_role` 之后一律 False。
+  先例:siliconflow 的 `tencent/Hunyuan-MT-7B` 每次 30s 超时,9 个仓库各烧 3 次重试 ≈ 14 分钟,
+  整条 curate job 撞上 `timeout-minutes` 被取消,一份报告都没出 —— 现在 L1 死掉只意味着
+  后面 9 个仓库直接从 L2 开始。
+- **没配 key ≠ 重试耗尽**:两者的异常文案必须能区分(`no client for provider(s) [...]` vs
+  `failed after N attempt(s) across M leg(s)`),否则会把"缺 secret"误诊成"模型挂了"。
+  没配 key 的腿只是被 `legs()` 滤掉,**不会**把 provider 拉黑。
 - **不可重试的状态码**(`llm.NON_RETRYABLE_STATUS`):401/402/403 是**账户级**闸门
   (欠费/密钥失效/权限),第一次就把整个 provider 拉黑 —— `has_provider`/`has_role` 之后一律
-  False,同 provider 的其它 role 也不再发请求;404 是**模型级**,只停掉该模型的重试,
-  provider 留给别的 role,并照走跨 provider 降级腿。先例:10/12 起 siliconflow 欠费 402,
-  响应 0.2s 就返回(根本没进推理),却仍按 3 次重试 × 2 个 role 白烧 6 次请求。
+  False,同 provider 的其它 role 也不再发请求;404 是**模型级**,只把那一**条腿**判死
+  (`_exhausted_legs`),provider 留给别的腿和别的 role,并照走链上后面的腿。
+  先例:10/12 起 siliconflow 欠费 402,响应 0.2s 就返回(根本没进推理),
+  却仍按 3 次重试 × 2 个 role 白烧 6 次请求。
 - **改通道配置后必须验证**:CI 日志里 `[LLM Init] Providers with keys:` 包含该 provider,
-  且对应 stage 的 `+N 成功调用` > 0。free tier 模型随时可能下架(classifier 的 6.7→404 就是先例)。
+  对应 stage 的 `+N 成功调用` > 0,且逐仓库日志里能看到 `role=… → leg i/N` 走的是哪条腿。
+  free tier 模型随时可能下架(classifier 的 6.7→404 就是先例)。
+  `tests/test_config.py::TestProviderRegistry::
+  test_every_provider_used_by_a_leg_has_a_workflow_env_line` 守着"①GitHub Secrets
+  ②workflow env ③`_PROVIDER_ENV`"三处同步里的后两处。
+- **CI probe 实测结论(2026-10-19,run 39211785785,手动触发 `model-probe.yml`)**:9 组候选各跑
+  真实 prompt 的四类探针(T1 判别 / T2 写作 / T3 翻译 / T4 中文长文),上面那张链路表就是按
+  它的结果定的。**三条"看着红但无害"的记录,别再当 bug 去"修"**:
+  - `or nemotron-3.5-super-vl:free` 的 **T2 只拿到 3/4 小节**(out=2048 截断)—— 它不当 writer,
+    只当 classifier 的 L2 与 translator_a 的 L2;
+  - `sn glm-5.2` 的 **T4 锚点 0/4、中文 0 字** —— 它不当翻译腿,只当 classifier 的 L3 与
+    reviewer 的字母裁判;
+  - `sn deepseek-flash` 在 CI 上 **T1/T2/T4 全 429、T3 空串** —— sensenova 的 TPM 天花板撑不住
+    大请求,所以 classifier 的 L4 用的是 `sensenova-6.8-flash-lite`(T1 合规 3/3);
+  - 另外 `sf tencent/Hunyuan-MT-7B` 的 T1 合规 **0/3**:它永远不碰 classifier,只做
+    translator_a 的 L1(它免费,但只会在翻译这一件事上)。
+  裁判准确率对照("A 漏 / B 好" vs "A 好 / B 漏"):`sn glm-5.2`、`sn sensenova-6.8-flash-lite`、
+  `agnes-3.0-flash`、`agnes-2.5-flash`、`zm ling-3.1-flash` 均 2/2;`sf Hunyuan-MT-7B` 1/2
+  (A 偏见,所以被排除出 reviewer);`or ultra-550b` / `or super-vl` 各 1/2。
 
 ### LLM 调用次数(现状,以 CI 日志为准)
 
@@ -176,7 +232,7 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 | Stage 2 Analyze | 1 (batch) | N 个 repo 一次性分类 + 评级 |
 | Stage 3+4 Write&Reflect | N (per-repo) | 每仓库 1 次;batch 化曾尝试后**回退**(batch JSON 解析失败率过高) |
 | Stage 5 Translate | 2N (per-repo) | A/B 双模型各 1 次 |
-| Stage 5.5 Review | ≤2N (per-repo) | 先 1 次 Jev(同一请求问 Choice + Noul);拿不准才升级 ultra(再 1 次)。Jev 没配 = 全部走 ultra,仍是 N |
+| Stage 5.5 Review | ≤2N (per-repo) | 先 1 次 Jev(同一请求问 Choice + Noul);拿不准才走 reviewer 链的字母裁判(再 1 次)。Jev 没配 = 全部走字母裁判,仍是 N |
 
 - **降级路径**:classifier batch 失败 → 静态 `infer_tags/rating` **保留全部候选**(不再截 top 6);
   Write 失败或产物缺 4 个 `###` 小节 → **英文** stub(再由翻译层出中文,并打 `analysis_is_stub=True`);
@@ -201,7 +257,12 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
   (早期只隔离了前两个,`repo_cycles.json` 被真实记忆覆盖过)。session 级 `reports_guard`
   fixture 会在跑完比对 `reports/` 字节变化并直接 fail。
 - 本地 shell 常带各种 `*_API_KEY` 环境变量,会污染"无 key 应降级"类测试
-  (`tests/test_llm.py` 等)。复现 CI 用干净环境:`env -i PATH="$PATH" HOME="$HOME" uv run pytest tests/ -q`。
+  (`tests/test_llm.py` 等)。新增 provider 时**不要**写死要清理的 key 名单,用
+  `tests/test_llm.py:_clear_all_provider_keys(monkeypatch)`(它从 `_PROVIDER_ENV` 派生)。
+  复现 CI 用干净环境:`env -i PATH="$PATH" HOME="$HOME" uv run pytest tests/ -q`。
+  同理,本机 shell 的 `SENSENOVA_BASE_URL` 之类指向别家端点的变量会被
+  `resolve_base_url()` 的 host 白名单拦下(响一声 `[Config Warning]` 并回落到代码默认值),
+  别把那条警告当成 bug。
 - coverage 由 pyproject 强制 85% 门槛;test job 还跑 `ruff check`、`mypy src/`、`bandit -r src/`,
   三者都必须零告警(**不允许再加 `|| true`** —— 曾经 mypy 因 src/ 缺 `__init__.py` 直接报错退出,
   一个类型都没检查,却被 `|| true` 掩盖成"绿灯")。
@@ -294,10 +355,12 @@ provider → (env key, base_url) 的映射在 `src/config.py:_PROVIDER_ENV`。
 src/
   __init__.py     让 mypy 把 src 当一个包(缺它时 mypy 会报 "found twice" 并零检查)
   main.py         CLI 入口(参数解析 + 装配组件 + --mock 状态隔离)
-  config.py       Pydantic 配置模型 + _PROVIDER_ENV 映射 + load_config()(YAML + env 覆盖)
+  config.py       Pydantic 配置模型(ModelLeg/RoleConfig.chain)+ _PROVIDER_ENV 映射
+                  + base_url host 白名单 + load_config()(YAML + env 覆盖)
   crawler.py      BeautifulSoup 抓 GitHub Trending HTML + REST API 拉 org/user repos
   dedup.py        RepoHistoryTracker:阶梯冷却 + 原子写 history/archive/cycles
-  llm.py          LLMClient:多 provider 路由 + LLMError 契约 + has_role 预判 + 退避下限 + get_stats()
+  llm.py          LLMClient:链式逐腿降级 + per-(role,leg) 熔断 + LLMError 契约
+                  + has_role 预判 + per-provider 超时/间隔表 + get_stats()
   pipeline.py     多阶段编排(_stage_analyze/_stage_summarize_and_reflect/_stage_translate/_stage_review)
   formatter.py    报告渲染:Markdown/Slack 走 Jinja,飞书卡片在 Python 里构造
   notifier.py     4 通道分发:local(必) + feishu/slack/discord(可选)
@@ -328,10 +391,12 @@ uv.lock           uv 锁定文件(**Dependabot 与 pip-audit 扫描对象**)
   `reports_mock/`,**不需要**再 `git checkout -- reports/`。
 - 改了 `config/config.yaml` 阈值 → 注意 `repo_history.json` 不会自动迁移,
   改 `archive_threshold` 不会让已记录的项目"补触发"晋升;新阈值只对**之后**的抓取生效。
-- 改了 LLM roles / 换 provider → 三处同步:`config.yaml` 的 roles、`src/config.py` 的
-  默认 roles(有 drift 用例 `test_code_role_defaults_mirror_config_yaml` 守着)、
-  workflow env + GitHub Secrets;推送后**必须**看一次 CI 日志确认 `[LLM Init] Providers with keys:`
-  含该 provider 且对应 stage 成功调用数 > 0(free tier 模型随时可能下架,classifier 的 6.7→404 就是先例)。
+- 改了 LLM roles / 换 provider → 四处同步:`config.yaml` 的 `chain`、`src/config.py` 的
+  默认 chain(有 drift 用例 `test_code_role_defaults_mirror_config_yaml` 守着)、
+  workflow env + GitHub Secrets。推送后**必须**看一次 CI 日志确认
+  `[LLM Init] Providers with keys:` 含该 provider、对应 stage 成功调用数 > 0,
+  且逐仓库日志里 `role=… → leg i/N` 落在预期的腿上(free tier 模型随时可能下架,
+  classifier 的 6.7→404 就是先例)。**腿的顺序 = 可靠性降序**,挪腿前先看 spec 的实测表。
 - 改了 writer 的 4 个 `###` 小节名 → 同步 `pipeline.WRITER_SECTIONS`(完整性门),
   否则所有产物都会被判定不合格、整份报告落 stub。
 - 改了 `formatter.py` 输出的 markdown 结构 → 检查翻译 prompt 的 `###` 锚点与
