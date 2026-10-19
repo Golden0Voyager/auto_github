@@ -9,7 +9,30 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.config import AIConfig, AppConfig, DedupConfig, GitHubConfig, NotificationConfig, Stage2PreFilterConfig
+from src.config import (
+    _PROVIDER_ENV,
+    AIConfig,
+    AppConfig,
+    DedupConfig,
+    GitHubConfig,
+    NotificationConfig,
+    Stage2PreFilterConfig,
+)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def clear_all_provider_keys(monkeypatch: pytest.MonkeyPatch) -> None:
+    """清掉 `_PROVIDER_ENV` 里**所有** provider 的 key,模拟"一个通道都没配"。
+
+    不写死名单:每加一个 provider 就多一个能污染"无 key 应降级"类测试的环境变量,
+    而开发机的 shell 里往往正好带着它们 —— 名单漏掉的那家会让这些用例**假红**。
+    CI 是干净环境所以一直绿,于是假红只出现在本地,最容易被误读成"我刚才改坏了"。
+    """
+    for env_key, _url_env, _default in _PROVIDER_ENV.values():
+        monkeypatch.delenv(env_key, raising=False)
+
 
 # ---------------------------------------------------------------------------
 # Fixtures: Config
