@@ -173,5 +173,12 @@
     "cooldown_until": "2026-11-17",
     "stars": 66147,
     "occurrences": 3
+  },
+  "ruvnet/ruflo": {
+    "first_seen": "2026-10-15",
+    "archived_at": "2026-10-20",
+    "cooldown_until": "2026-11-19",
+    "stars": 77382,
+    "occurrences": 3
   }
 }
