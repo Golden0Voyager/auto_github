@@ -180,5 +180,19 @@
     "cooldown_until": "2026-11-19",
     "stars": 77382,
     "occurrences": 3
+  },
+  "anomalyco/opencode": {
+    "first_seen": "2026-10-19",
+    "archived_at": "2026-10-21",
+    "cooldown_until": "2026-11-20",
+    "stars": 219191,
+    "occurrences": 3
+  },
+  "Comfy-Org/ComfyUI": {
+    "first_seen": "2026-10-19",
+    "archived_at": "2026-10-21",
+    "cooldown_until": "2026-11-20",
+    "stars": 141012,
+    "occurrences": 3
   }
 }
