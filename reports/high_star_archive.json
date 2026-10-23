@@ -194,5 +194,12 @@
     "cooldown_until": "2026-11-20",
     "stars": 141012,
     "occurrences": 3
+  },
+  "HKUDS/CLI-Anything": {
+    "first_seen": "2026-10-18",
+    "archived_at": "2026-10-23",
+    "cooldown_until": "2026-11-22",
+    "stars": 56355,
+    "occurrences": 3
   }
 }
