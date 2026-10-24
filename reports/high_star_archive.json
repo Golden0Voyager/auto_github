@@ -201,5 +201,12 @@
     "cooldown_until": "2026-11-22",
     "stars": 56355,
     "occurrences": 3
+  },
+  "microsoft/ai-agents-for-beginners": {
+    "first_seen": "2026-10-17",
+    "archived_at": "2026-10-24",
+    "cooldown_until": "2026-11-23",
+    "stars": 77773,
+    "occurrences": 3
   }
 }
