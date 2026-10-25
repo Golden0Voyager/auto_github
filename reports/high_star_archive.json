@@ -208,5 +208,19 @@
     "cooldown_until": "2026-11-23",
     "stars": 77773,
     "occurrences": 3
+  },
+  "microsoft/PowerToys": {
+    "first_seen": "2026-10-10",
+    "archived_at": "2026-10-25",
+    "cooldown_until": "2026-11-24",
+    "stars": 139853,
+    "occurrences": 3
+  },
+  "NationalSecurityAgency/ghidra": {
+    "first_seen": "2026-10-15",
+    "archived_at": "2026-10-25",
+    "cooldown_until": "2026-11-24",
+    "stars": 94055,
+    "occurrences": 3
   }
 }
