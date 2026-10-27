@@ -222,5 +222,12 @@
     "cooldown_until": "2026-11-24",
     "stars": 94055,
     "occurrences": 3
+  },
+  "Graphify-Labs/graphify": {
+    "first_seen": "2026-10-23",
+    "archived_at": "2026-10-27",
+    "cooldown_until": "2026-11-26",
+    "stars": 136381,
+    "occurrences": 3
   }
 }
