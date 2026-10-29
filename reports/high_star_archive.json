@@ -229,5 +229,19 @@
     "cooldown_until": "2026-11-26",
     "stars": 136381,
     "occurrences": 3
+  },
+  "TauricResearch/TradingAgents": {
+    "first_seen": "2026-10-26",
+    "archived_at": "2026-10-29",
+    "cooldown_until": "2026-11-28",
+    "stars": 118037,
+    "occurrences": 3
+  },
+  "pbakaus/impeccable": {
+    "first_seen": "2026-10-26",
+    "archived_at": "2026-10-29",
+    "cooldown_until": "2026-11-28",
+    "stars": 93613,
+    "occurrences": 3
   }
 }
