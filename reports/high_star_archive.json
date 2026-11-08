@@ -1,18 +1,4 @@
 {
-  "modelcontextprotocol/typescript-sdk": {
-    "first_seen": "2026-09-30",
-    "archived_at": "2026-10-08",
-    "cooldown_until": "2026-11-07",
-    "stars": 13533,
-    "occurrences": 3
-  },
-  "anthropics/claude-code": {
-    "first_seen": "2026-06-27",
-    "archived_at": "2026-10-08",
-    "cooldown_until": "2026-11-07",
-    "stars": 149818,
-    "occurrences": 3
-  },
   "openai/codex": {
     "first_seen": "2026-10-05",
     "archived_at": "2026-10-09",
