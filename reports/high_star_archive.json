@@ -1,18 +1,4 @@
 {
-  "openai/codex": {
-    "first_seen": "2026-10-05",
-    "archived_at": "2026-10-09",
-    "cooldown_until": "2026-11-08",
-    "stars": 128303,
-    "occurrences": 3
-  },
-  "deepseek-ai/deepseek-harness": {
-    "first_seen": "2026-10-05",
-    "archived_at": "2026-10-09",
-    "cooldown_until": "2026-11-08",
-    "stars": 245989,
-    "occurrences": 3
-  },
   "paperclipai/paperclip": {
     "first_seen": "2026-10-05",
     "archived_at": "2026-10-10",
@@ -242,6 +228,27 @@
     "archived_at": "2026-11-07",
     "cooldown_until": "2026-12-07",
     "stars": 36233,
+    "occurrences": 3
+  },
+  "openai/codex": {
+    "first_seen": "2026-10-05",
+    "archived_at": "2026-11-09",
+    "cooldown_until": "2026-12-24",
+    "stars": 134084,
+    "occurrences": 5
+  },
+  "vercel-labs/agent-browser": {
+    "first_seen": "2026-11-06",
+    "archived_at": "2026-11-09",
+    "cooldown_until": "2026-12-09",
+    "stars": 47993,
+    "occurrences": 3
+  },
+  "openai/openai-agents-python": {
+    "first_seen": "2026-11-07",
+    "archived_at": "2026-11-09",
+    "cooldown_until": "2026-12-09",
+    "stars": 30568,
     "occurrences": 3
   }
 }
