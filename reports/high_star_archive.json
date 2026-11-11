@@ -243,5 +243,12 @@
     "cooldown_until": "2026-12-09",
     "stars": 30568,
     "occurrences": 3
+  },
+  "addyosmani/agent-skills": {
+    "first_seen": "2026-10-08",
+    "archived_at": "2026-11-11",
+    "cooldown_until": "2026-12-11",
+    "stars": 115438,
+    "occurrences": 3
   }
 }
