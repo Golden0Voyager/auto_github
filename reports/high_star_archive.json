@@ -1,11 +1,4 @@
 {
-  "thedotmack/claude-mem": {
-    "first_seen": "2026-10-09",
-    "archived_at": "2026-10-12",
-    "cooldown_until": "2026-11-11",
-    "stars": 99863,
-    "occurrences": 3
-  },
   "modelcontextprotocol/python-sdk": {
     "first_seen": "2026-10-01",
     "archived_at": "2026-10-13",
@@ -249,6 +242,20 @@
     "archived_at": "2026-11-11",
     "cooldown_until": "2026-12-11",
     "stars": 115438,
+    "occurrences": 3
+  },
+  "thedotmack/claude-mem": {
+    "first_seen": "2026-10-09",
+    "archived_at": "2026-11-12",
+    "cooldown_until": "2026-12-27",
+    "stars": 116352,
+    "occurrences": 5
+  },
+  "QwenLM/qwen-code": {
+    "first_seen": "2026-11-10",
+    "archived_at": "2026-11-12",
+    "cooldown_until": "2026-12-12",
+    "stars": 29503,
     "occurrences": 3
   }
 }

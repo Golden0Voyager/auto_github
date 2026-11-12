@@ -1,21 +1,253 @@
 {
-  "microsoft/litebox": [
-    "2026-10-11"
+  "lucidrains/x-transformers": [
+    "2026-10-05",
+    "2026-10-10",
+    "2026-10-11",
+    "2026-10-14",
+    "2026-10-17",
+    "2026-10-20",
+    "2026-10-24",
+    "2026-11-07",
+    "2026-11-08",
+    "2026-11-10",
+    "2026-11-11",
+    "2026-11-12"
   ],
-  "google-research/scenic": [
+  "vercel/next.js": [
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02"
+  ],
+  "google-deepmind/dm_control": [
+    "2026-10-19"
+  ],
+  "vllm-project/vllm": [
+    "2026-10-11",
+    "2026-10-13",
+    "2026-10-15"
+  ],
+  "K-Dense-AI/scientific-agent-skills": [
+    "2026-10-22",
+    "2026-10-23"
+  ],
+  "openai/openai-openapi": [
+    "2026-10-19",
+    "2026-11-03",
+    "2026-11-09",
+    "2026-11-12"
+  ],
+  "microsoft/vscode-react-native": [
+    "2026-11-04"
+  ],
+  "microsoft/PowerToys": [
+    "2026-10-10",
+    "2026-10-19",
+    "2026-10-25"
+  ],
+  "openai/openai-dotnet": [
+    "2026-10-01",
+    "2026-10-07"
+  ],
+  "Tencent-Hunyuan/HunyuanDiT": [
+    "2026-10-14"
+  ],
+  "vllm-project/vllm-metal": [
+    "2026-11-11"
+  ],
+  "google-deepmind/mujoco_menagerie": [
+    "2026-10-15"
+  ],
+  "huggingface/huggingface_hub": [
+    "2026-10-02"
+  ],
+  "modelcontextprotocol/csharp-sdk": [
+    "2026-10-05",
+    "2026-10-15",
+    "2026-10-18",
+    "2026-10-19",
+    "2026-10-20",
+    "2026-10-21",
+    "2026-10-22",
+    "2026-10-23",
+    "2026-10-25",
+    "2026-10-26",
+    "2026-10-27",
+    "2026-10-28",
+    "2026-10-29",
+    "2026-10-30",
+    "2026-10-31",
+    "2026-11-06",
+    "2026-11-07",
+    "2026-11-09"
+  ],
+  "microsoft/PyRIT": [
+    "2026-10-08"
+  ],
+  "modelcontextprotocol/python-sdk": [
+    "2026-10-01",
+    "2026-10-03",
+    "2026-10-13"
+  ],
+  "supabase/supabase": [
+    "2026-10-23"
+  ],
+  "karpathy/reader3": [
+    "2026-10-18"
+  ],
+  "strelov1/freehire": [
     "2026-10-22"
+  ],
+  "openai/openai-agents-js": [
+    "2026-10-06"
+  ],
+  "deepseek-ai/deepseek-recipe": [
+    "2026-10-24",
+    "2026-10-26",
+    "2026-11-02",
+    "2026-11-03"
   ],
   "huggingface/blog": [
     "2026-10-15"
   ],
-  "anomalyco/opencode": [
-    "2026-10-19",
-    "2026-10-20",
-    "2026-10-21"
+  "multica-ai/andrej-karpathy-skills": [
+    "2026-10-27",
+    "2026-10-28",
+    "2026-10-30"
   ],
-  "vectorize-io/hindsight": [
-    "2026-10-22",
+  "microsoft/mxc": [
+    "2026-10-15"
+  ],
+  "huggingface/huggingface.js": [
+    "2026-10-01",
+    "2026-10-23"
+  ],
+  "lucidrains/vector-quantize-pytorch": [
+    "2026-10-13"
+  ],
+  "huggingface/transformers": [
+    "2026-10-04",
+    "2026-10-06",
+    "2026-10-07",
+    "2026-11-06",
+    "2026-11-07"
+  ],
+  "Tencent-Hunyuan/Hy-Memory": [
+    "2026-11-11"
+  ],
+  "huggingface/OpenEnv": [
+    "2026-10-06",
+    "2026-10-07",
+    "2026-10-14",
+    "2026-10-15",
+    "2026-10-19",
+    "2026-10-22"
+  ],
+  "google-deepmind/mujoco_playground": [
+    "2026-10-23",
+    "2026-10-28",
+    "2026-10-29",
+    "2026-11-06",
+    "2026-11-07",
+    "2026-11-09",
+    "2026-11-10"
+  ],
+  "github/spec-kit": [
+    "2026-11-05"
+  ],
+  "Leonxlnx/taste-skill": [
+    "2026-10-29",
+    "2026-10-30",
+    "2026-10-31"
+  ],
+  "microsoft/foundry-local": [
+    "2026-10-31",
+    "2026-11-08"
+  ],
+  "microsoft/vscode": [
+    "2026-10-27",
+    "2026-10-31",
+    "2026-11-03"
+  ],
+  "JustVugg/colibri": [
+    "2026-11-03",
+    "2026-11-04"
+  ],
+  "anomalyco/hex": [
+    "2026-11-04"
+  ],
+  "NationalSecurityAgency/ghidra": [
+    "2026-10-15",
+    "2026-10-17",
+    "2026-10-25"
+  ],
+  "harry0703/MoneyPrinterTurbo": [
+    "2026-11-05"
+  ],
+  "vllm-project/llm-compressor": [
+    "2026-10-01"
+  ],
+  "QwenLM/qwen-code": [
+    "2026-11-10",
+    "2026-11-11",
+    "2026-11-12"
+  ],
+  "vercel-labs/agent-browser": [
+    "2026-11-06",
+    "2026-11-08",
+    "2026-11-09"
+  ],
+  "danielmiessler/SecLists": [
+    "2026-10-14",
+    "2026-10-15",
+    "2026-10-17"
+  ],
+  "deepseek-ai/DeepSeek-R1": [
+    "2026-01-01",
+    "2026-01-02",
+    "2026-06-27"
+  ],
+  "microsoft/generative-ai-for-beginners": [
     "2026-10-24"
+  ],
+  "deepseek-ai/deepseek-harness": [
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-09"
+  ],
+  "DietrichGebert/ponytail": [
+    "2026-10-04",
+    "2026-10-05",
+    "2026-10-06"
+  ],
+  "unslothai/unsloth": [
+    "2026-10-14",
+    "2026-10-15",
+    "2026-10-17"
+  ],
+  "modelcontextprotocol/registry": [
+    "2026-10-06",
+    "2026-10-07",
+    "2026-10-08",
+    "2026-10-12",
+    "2026-10-15",
+    "2026-10-22",
+    "2026-10-24",
+    "2026-10-28",
+    "2026-10-29",
+    "2026-10-30",
+    "2026-10-31",
+    "2026-11-05",
+    "2026-11-08",
+    "2026-11-11",
+    "2026-11-12"
+  ],
+  "microsoft/azure-pipelines-tasks": [
+    "2026-10-08"
+  ],
+  "modelcontextprotocol/typescript-sdk": [
+    "2026-09-30",
+    "2026-10-02",
+    "2026-10-08"
   ],
   "patriciogonzalezvivo/lygia": [
     "2026-10-01",
@@ -31,164 +263,61 @@
     "2026-10-28",
     "2026-10-29"
   ],
-  "HKUDS/CLI-Anything": [
-    "2026-10-18",
-    "2026-10-19",
-    "2026-10-23"
-  ],
-  "cloudflare/security-audit-skill": [
-    "2026-10-30",
-    "2026-10-31",
-    "2026-11-02"
-  ],
-  "heygen-com/hyperframes": [
-    "2026-10-15",
-    "2026-10-17",
-    "2026-10-18"
-  ],
-  "huggingface/OpenEnv": [
-    "2026-10-06",
-    "2026-10-07",
-    "2026-10-14",
-    "2026-10-15",
-    "2026-10-19",
-    "2026-10-22"
-  ],
-  "multica-ai/andrej-karpathy-skills": [
-    "2026-10-27",
-    "2026-10-28",
-    "2026-10-30"
-  ],
-  "anomalyco/hex": [
-    "2026-11-04"
-  ],
-  "google-deepmind/dm_control": [
-    "2026-10-19"
-  ],
-  "unslothai/hyperlearn": [
-    "2026-10-06"
-  ],
-  "huggingface/notebooks": [
-    "2026-10-20"
-  ],
-  "mistralai/mistral-inference": [
-    "2026-06-27"
-  ],
-  "tester-army/e2e": [
-    "2026-10-05"
-  ],
-  "microsoft/vscode": [
-    "2026-10-27",
-    "2026-10-31",
-    "2026-11-03"
-  ],
-  "mistralai/cookbook": [
-    "2026-10-12",
-    "2026-10-29",
-    "2026-10-30",
-    "2026-11-02",
-    "2026-11-05",
-    "2026-11-06",
-    "2026-11-07",
-    "2026-11-08",
-    "2026-11-09",
-    "2026-11-10",
-    "2026-11-11"
-  ],
-  "Tencent-Hunyuan/HY-World-2.0": [
-    "2026-10-03"
-  ],
-  "openai/openai-agents-js": [
-    "2026-10-06"
-  ],
-  "headroomlabs-ai/headroom": [
-    "2026-10-22"
-  ],
-  "msitarzewski/agency-agents": [
-    "2026-10-07",
-    "2026-10-21"
-  ],
-  "modelcontextprotocol/rust-sdk": [
-    "2026-10-02",
-    "2026-10-07",
-    "2026-10-10",
-    "2026-10-11",
-    "2026-10-14",
-    "2026-10-15",
-    "2026-10-19",
-    "2026-10-23",
-    "2026-11-04"
-  ],
-  "openai/openai-openapi": [
-    "2026-10-19",
-    "2026-11-03",
-    "2026-11-09"
-  ],
-  "MiniMax-AI/minimax-code": [
-    "2026-10-17",
-    "2026-10-27",
-    "2026-10-28",
-    "2026-10-30",
-    "2026-11-05"
-  ],
-  "spotify/portal-ai-plugins": [
-    "2026-11-04"
-  ],
-  "meta-llama/llama3": [
-    "2026-06-27"
-  ],
-  "microsoft/react-native-macos": [
-    "2026-09-30"
-  ],
-  "lucidrains/MLA-pytorch": [
-    "2026-06-27"
-  ],
-  "openai/codex": [
-    "2026-10-05",
-    "2026-10-08",
-    "2026-10-09",
-    "2026-11-08",
-    "2026-11-09"
-  ],
-  "QwenLM/Qwen-MM-Plugins": [
-    "2026-10-01"
-  ],
-  "Graphify-Labs/graphify": [
-    "2026-10-23",
+  "pbakaus/impeccable": [
     "2026-10-26",
-    "2026-10-27"
+    "2026-10-28",
+    "2026-10-29"
   ],
-  "THUDM/AgentBench": [
-    "2026-10-01"
-  ],
-  "QwenLM/Qwen-Image-2.1": [
-    "2026-11-05"
-  ],
-  "MoonshotAI/Kimi-K2.5": [
-    "2026-10-26",
-    "2026-10-27"
-  ],
-  "deepseek-ai/FlashMLA": [
+  "NousResearch/hermes-agent": [
     "2026-09-30",
     "2026-10-01",
     "2026-10-04",
     "2026-11-03",
     "2026-11-04"
   ],
-  "deepseek-ai/deepseek-recipe": [
-    "2026-10-24",
-    "2026-10-26",
+  "meta-llama/llama3": [
+    "2026-06-27"
+  ],
+  "modelcontextprotocol/go-sdk": [
+    "2026-10-06",
+    "2026-10-09",
+    "2026-10-12",
+    "2026-10-13",
+    "2026-10-15",
+    "2026-10-17",
+    "2026-10-19",
     "2026-11-02",
+    "2026-11-06"
+  ],
+  "modelcontextprotocol/ext-apps": [
+    "2026-10-23",
+    "2026-10-27"
+  ],
+  "makecindy/cindy": [
+    "2026-10-25"
+  ],
+  "microsoft/AI-Engineering-Coach": [
     "2026-11-03"
   ],
-  "Tencent-Hunyuan/Hunyuan3D-1": [
-    "2026-11-02"
+  "google-research/sima": [
+    "2026-06-27"
   ],
-  "thedotmack/claude-mem": [
-    "2026-10-09",
-    "2026-10-11",
-    "2026-10-12",
-    "2026-11-11"
+  "google-deepmind/optax": [
+    "2026-10-24"
+  ],
+  "nodejs/node": [
+    "2026-10-24"
+  ],
+  "deepseek-ai/DeepInfer": [
+    "2026-11-10"
+  ],
+  "Comfy-Org/ComfyUI": [
+    "2026-10-19",
+    "2026-10-20",
+    "2026-10-21"
+  ],
+  "jonbarron/jonbarron.github.io": [
+    "2026-10-01"
   ],
   "modelcontextprotocol/modelcontextprotocol": [
     "2026-10-04",
@@ -212,57 +341,73 @@
     "2026-11-08",
     "2026-11-09",
     "2026-11-10",
-    "2026-11-11"
+    "2026-11-11",
+    "2026-11-12"
   ],
-  "modelcontextprotocol/csharp-sdk": [
-    "2026-10-05",
+  "microsoft/react-native-macos": [
+    "2026-09-30"
+  ],
+  "heygen-com/hyperframes": [
     "2026-10-15",
-    "2026-10-18",
-    "2026-10-19",
-    "2026-10-20",
-    "2026-10-21",
-    "2026-10-22",
-    "2026-10-23",
-    "2026-10-25",
-    "2026-10-26",
-    "2026-10-27",
-    "2026-10-28",
-    "2026-10-29",
-    "2026-10-30",
-    "2026-10-31",
-    "2026-11-06",
-    "2026-11-07",
-    "2026-11-09"
+    "2026-10-17",
+    "2026-10-18"
   ],
-  "modelcontextprotocol/python-sdk": [
-    "2026-10-01",
+  "paperclipai/paperclip": [
+    "2026-10-05",
+    "2026-10-09",
+    "2026-10-10"
+  ],
+  "microsoft/WindowsDeveloperConfig": [
+    "2026-10-02",
+    "2026-10-03"
+  ],
+  "obra/superpowers": [
+    "2026-10-02",
     "2026-10-03",
-    "2026-10-13"
+    "2026-10-15"
   ],
-  "garrytan/gbrain": [
-    "2026-11-10"
-  ],
-  "deepseek-ai/DeepSeek-R1": [
-    "2026-01-01",
-    "2026-01-02",
-    "2026-06-27"
-  ],
-  "nodejs/node": [
-    "2026-10-24"
-  ],
-  "JustVugg/colibri": [
-    "2026-11-03",
+  "mattpocock/skills": [
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03",
     "2026-11-04"
   ],
-  "deepseek-ai/deepseek-harness": [
-    "2026-10-05",
-    "2026-10-06",
-    "2026-10-09"
+  "microsoft/apm": [
+    "2026-10-15"
   ],
-  "microsoft/ai-agents-for-beginners": [
-    "2026-10-17",
-    "2026-10-18",
-    "2026-10-24"
+  "thedotmack/claude-mem": [
+    "2026-10-09",
+    "2026-10-11",
+    "2026-10-12",
+    "2026-11-11",
+    "2026-11-12"
+  ],
+  "mistralai/cookbook": [
+    "2026-10-12",
+    "2026-10-29",
+    "2026-10-30",
+    "2026-11-02",
+    "2026-11-05",
+    "2026-11-06",
+    "2026-11-07",
+    "2026-11-08",
+    "2026-11-09",
+    "2026-11-10",
+    "2026-11-11",
+    "2026-11-12"
+  ],
+  "lightpanda-io/browser": [
+    "2026-11-02"
+  ],
+  "ruvnet/ruflo": [
+    "2026-10-15",
+    "2026-10-19",
+    "2026-10-20"
+  ],
+  "microsoft/onnxruntime": [
+    "2026-10-03",
+    "2026-10-06",
+    "2026-10-14"
   ],
   "modelcontextprotocol/servers": [
     "2026-10-01",
@@ -270,40 +415,174 @@
     "2026-10-05",
     "2026-11-05"
   ],
-  "huggingface/transformers": [
-    "2026-10-04",
-    "2026-10-06",
-    "2026-10-07",
-    "2026-11-06",
+  "Tencent-Hunyuan/Hunyuan3D-1": [
+    "2026-11-02"
+  ],
+  "comfyanonymous/ComfyUI_examples": [
+    "2026-09-30"
+  ],
+  "Donchitos/Claude-Code-Game-Studios": [
+    "2026-11-02",
+    "2026-11-03",
     "2026-11-07"
   ],
-  "karpathy/autoresearch": [
-    "2026-10-11",
-    "2026-10-12",
-    "2026-10-13"
+  "HKUDS/CLI-Anything": [
+    "2026-10-18",
+    "2026-10-19",
+    "2026-10-23"
   ],
-  "TauricResearch/TradingAgents": [
+  "modelcontextprotocol/java-sdk": [
+    "2026-10-09",
+    "2026-10-15",
+    "2026-11-02",
+    "2026-11-09",
+    "2026-11-10"
+  ],
+  "anthropics/claude-code": [
+    "2026-06-27",
+    "2026-10-07",
+    "2026-10-08"
+  ],
+  "openai/openai-go": [
+    "2026-10-12"
+  ],
+  "microsoft/mcp": [
+    "2026-10-19"
+  ],
+  "Kruk2/jasna": [
+    "2026-10-20"
+  ],
+  "NVIDIA/OpenShell": [
+    "2026-10-01",
+    "2026-10-02",
+    "2026-10-03"
+  ],
+  "vectorize-io/hindsight": [
+    "2026-10-22",
+    "2026-10-24"
+  ],
+  "MoonshotAI/Kimi-K2.5": [
     "2026-10-26",
-    "2026-10-28",
-    "2026-10-29"
+    "2026-10-27"
   ],
-  "microsoft/onnxruntime": [
-    "2026-10-03",
-    "2026-10-06",
+  "deepseek-ai/FlashMLA": [
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-04",
+    "2026-11-03",
+    "2026-11-04"
+  ],
+  "morluto/rea": [
+    "2026-10-12",
+    "2026-10-13",
     "2026-10-14"
   ],
-  "lucidrains/vector-quantize-pytorch": [
-    "2026-10-13"
+  "microsoft/litebox": [
+    "2026-10-11"
+  ],
+  "microsoft/markitdown": [
+    "2026-10-02"
+  ],
+  "microsoft/SEAL": [
+    "2026-10-10"
+  ],
+  "danijar/dreamerv3": [
+    "2026-10-04"
+  ],
+  "JuliusBrussee/caveman": [
+    "2026-10-15"
+  ],
+  "garrytan/gbrain": [
+    "2026-11-10"
+  ],
+  "MiniMax-AI/cli": [
+    "2026-10-17",
+    "2026-10-19",
+    "2026-10-21",
+    "2026-11-10"
+  ],
+  "anomalyco/opencode": [
+    "2026-10-19",
+    "2026-10-20",
+    "2026-10-21"
+  ],
+  "microsoft/AutoDev": [
+    "2026-06-27"
+  ],
+  "aws/agent-toolkit-for-aws": [
+    "2026-10-25"
+  ],
+  "tiangolo/uwsgi-nginx-flask-docker": [
+    "2026-10-15"
   ],
   "openclaw/openclaw": [
     "2026-10-01"
   ],
-  "microsoft/azure-pipelines-tasks": [
-    "2026-10-08"
+  "tester-army/e2e": [
+    "2026-10-05"
   ],
-  "microsoft/WindowsDeveloperConfig": [
+  "msitarzewski/agency-agents": [
+    "2026-10-07",
+    "2026-10-21"
+  ],
+  "microsoft/mcp-for-beginners": [
+    "2026-10-25"
+  ],
+  "openai/codex": [
+    "2026-10-05",
+    "2026-10-08",
+    "2026-10-09",
+    "2026-11-08",
+    "2026-11-09"
+  ],
+  "meta-llama/PurpleLlama": [
+    "2026-09-30"
+  ],
+  "unslothai/hyperlearn": [
+    "2026-10-06"
+  ],
+  "stablyai/orca": [
+    "2026-09-30",
+    "2026-10-17",
+    "2026-10-18"
+  ],
+  "Graphify-Labs/graphify": [
+    "2026-10-23",
+    "2026-10-26",
+    "2026-10-27"
+  ],
+  "openai/openai-agents-python": [
+    "2026-11-07",
+    "2026-11-08",
+    "2026-11-09"
+  ],
+  "vllm-project/vllm-ascend": [
+    "2026-10-04",
+    "2026-10-05",
+    "2026-10-07",
+    "2026-10-08",
+    "2026-10-09",
+    "2026-10-10",
+    "2026-10-11",
+    "2026-10-13",
+    "2026-10-15",
+    "2026-10-17",
+    "2026-10-18",
+    "2026-10-21"
+  ],
+  "headroomlabs-ai/headroom": [
+    "2026-10-22"
+  ],
+  "modelcontextprotocol/rust-sdk": [
     "2026-10-02",
-    "2026-10-03"
+    "2026-10-07",
+    "2026-10-10",
+    "2026-10-11",
+    "2026-10-14",
+    "2026-10-15",
+    "2026-10-19",
+    "2026-10-23",
+    "2026-11-04"
   ],
   "tiangolo/uvicorn-gunicorn-fastapi-docker": [
     "2026-10-01",
@@ -332,366 +611,98 @@
     "2026-11-07",
     "2026-11-08"
   ],
-  "google-research/sima": [
-    "2026-06-27"
-  ],
-  "meta-llama/PurpleLlama": [
-    "2026-09-30"
-  ],
-  "anthropics/skills": [
-    "2026-11-04",
-    "2026-11-05",
-    "2026-11-06"
-  ],
-  "openai/openai-agents-python": [
-    "2026-11-07",
-    "2026-11-08",
-    "2026-11-09"
-  ],
-  "modelcontextprotocol/typescript-sdk": [
-    "2026-09-30",
-    "2026-10-02",
-    "2026-10-08"
-  ],
-  "aws/agent-toolkit-for-aws": [
-    "2026-10-25"
-  ],
-  "addyosmani/agent-skills": [
-    "2026-10-08",
-    "2026-10-10",
-    "2026-11-11"
-  ],
-  "QwenLM/qwen-code": [
-    "2026-11-10",
-    "2026-11-11"
-  ],
-  "K-Dense-AI/scientific-agent-skills": [
-    "2026-10-22",
-    "2026-10-23"
-  ],
-  "microsoft/mcp-for-beginners": [
-    "2026-10-25"
-  ],
-  "google-deepmind/mujoco_playground": [
-    "2026-10-23",
-    "2026-10-28",
-    "2026-10-29",
-    "2026-11-06",
-    "2026-11-07",
-    "2026-11-09",
-    "2026-11-10"
-  ],
-  "strelov1/freehire": [
-    "2026-10-22"
-  ],
-  "Tencent-Hunyuan/HunyuanDiT": [
-    "2026-10-14"
-  ],
-  "NousResearch/hermes-agent": [
-    "2026-09-30",
-    "2026-10-01",
-    "2026-10-04",
-    "2026-11-03",
-    "2026-11-04"
-  ],
-  "jonbarron/jonbarron.github.io": [
-    "2026-10-01"
-  ],
-  "microsoft/mxc": [
-    "2026-10-15"
-  ],
-  "microsoft/markitdown": [
-    "2026-10-02"
-  ],
-  "danielmiessler/SecLists": [
-    "2026-10-14",
-    "2026-10-15",
-    "2026-10-17"
-  ],
-  "MiniMax-AI/cli": [
-    "2026-10-17",
-    "2026-10-19",
-    "2026-10-21",
-    "2026-11-10"
-  ],
-  "microsoft/AI-Engineering-Coach": [
-    "2026-11-03"
-  ],
-  "pbakaus/impeccable": [
+  "TauricResearch/TradingAgents": [
     "2026-10-26",
     "2026-10-28",
     "2026-10-29"
   ],
-  "deepseek-ai/DeepInfer": [
-    "2026-11-10"
-  ],
-  "unslothai/unsloth": [
-    "2026-10-14",
-    "2026-10-15",
-    "2026-10-17"
-  ],
-  "modelcontextprotocol/registry": [
-    "2026-10-06",
-    "2026-10-07",
-    "2026-10-08",
-    "2026-10-12",
-    "2026-10-15",
-    "2026-10-22",
-    "2026-10-24",
-    "2026-10-28",
-    "2026-10-29",
-    "2026-10-30",
-    "2026-10-31",
-    "2026-11-05",
-    "2026-11-08",
-    "2026-11-11"
-  ],
-  "microsoft/AutoDev": [
+  "mistralai/mistral-inference": [
     "2026-06-27"
   ],
-  "lightpanda-io/browser": [
-    "2026-11-02"
-  ],
-  "google-deepmind/optax": [
-    "2026-10-24"
-  ],
-  "anthropics/claude-code": [
-    "2026-06-27",
-    "2026-10-07",
-    "2026-10-08"
-  ],
-  "harry0703/MoneyPrinterTurbo": [
-    "2026-11-05"
-  ],
-  "openai/openai-dotnet": [
-    "2026-10-01",
-    "2026-10-07"
-  ],
-  "modelcontextprotocol/java-sdk": [
-    "2026-10-09",
-    "2026-10-15",
-    "2026-11-02",
-    "2026-11-09",
-    "2026-11-10"
-  ],
-  "mattpocock/skills": [
-    "2026-10-01",
-    "2026-10-02",
-    "2026-10-03",
-    "2026-11-04"
-  ],
-  "microsoft/apm": [
-    "2026-10-15"
-  ],
-  "ruvnet/ruflo": [
-    "2026-10-15",
-    "2026-10-19",
-    "2026-10-20"
-  ],
-  "microsoft/SEAL": [
-    "2026-10-10"
-  ],
-  "makecindy/cindy": [
-    "2026-10-25"
-  ],
-  "Donchitos/Claude-Code-Game-Studios": [
-    "2026-11-02",
-    "2026-11-03",
-    "2026-11-07"
-  ],
-  "stablyai/orca": [
-    "2026-09-30",
-    "2026-10-17",
-    "2026-10-18"
-  ],
-  "JuliusBrussee/caveman": [
-    "2026-10-15"
-  ],
-  "morluto/rea": [
-    "2026-10-12",
-    "2026-10-13",
-    "2026-10-14"
-  ],
-  "DietrichGebert/ponytail": [
-    "2026-10-04",
-    "2026-10-05",
-    "2026-10-06"
-  ],
-  "comfyanonymous/ComfyUI_examples": [
-    "2026-09-30"
-  ],
-  "vercel-labs/agent-browser": [
-    "2026-11-06",
-    "2026-11-08",
-    "2026-11-09"
-  ],
-  "microsoft/PyRIT": [
-    "2026-10-08"
-  ],
-  "modelcontextprotocol/ext-apps": [
-    "2026-10-23",
-    "2026-10-27"
-  ],
-  "vllm-project/llm-compressor": [
+  "THUDM/AgentBench": [
     "2026-10-01"
-  ],
-  "huggingface/huggingface.js": [
-    "2026-10-01",
-    "2026-10-23"
-  ],
-  "karpathy/reader3": [
-    "2026-10-18"
-  ],
-  "modelcontextprotocol/go-sdk": [
-    "2026-10-06",
-    "2026-10-09",
-    "2026-10-12",
-    "2026-10-13",
-    "2026-10-15",
-    "2026-10-17",
-    "2026-10-19",
-    "2026-11-02",
-    "2026-11-06"
-  ],
-  "NVIDIA/OpenShell": [
-    "2026-10-01",
-    "2026-10-02",
-    "2026-10-03"
-  ],
-  "tiangolo/uwsgi-nginx-flask-docker": [
-    "2026-10-15"
-  ],
-  "Comfy-Org/ComfyUI": [
-    "2026-10-19",
-    "2026-10-20",
-    "2026-10-21"
-  ],
-  "obra/superpowers": [
-    "2026-10-02",
-    "2026-10-03",
-    "2026-10-15"
-  ],
-  "microsoft/foundry-local": [
-    "2026-10-31",
-    "2026-11-08"
-  ],
-  "NationalSecurityAgency/ghidra": [
-    "2026-10-15",
-    "2026-10-17",
-    "2026-10-25"
-  ],
-  "microsoft/PowerToys": [
-    "2026-10-10",
-    "2026-10-19",
-    "2026-10-25"
-  ],
-  "openai/openai-go": [
-    "2026-10-12"
-  ],
-  "sgl-project/sglang-omni": [
-    "2026-10-21"
-  ],
-  "huggingface/huggingface_hub": [
-    "2026-10-02"
-  ],
-  "google-deepmind/science-skills": [
-    "2026-10-10"
-  ],
-  "Leonxlnx/taste-skill": [
-    "2026-10-29",
-    "2026-10-30",
-    "2026-10-31"
-  ],
-  "paperclipai/paperclip": [
-    "2026-10-05",
-    "2026-10-09",
-    "2026-10-10"
-  ],
-  "github/spec-kit": [
-    "2026-11-05"
-  ],
-  "google-gemini/gemini-cli": [
-    "2026-10-25"
-  ],
-  "microsoft/generative-ai-for-beginners": [
-    "2026-10-24"
-  ],
-  "vllm-project/vllm-ascend": [
-    "2026-10-04",
-    "2026-10-05",
-    "2026-10-07",
-    "2026-10-08",
-    "2026-10-09",
-    "2026-10-10",
-    "2026-10-11",
-    "2026-10-13",
-    "2026-10-15",
-    "2026-10-17",
-    "2026-10-18",
-    "2026-10-21"
-  ],
-  "expo/skills": [
-    "2026-10-31"
-  ],
-  "danijar/dreamerv3": [
-    "2026-10-04"
-  ],
-  "Kruk2/jasna": [
-    "2026-10-20"
-  ],
-  "vllm-project/vllm": [
-    "2026-10-11",
-    "2026-10-13",
-    "2026-10-15"
-  ],
-  "ggerganov/imtui": [
-    "2026-10-01"
-  ],
-  "supabase/supabase": [
-    "2026-10-23"
-  ],
-  "lucidrains/x-transformers": [
-    "2026-10-05",
-    "2026-10-10",
-    "2026-10-11",
-    "2026-10-14",
-    "2026-10-17",
-    "2026-10-20",
-    "2026-10-24",
-    "2026-11-07",
-    "2026-11-08",
-    "2026-11-10",
-    "2026-11-11"
-  ],
-  "google-deepmind/mujoco_menagerie": [
-    "2026-10-15"
-  ],
-  "microsoft/mcp": [
-    "2026-10-19"
   ],
   "affaan-m/ECC": [
     "2026-09-30",
     "2026-10-01",
     "2026-10-03"
   ],
+  "Tencent-Hunyuan/HY-World-2.0": [
+    "2026-10-03"
+  ],
+  "addyosmani/agent-skills": [
+    "2026-10-08",
+    "2026-10-10",
+    "2026-11-11"
+  ],
+  "MiniMax-AI/minimax-code": [
+    "2026-10-17",
+    "2026-10-27",
+    "2026-10-28",
+    "2026-10-30",
+    "2026-11-05"
+  ],
+  "lucidrains/MLA-pytorch": [
+    "2026-06-27"
+  ],
+  "cloudflare/security-audit-skill": [
+    "2026-10-30",
+    "2026-10-31",
+    "2026-11-02"
+  ],
+  "QwenLM/Qwen-Image-2.1": [
+    "2026-11-05"
+  ],
+  "spotify/portal-ai-plugins": [
+    "2026-11-04"
+  ],
   "deepseek-ai/DeepSeek-V3": [
     "2026-06-27"
+  ],
+  "karpathy/autoresearch": [
+    "2026-10-11",
+    "2026-10-12",
+    "2026-10-13",
+    "2026-11-12"
+  ],
+  "anthropics/skills": [
+    "2026-11-04",
+    "2026-11-05",
+    "2026-11-06"
+  ],
+  "QwenLM/Qwen-MM-Plugins": [
+    "2026-10-01"
+  ],
+  "google-deepmind/science-skills": [
+    "2026-10-10"
+  ],
+  "microsoft/ai-agents-for-beginners": [
+    "2026-10-17",
+    "2026-10-18",
+    "2026-10-24"
+  ],
+  "huggingface/notebooks": [
+    "2026-10-20"
+  ],
+  "sgl-project/sglang-omni": [
+    "2026-10-21"
   ],
   "openai/whisper": [
     "2026-06-27"
   ],
-  "microsoft/vscode-react-native": [
-    "2026-11-04"
+  "google-gemini/gemini-cli": [
+    "2026-10-25"
   ],
-  "vercel/next.js": [
-    "2026-09-30",
-    "2026-10-01",
-    "2026-10-02"
+  "expo/skills": [
+    "2026-10-31"
   ],
-  "Tencent-Hunyuan/Hy-Memory": [
-    "2026-11-11"
+  "google-research/scenic": [
+    "2026-10-22"
   ],
-  "vllm-project/vllm-metal": [
-    "2026-11-11"
+  "ggerganov/imtui": [
+    "2026-10-01"
+  ],
+  "google-deepmind/alphagenome": [
+    "2026-11-12"
   ]
 }
